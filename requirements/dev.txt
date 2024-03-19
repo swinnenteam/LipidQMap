@@ -1,0 +1,8 @@
+-r base.txt
+pyinstaller==6.5.0
+mypy==1.9.0
+black==24.3.0
+pytest==8.1.1
+coverage==7.4.4
+pandas==2.2.1
+pyimzml==1.5.4

@@ -1,0 +1,13 @@
+[tool.mypy]
+plugins = "pydantic.mypy"
+disable_error_code = "import-untyped"
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+
+[tool.black]
+line-length = 100
+
+[tool.isort]
+profile = "black"
+line_length = 100
