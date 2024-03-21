@@ -34,7 +34,7 @@ def main() -> NoReturn:
     window.init_table()
 
     # Load configuration
-    window.config = Config()
+    # window.config = Config()
     window.resize(1800, 1000)
     window.show()
 

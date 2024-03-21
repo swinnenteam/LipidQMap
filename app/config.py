@@ -21,12 +21,14 @@ config_paths = {
 }
 
 
-class CoreSettings(BaseModel):
+class FilterSettings(BaseModel):
     """
     Class for validation of the configuration file
     """
 
-    test: int = Field(default=1)
+    raw_image_winsorizing_percentile: int = Field(default=99)
+    quant_image_winsorizing_percentile: int = Field(default=99)
+    quant_image_nan_fill_block_size: int = Field(default=3)
 
 
 class Configuration(BaseModel):
@@ -34,7 +36,7 @@ class Configuration(BaseModel):
     Class used by Config for validation of the configuration file
     """
 
-    core_settings: CoreSettings
+    filter_settings: FilterSettings
 
 
 class Config:
@@ -55,7 +57,7 @@ class Config:
         """Open the specified config toml file and convert to Config DataClass."""
         if not os.path.exists(self.path):
             with open(self.path, "w", encoding="utf8") as file:
-                toml.dump(Configuration(core_settings=CoreSettings()).model_dump(), file)
+                toml.dump(Configuration(filter_settings=FilterSettings()).model_dump(), file)
         with open(self.path, encoding="utf8") as file:
             config_toml = toml.load(file)
         self.settings = Configuration.model_validate(config_toml)
@@ -66,3 +68,6 @@ class Config:
             with open(self.path, "w", encoding="utf8") as file:
                 toml.dump(self.settings.model_dump(), file)
                 return self
+
+
+config = Config()

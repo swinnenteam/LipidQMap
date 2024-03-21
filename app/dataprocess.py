@@ -1,18 +1,42 @@
-from dataclasses import dataclass, field
+import copy
 from typing import Callable
 
 import numpy as np
 import numpy.typing as npt
 from pyimzml.ImzMLParser import ImzMLParser, _bisect_spectrum
 
+from app.config import config
 from app.database import LipidDB
 
 
-@dataclass
 class SampleImageCollection:
-    raw: dict[str, npt.NDArray] = field(default_factory=dict)
-    isotope: dict[str, npt.NDArray] = field(default_factory=dict)
-    quant: dict[str, npt.NDArray] = field(default_factory=dict)
+    def __init__(self, database: LipidDB, imzml_parser: ImzMLParser) -> None:
+        self.raw: dict[str, npt.NDArray]
+        self.isotope: dict[str, npt.NDArray]
+        self.quant: dict[str, npt.NDArray]
+        self.raw_filtered: dict[str, npt.NDArray]
+        self.isotope_filtered: dict[str, npt.NDArray]
+        self.quant_filtered: dict[str, npt.NDArray]
+        self.database = database
+        self.imzml_parser = imzml_parser
+        self.load_data()
+        self.filter_data()
+
+    def load_data(self):
+        self.raw = load_ion_images(database=self.database, imzml=self.imzml_parser)
+        self.isotope = isotope_correction(database=self.database, images=self.raw)
+        self.quant = quantitaton(database=self.database, images=self.isotope)
+
+    def filter_data(self):
+        n1 = config.settings.filter_settings.raw_image_winsorizing_percentile
+        n2 = config.settings.filter_settings.quant_image_winsorizing_percentile
+        n3 = config.settings.filter_settings.quant_image_nan_fill_block_size
+        self.raw_filtered = {k: winsorize_image(v, n1) for (k, v) in self.raw.items()}
+        self.isotope_filtered = {k: winsorize_image(v, n1) for (k, v) in self.isotope.items()}
+        self.quant_filtered = {
+            k: fill_image_nan_median(v, size=n3) for (k, v) in self.quant.items()
+        }
+        self.quant_filtered = {k: winsorize_image(v, n2) for (k, v) in self.quant_filtered.items()}
 
 
 def getionimage(
@@ -71,13 +95,13 @@ def load_ion_images(
 def isotope_correction(
     database: LipidDB, images: dict[str, npt.NDArray], classes: list[str] | None = None
 ) -> dict[str, npt.NDArray]:
-    corrected_images: dict[str, npt.NDArray] = dict()
+    corrected_images: dict[str, npt.NDArray] = copy.deepcopy(images)
     for species_id in database.get_ids_sorted_for_isotope(classes=classes):
         m2_isotope = database.get_M2_isotope_ID(id=species_id)
         if m2_isotope:
             corrected_images[species_id] = (
                 images[species_id]
-                - database.get_M2_isotope_percent(id=m2_isotope) * images[m2_isotope]
+                - database.get_M2_isotope_percent(id=m2_isotope) * corrected_images[m2_isotope]
             ).clip(min=0)
         else:
             corrected_images[species_id] = np.copy(images[species_id])
@@ -121,12 +145,13 @@ def median_filter(image: npt.NDArray, size: int = 3) -> npt.NDArray:
     return filtered_image
 
 
-def fill_image_nan(image_to_fill: npt.NDArray, filler_image: npt.NDArray) -> npt.NDArray:
+def fill_image_nan_median(image: npt.NDArray, size: int = 3) -> npt.NDArray:
     """
-    Puts corresponsing pixel values from the filler_image in the pixel locations where the image_to_fill is Nan
+    Puts corresponsing pixel values from the mean filtered image in the pixel locations where the image is Nan
     """
-    return_image = np.copy(image_to_fill)
-    return_image[np.isnan(return_image)] = filler_image[np.isnan(return_image)]
+    filtered = median_filter(image)
+    return_image = np.copy(image)
+    return_image[np.isnan(return_image)] = filtered[np.isnan(return_image)]
     return return_image
 
 

@@ -84,14 +84,14 @@ class MplCanvas(FigureCanvasQTAgg):
         self.ax1.set_title(f"{species_id}", color="white")
         self.ax2.set_title(f"{species_id} Isocor", color="white")
         self.ax3.set_title(f"{species_id} Quant", color="white")
-        self.im1.set_data(image_collection.raw.get(species_id))
+        self.im1.set_data(image_collection.raw_filtered.get(species_id))
         self.im1.autoscale()
-        self.im2.set_data(image_collection.isotope.get(species_id))
+        self.im2.set_data(image_collection.isotope_filtered.get(species_id))
         self.im2.autoscale()
-        if species_id in image_collection.quant:
-            self.im3.set_data(image_collection.quant.get(species_id))
+        if species_id in image_collection.quant_filtered:
+            self.im3.set_data(image_collection.quant_filtered.get(species_id))
         else:
-            x, y = image_collection.raw[species_id].shape
+            x, y = image_collection.raw_filtered[species_id].shape
             self.im3.set_data(np.full([x, y], np.nan))
         self.im3.autoscale()
         self.flush_events()

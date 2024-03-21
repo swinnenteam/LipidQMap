@@ -24,8 +24,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.config: Config | None = None
         self.species_selection: pd.DataFrame | None = None
         self.image_canvas: MplCanvas | None = None
-        self.imzml_parser: ImzMLParser | None = None
-        self.image_collection: SampleImageCollection = SampleImageCollection()
+        # self.imzml_parser: ImzMLParser | None = None
+        self.image_collection: SampleImageCollection
         self.setupUi(self)
         self.connect_signals_slots()
 
@@ -51,13 +51,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def process_imzml_files(self, progress_callback, filepath) -> None:
         assert self.database
-        self.imzml_parser = ImzMLParser(filepath[0])
-        self.image_collection.raw = load_ion_images(database=self.database, imzml=self.imzml_parser)
-        self.image_collection.isotope = isotope_correction(
-            database=self.database, images=self.image_collection.raw
-        )
-        self.image_collection.quant = quantitaton(
-            database=self.database, images=self.image_collection.isotope
+        self.image_collection = SampleImageCollection(
+            database=self.database, imzml_parser=ImzMLParser(filepath[0])
         )
         self.handle_species_selection_changed()
 
