@@ -16,10 +16,10 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QIcon, QImage, QKeySequence, QLinearGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
-from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QHeaderView,
-    QMainWindow, QMenu, QMenuBar, QSizePolicy,
-    QSplitter, QStatusBar, QTableView, QVBoxLayout,
-    QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QFrame, QGridLayout,
+    QHBoxLayout, QHeaderView, QMainWindow, QMenu,
+    QMenuBar, QSizePolicy, QSplitter, QStatusBar,
+    QTableView, QVBoxLayout, QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -39,24 +39,33 @@ class Ui_MainWindow(object):
         self.frame_1.setObjectName(u"frame_1")
         self.frame_1.setFrameShape(QFrame.StyledPanel)
         self.frame_1.setFrameShadow(QFrame.Raised)
-        self.verticalLayout_2 = QVBoxLayout(self.frame_1)
-        self.verticalLayout_2.setObjectName(u"verticalLayout_2")
-        self.plots_widget = QWidget(self.frame_1)
-        self.plots_widget.setObjectName(u"plots_widget")
+        self.gridLayout = QGridLayout(self.frame_1)
+        self.gridLayout.setObjectName(u"gridLayout")
+        self.gridLayout_2 = QGridLayout()
+        self.gridLayout_2.setObjectName(u"gridLayout_2")
 
-        self.verticalLayout_2.addWidget(self.plots_widget)
+        self.gridLayout.addLayout(self.gridLayout_2, 0, 0, 1, 1)
 
         self.splitter.addWidget(self.frame_1)
         self.frame_2 = QFrame(self.splitter)
         self.frame_2.setObjectName(u"frame_2")
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.frame_2.sizePolicy().hasHeightForWidth())
+        self.frame_2.setSizePolicy(sizePolicy)
         self.frame_2.setFrameShape(QFrame.StyledPanel)
         self.frame_2.setFrameShadow(QFrame.Raised)
         self.verticalLayout = QVBoxLayout(self.frame_2)
         self.verticalLayout.setObjectName(u"verticalLayout")
-        self.tableView = QTableView(self.frame_2)
-        self.tableView.setObjectName(u"tableView")
+        self.species_table = QTableView(self.frame_2)
+        self.species_table.setObjectName(u"species_table")
+        self.species_table.setEditTriggers(QAbstractItemView.DoubleClicked)
+        self.species_table.setTabKeyNavigation(False)
+        self.species_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.species_table.setSelectionBehavior(QAbstractItemView.SelectRows)
 
-        self.verticalLayout.addWidget(self.tableView)
+        self.verticalLayout.addWidget(self.species_table)
 
         self.splitter.addWidget(self.frame_2)
 
@@ -65,7 +74,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 800, 24))
+        self.menubar.setGeometry(QRect(0, 0, 800, 37))
         self.menu_file = QMenu(self.menubar)
         self.menu_file.setObjectName(u"menu_file")
         MainWindow.setMenuBar(self.menubar)

@@ -21,10 +21,16 @@ class LipidDB:
         if not pd.isnull(row[column]):
             return row[column] + " " + row["Adduct"]
 
-    def class_filtered_db(self, classes: list[str]) -> pd.DataFrame:
-        return self.db[self.db["Class_Adduct"].isin(classes)]
+    def get_id(self, index: int) -> str:
+        return self.db.index[index]
 
-    def get_ids_non_standards(self, classes: list[str]) -> list[str]:
+    def class_filtered_db(self, classes: list[str] | None) -> pd.DataFrame:
+        if classes:
+            return self.db[self.db["Class_Adduct"].isin(classes)]
+        else:
+            return self.db
+
+    def get_ids_non_standards(self, classes: list[str] | None = None) -> list[str]:
         filtered = self.class_filtered_db(classes=classes)
         return filtered[filtered["IS amount ()"].isnull()].index.to_list()
 
@@ -45,14 +51,19 @@ class LipidDB:
     def get_M2_isotope_percent(self, id: str) -> float:
         return self.db.loc[id, "M+2 % intensity"] / 100
 
-    def get_ids_sorted_for_isotope(self, classes: list[str]) -> list[str]:
+    def get_ids_sorted_for_isotope(self, classes: list[str] | None = None) -> list[str]:
         filtered = self.class_filtered_db(classes)
         return filtered.sort_values(["Class_Adduct", "mz"], ascending=[True, True]).index.to_list()
 
-    def get_all_species(self, classes: list[str]) -> Iterable[tuple[str, float]]:
+    def get_all_species(self, classes: list[str] | None = None) -> Iterable[tuple[str, float]]:
         filtered = self.class_filtered_db(classes)
         for row in filtered.itertuples():
             yield (row.ID_Adduct, row.mz)
+
+    def get_table(self) -> pd.DataFrame:
+        d = {"Species": self.db.index, "m/z": self.db["mz"], "Export": True}
+        df = pd.DataFrame(data=d, index=self.db.index)
+        return df
 
 
 def load_database(

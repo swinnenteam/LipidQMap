@@ -31,10 +31,11 @@ def main() -> NoReturn:
 
     # load database
     window.database = load_database(config_paths["DATABASE_FILE"])
+    window.init_table()
 
     # Load configuration
     window.config = Config()
-
+    window.resize(1800, 1000)
     window.show()
 
     sys.exit(app.exec())
