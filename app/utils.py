@@ -1,4 +1,5 @@
-from PySide6.QtCore import QAbstractTableModel, Qt
+from PySide6.QtCore import QAbstractTableModel, QEvent, Qt
+from PySide6.QtWidgets import QItemDelegate
 
 
 class PandasModelEditable(QAbstractTableModel):
@@ -7,6 +8,7 @@ class PandasModelEditable(QAbstractTableModel):
         QAbstractTableModel.__init__(self, parent)
         self._data = data
         self.checkableColumns = [2]
+        self.boolean_delegate = BooleanDelegate()
 
     def setColumnCheckable(self, column, checkable=True):
         if checkable:
@@ -24,12 +26,12 @@ class PandasModelEditable(QAbstractTableModel):
     def get_checked(self, row) -> bool:
         return self._data.iloc[row, 2]
 
-    def data(self, index, role=Qt.DisplayRole):
+    def data(self, index, role):
         if index.isValid():
             if role == Qt.CheckStateRole and index.column() in self.checkableColumns:
                 value = self._data.iloc[index.row(), index.column()]
                 return Qt.Checked if value else Qt.Unchecked
-            elif index.column() not in self.checkableColumns and role in (
+            if index.column() not in self.checkableColumns and role in (
                 Qt.DisplayRole,
                 Qt.EditRole,
             ):
@@ -65,3 +67,21 @@ class PandasModelEditable(QAbstractTableModel):
         if index.column() in self.checkableColumns:
             flags |= Qt.ItemIsUserCheckable
         return flags
+
+
+class BooleanDelegate(QItemDelegate):
+
+    def __init__(self, *args, **kwargs):
+        super(BooleanDelegate, self).__init__(*args, **kwargs)
+
+    def paint(self, painter, option, index):
+        value = index.data(Qt.CheckStateRole)
+        self.drawCheck(painter, option, option.rect, value)
+        self.drawFocus(painter, option, option.rect)
+
+    def editorEvent(self, event, model, option, index):
+        if event.type() == QEvent.MouseButtonRelease:
+            value = bool(model.data(index, Qt.CheckStateRole))
+            model.setData(index, not value)
+            event.accept()
+        return super(BooleanDelegate, self).editorEvent(event, model, option, index)

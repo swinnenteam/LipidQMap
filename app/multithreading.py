@@ -11,7 +11,7 @@ class WorkerSignals(QObject):
         No data
 
     result
-        object data returned from processing, anything
+        object returned from processing
 
     progress
         int indicating % progress
@@ -20,6 +20,28 @@ class WorkerSignals(QObject):
 
     finished = Signal()
     result = Signal(object)
+    progress = Signal(int)
+
+
+class WorkerSignals2(QObject):
+    """
+    Defines the signals available from a running worker thread.
+
+    Supported signals are:
+
+    finished
+        No data
+
+    result
+        2 objects returned from processing
+
+    progress
+        int indicating % progress
+
+    """
+
+    finished = Signal()
+    result = Signal(object, object)
     progress = Signal(int)
 
 
@@ -62,5 +84,48 @@ class Worker(QRunnable):
             raise exc
         else:
             self.signals.result.emit(result)  # Return the result of the processing
+        finally:
+            self.signals.finished.emit()  # Done
+
+
+class Worker2(QRunnable):
+    """
+    Worker thread, handles a function that returns 2 results
+
+    Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
+
+    :param callback: The function callback to run on this worker thread. Supplied args and
+                     kwargs will be passed through to the runner.
+    :type callback: function
+    :param args: Arguments to pass to the callback function
+    :param kwargs: Keywords to pass to the callback function
+
+    """
+
+    def __init__(self, function, *args, **kwargs) -> None:
+        super().__init__()
+
+        # Store constructor arguments (re-used for processing)
+        self.function = function
+        self.args = args
+        self.kwargs = kwargs
+        self.signals = WorkerSignals2()
+
+        # Add the callback to our kwargs
+        self.kwargs["progress_callback"] = self.signals.progress
+
+    @Slot()
+    def run(self) -> None:
+        """
+        Initialise the runner function with passed args, kwargs.
+        """
+
+        # Retrieve args/kwargs here; and fire processing using them
+        try:
+            result_1, result_2 = self.function(*self.args, **self.kwargs)
+        except Exception as exc:  # pylint: disable=bare-except
+            raise exc
+        else:
+            self.signals.result.emit(result_1, result_2)  # Return the result of the processing
         finally:
             self.signals.finished.emit()  # Done

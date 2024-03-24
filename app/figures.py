@@ -42,18 +42,14 @@ class MplCanvas(FigureCanvasQTAgg):
 
         # Extracted ion image, isotope corrected
         self.ax2 = self.fig.add_subplot(2, 2, 2)
-        self.im2 = self.ax2.imshow(
-            np.random.rand(300, 500), origin="lower", interpolation="nearest", cmap=cmap
-        )
+        self.im2 = self.ax2.imshow(blank_image, origin="lower", interpolation="nearest", cmap=cmap)
         divider = make_axes_locatable(self.ax2)
         cax = divider.append_axes("right", size="3%", pad=0.2)
         cb2 = plt.colorbar(self.im2, ax=self.ax2, cax=cax)
 
         # Extracted ion image, isotope corrected and quantified
         self.ax3 = self.fig.add_subplot(2, 2, 3)
-        self.im3 = self.ax3.imshow(
-            np.random.rand(300, 500), origin="lower", interpolation="nearest", cmap=cmap
-        )
+        self.im3 = self.ax3.imshow(blank_image, origin="lower", interpolation="nearest", cmap=cmap)
         divider = make_axes_locatable(self.ax3)
         cax = divider.append_axes("right", size="3%", pad=0.2)
         cb3 = plt.colorbar(self.im3, ax=self.ax3, cax=cax)

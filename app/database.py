@@ -1,13 +1,19 @@
-from typing import Iterable
+from enum import Enum
+from pathlib import Path
 
 import pandas as pd
 
 from app.config import config_paths
 
 
+class IonMode(str, Enum):
+    positive = "+"
+    negative = "-"
+
+
 class LipidDB:
 
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: Path, ion_mode: IonMode) -> None:
 
         # load database
         self.db = pd.read_excel(path)
@@ -16,6 +22,9 @@ class LipidDB:
         self.db["ID_Adduct"] = self.db.apply(self.add_adduct_to_id, axis=1, column="ID")
         self.db["M-2"] = self.db.apply(self.add_adduct_to_id, axis=1, column="M-2")
         self.db.set_index("ID_Adduct", inplace=True, drop=False)
+
+        # filter by ion mode
+        self.db = self.db[self.db["Adduct"].str.endswith(ion_mode.value)]
 
     def add_adduct_to_id(self, row: pd.Series, column: str):
         if not pd.isnull(row[column]):
@@ -55,18 +64,14 @@ class LipidDB:
         filtered = self.class_filtered_db(classes)
         return filtered.sort_values(["Class_Adduct", "mz"], ascending=[True, True]).index.to_list()
 
-    def get_all_species(self, classes: list[str] | None = None) -> Iterable[tuple[str, float]]:
+    def get_all_species(self, classes: list[str] | None = None) -> list[tuple[str, float]]:
         filtered = self.class_filtered_db(classes)
+        result = []
         for row in filtered.itertuples():
-            yield (row.ID_Adduct, row.mz)
+            result.append((row.ID_Adduct, row.mz))
+        return result
 
     def get_table(self) -> pd.DataFrame:
         d = {"Species": self.db.index, "m/z": self.db["mz"], "Export": True}
         df = pd.DataFrame(data=d, index=self.db.index)
         return df
-
-
-def load_database(
-    database_path: str = config_paths["DATABASE_FILE"],
-) -> LipidDB:
-    return LipidDB(database_path)

@@ -1,4 +1,5 @@
 import copy
+from pathlib import Path
 from typing import Callable
 
 import numpy as np
@@ -6,37 +7,54 @@ import numpy.typing as npt
 from pyimzml.ImzMLParser import ImzMLParser, _bisect_spectrum
 
 from app.config import config
-from app.database import LipidDB
+from app.database import IonMode, LipidDB
 
 
 class SampleImageCollection:
-    def __init__(self, database: LipidDB, imzml_parser: ImzMLParser) -> None:
+    def __init__(self, progress_callback, database: LipidDB, imzml_path: Path) -> None:
         self.raw: dict[str, npt.NDArray]
         self.isotope: dict[str, npt.NDArray]
         self.quant: dict[str, npt.NDArray]
         self.raw_filtered: dict[str, npt.NDArray]
         self.isotope_filtered: dict[str, npt.NDArray]
         self.quant_filtered: dict[str, npt.NDArray]
-        self.database = database
-        self.imzml_parser = imzml_parser
-        self.load_data()
-        self.filter_data()
+        self.load_data(progress_callback, database=database, imzml_path=imzml_path)
+        self.filter_data(progress_callback)
 
-    def load_data(self):
-        self.raw = load_ion_images(database=self.database, imzml=self.imzml_parser)
-        self.isotope = isotope_correction(database=self.database, images=self.raw)
-        self.quant = quantitaton(database=self.database, images=self.isotope)
+    def load_data(self, progress_callback, database: LipidDB, imzml_path: Path):
+        imzml_parser = ImzMLParser(imzml_path)
+        progress_callback.emit(10)
+        self.raw = load_ion_images(progress_callback, database=database, imzml=imzml_parser)
+        self.isotope = isotope_correction(database=database, images=self.raw)
+        progress_callback.emit(65)
+        self.quant = quantitaton(database=database, images=self.isotope)
+        progress_callback.emit(70)
 
-    def filter_data(self):
+    def filter_data(self, progress_callback):
         n1 = config.settings.filter_settings.raw_image_winsorizing_percentile
         n2 = config.settings.filter_settings.quant_image_winsorizing_percentile
         n3 = config.settings.filter_settings.quant_image_nan_fill_block_size
         self.raw_filtered = {k: winsorize_image(v, n1) for (k, v) in self.raw.items()}
+        progress_callback.emit(75)
         self.isotope_filtered = {k: winsorize_image(v, n1) for (k, v) in self.isotope.items()}
+        progress_callback.emit(80)
         self.quant_filtered = {
             k: fill_image_nan_median(v, size=n3) for (k, v) in self.quant.items()
         }
+        progress_callback.emit(95)
         self.quant_filtered = {k: winsorize_image(v, n2) for (k, v) in self.quant_filtered.items()}
+        progress_callback.emit(100)
+
+
+def load_database_image_collection(
+    progress_callback, database_path: Path, ion_mode: IonMode, imzml_path: Path
+) -> tuple[LipidDB, SampleImageCollection]:
+    database = LipidDB(database_path, ion_mode)
+    progress_callback.emit(5)
+    image_collection = SampleImageCollection(
+        progress_callback, database=database, imzml_path=imzml_path
+    )
+    return database, image_collection
 
 
 def getionimage(
@@ -84,12 +102,27 @@ def getionimage(
 
 
 def load_ion_images(
-    database: LipidDB, imzml: ImzMLParser, classes: list[str] | None = None, tolerance=0.005
+    progress_callback,
+    database: LipidDB,
+    imzml: ImzMLParser,
+    classes: list[str] | None = None,
 ) -> dict[str, npt.NDArray]:
     images: dict[str, npt.NDArray] = dict()
-    for id, mz in database.get_all_species(classes):
+    species = database.get_all_species(classes)
+    species_count = len(species)
+    progress_start = 10
+    progress_end = 60
+    progress_slope = (progress_end - progress_start) / (species_count - 1)
+    ppm = config.settings.processing_settings.ppm
+    for count, (id, mz) in enumerate(species):
+        progress_callback.emit(int(progress_slope * count + progress_start))
+        tolerance = ppm_to_tolerance(ppm=ppm, mz=mz)
         images[id] = getionimage(imzml, mz_value=mz, tol=tolerance, reduce_func=np.max)
     return images
+
+
+def ppm_to_tolerance(ppm: float, mz: float) -> float:
+    return abs(ppm / 10e6 * mz)
 
 
 def isotope_correction(

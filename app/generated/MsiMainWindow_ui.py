@@ -26,8 +26,8 @@ class Ui_MainWindow(object):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
         MainWindow.resize(800, 600)
-        self.action_open_imzml_file = QAction(MainWindow)
-        self.action_open_imzml_file.setObjectName(u"action_open_imzml_file")
+        self.action_open_imzml_dialog = QAction(MainWindow)
+        self.action_open_imzml_dialog.setObjectName(u"action_open_imzml_dialog")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.horizontalLayout = QHBoxLayout(self.centralwidget)
@@ -37,15 +37,11 @@ class Ui_MainWindow(object):
         self.splitter.setOrientation(Qt.Horizontal)
         self.frame_1 = QFrame(self.splitter)
         self.frame_1.setObjectName(u"frame_1")
+        self.frame_1.setMinimumSize(QSize(0, 0))
         self.frame_1.setFrameShape(QFrame.StyledPanel)
         self.frame_1.setFrameShadow(QFrame.Raised)
         self.gridLayout = QGridLayout(self.frame_1)
         self.gridLayout.setObjectName(u"gridLayout")
-        self.gridLayout_2 = QGridLayout()
-        self.gridLayout_2.setObjectName(u"gridLayout_2")
-
-        self.gridLayout.addLayout(self.gridLayout_2, 0, 0, 1, 1)
-
         self.splitter.addWidget(self.frame_1)
         self.frame_2 = QFrame(self.splitter)
         self.frame_2.setObjectName(u"frame_2")
@@ -54,12 +50,15 @@ class Ui_MainWindow(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.frame_2.sizePolicy().hasHeightForWidth())
         self.frame_2.setSizePolicy(sizePolicy)
+        self.frame_2.setMaximumSize(QSize(400, 16777215))
+        self.frame_2.setBaseSize(QSize(0, 0))
         self.frame_2.setFrameShape(QFrame.StyledPanel)
         self.frame_2.setFrameShadow(QFrame.Raised)
         self.verticalLayout = QVBoxLayout(self.frame_2)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.species_table = QTableView(self.frame_2)
         self.species_table.setObjectName(u"species_table")
+        self.species_table.setBaseSize(QSize(0, 0))
         self.species_table.setEditTriggers(QAbstractItemView.DoubleClicked)
         self.species_table.setTabKeyNavigation(False)
         self.species_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -83,7 +82,7 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.menubar.addAction(self.menu_file.menuAction())
-        self.menu_file.addAction(self.action_open_imzml_file)
+        self.menu_file.addAction(self.action_open_imzml_dialog)
 
         self.retranslateUi(MainWindow)
 
@@ -92,7 +91,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
-        self.action_open_imzml_file.setText(QCoreApplication.translate("MainWindow", u"Open imzML file...", None))
-        self.menu_file.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
+        self.action_open_imzml_dialog.setText(QCoreApplication.translate("MainWindow", u"Open imzML file...", None))
+        self.menu_file.setTitle(QCoreApplication.translate("MainWindow", u"&File", None))
     # retranslateUi
 

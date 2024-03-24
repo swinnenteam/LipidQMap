@@ -9,8 +9,8 @@ from app.database import LipidDB
 from app.dataprocess import SampleImageCollection, isotope_correction, load_ion_images, quantitaton
 from app.figures import MplCanvas
 from app.generated.MsiMainWindow_ui import Ui_MainWindow
-from app.multithreading import Worker
-from app.utils import PandasModelEditable
+from app.utils import BooleanDelegate, PandasModelEditable
+from app.views.imzml_import_window import ImzmlImportWindow
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -26,6 +26,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.image_canvas: MplCanvas | None = None
         # self.imzml_parser: ImzMLParser | None = None
         self.image_collection: SampleImageCollection
+        self.imzml_import_window = ImzmlImportWindow()
+        self.boolean_delegate = BooleanDelegate()
         self.setupUi(self)
         self.connect_signals_slots()
 
@@ -46,29 +48,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def connect_signals_slots(self) -> None:
         """Connect methods to signal slots."""
+        self.action_open_imzml_dialog.triggered.connect(self.open_imzml_dialog)  # type: ignore
+        self.imzml_import_window.finished_imzml_loading.connect(self.init_data)
 
-        self.action_open_imzml_file.triggered.connect(self.open_imzml_file)  # type: ignore
-
-    def process_imzml_files(self, progress_callback, filepath) -> None:
-        assert self.database
-        self.image_collection = SampleImageCollection(
-            database=self.database, imzml_parser=ImzMLParser(filepath[0])
-        )
-        self.handle_species_selection_changed()
-
-    def open_imzml_file(self) -> None:
-        """Load an imzML file."""
-        filepath, __ = QFileDialog.getOpenFileNames(
-            self, "Select imzML file(s)", filter=";imzML(*.imzML)"
-        )
-        if filepath:
-            assert self.image_canvas
-            self.image_canvas.setup()
-            worker = Worker(self.process_imzml_files, filepath=filepath)
-            # worker.signals.progress.connect(splash_screen.handle_progress)
-            # worker.signals.finished.connect(splash_screen.handle_finished)
-            threadpool = QThreadPool()
-            threadpool.start(worker)
+    def open_imzml_dialog(self):
+        """Launch the imzML import dialog."""
+        # self.db_window.fatty_acid_database = self.fatty_acid_database
+        self.imzml_import_window.set_ui_components_status(True)
+        self.imzml_import_window.show()
 
     def handle_species_selection_changed(self) -> None:
         if self.image_canvas is not None and self.database is not None:
@@ -78,10 +65,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 image_collection=self.image_collection, species_id=species_id
             )
 
-    def init_table(self) -> None:
-        assert self.database is not None
+    def init_data(self) -> None:
+        self.image_collection = self.imzml_import_window.image_collection
+        self.database = self.imzml_import_window.database
         self.species_table_data = self.database.get_table()
         self.species_table.setModel(PandasModelEditable(self.species_table_data))
+        self.species_table.setItemDelegateForColumn(2, self.boolean_delegate)
         species_selection = self.species_table.selectionModel()
         species_selection.selectionChanged.connect(self.handle_species_selection_changed)
 
@@ -92,8 +81,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.species_table.keyPressEvent = self.keyPressEvent
 
         hint = self.species_table.sizeHint()
-        self.frame_2.setMaximumWidth(hint.width() * 1.3)
+        self.frame_2.setMaximumWidth(hint.width() * 1.2)
         self.frame_2.adjustSize()
 
         self.image_canvas = MplCanvas(self)
+        self.image_canvas.setup()
         self.gridLayout.addWidget(self.image_canvas)
+
+        self.handle_species_selection_changed()

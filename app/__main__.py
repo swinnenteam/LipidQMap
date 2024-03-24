@@ -5,8 +5,7 @@ from PySide6.QtWidgets import QApplication
 from qt_material import apply_stylesheet
 
 from app import __appname__, __desktopid__, __version__
-from app.config import Config, config_paths
-from app.database import load_database
+from app.config import config_paths
 from app.logger import UncaughtHook
 from app.views.main_window import MainWindow
 
@@ -27,14 +26,19 @@ def main() -> NoReturn:
     _ = UncaughtHook()
 
     # setup stylesheet
-    apply_stylesheet(app, theme="dark_teal.xml")
+    apply_stylesheet(
+        app,
+        theme="dark_teal.xml",
+        css_file="app/style.css",
+        extra={
+            "density_scale": "-1",
+        },
+    )
 
     # load database
-    window.database = load_database(config_paths["DATABASE_FILE"])
-    window.init_table()
+    # window.database = load_database(config_paths["DATABASE_FILE"])
+    # window.init_date()
 
-    # Load configuration
-    # window.config = Config()
     window.resize(1800, 1000)
     window.show()
 

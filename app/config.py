@@ -16,7 +16,7 @@ else:
     bundle_dir = str(os.path.dirname(__file__))
 
 config_paths = {
-    "DATABASE_FILE": os.path.join(bundle_dir, "database/database.xlsx"),
+    "DATABASE_DIR": os.path.join(bundle_dir, "database"),
     "USER_CONFIG_FILE": os.path.join(bundle_dir, "config.toml"),
 }
 
@@ -31,12 +31,21 @@ class FilterSettings(BaseModel):
     quant_image_nan_fill_block_size: int = Field(default=3)
 
 
+class ProcessingSettings(BaseModel):
+    """
+    Class for validation of the configuration file
+    """
+
+    ppm: float = Field(default=10.0)
+
+
 class Configuration(BaseModel):
     """
     Class used by Config for validation of the configuration file
     """
 
-    filter_settings: FilterSettings
+    filter_settings: FilterSettings = FilterSettings()
+    processing_settings: ProcessingSettings = ProcessingSettings()
 
 
 class Config:
@@ -57,7 +66,7 @@ class Config:
         """Open the specified config toml file and convert to Config DataClass."""
         if not os.path.exists(self.path):
             with open(self.path, "w", encoding="utf8") as file:
-                toml.dump(Configuration(filter_settings=FilterSettings()).model_dump(), file)
+                toml.dump(Configuration().model_dump(), file)
         with open(self.path, encoding="utf8") as file:
             config_toml = toml.load(file)
         self.settings = Configuration.model_validate(config_toml)
