@@ -33,14 +33,11 @@ class SampleImageCollection:
     def filter_data(self, progress_callback):
         n1 = config.settings.filter_settings.raw_image_winsorizing_percentile
         n2 = config.settings.filter_settings.quant_image_winsorizing_percentile
-        n3 = config.settings.filter_settings.quant_image_nan_fill_block_size
         self.raw_filtered = {k: winsorize_image(v, n1) for (k, v) in self.raw.items()}
         progress_callback.emit(75)
         self.isotope_filtered = {k: winsorize_image(v, n1) for (k, v) in self.isotope.items()}
         progress_callback.emit(80)
-        self.quant_filtered = {
-            k: fill_image_nan_median(v, size=n3) for (k, v) in self.quant.items()
-        }
+        self.quant_filtered = {k: replace_nan_with_median(v) for (k, v) in self.quant.items()}
         progress_callback.emit(95)
         self.quant_filtered = {k: winsorize_image(v, n2) for (k, v) in self.quant_filtered.items()}
         progress_callback.emit(100)
@@ -155,37 +152,20 @@ def quantitaton(
     return quant_images
 
 
-def median_filter(image: npt.NDArray, size: int = 3) -> npt.NDArray:
-    if size % 2 == 0 or size < 3:
-        raise ValueError(
-            "The median filter kernel size should be an odd number higher or equal than 3."
-        )
-    padding_width = int((size - 1) / 2)
-    # Pad the image with zeros to handle edge cases
-    padded_image = np.pad(image, pad_width=padding_width, mode="constant", constant_values=np.nan)
-    filtered_image = np.zeros_like(image)
-
-    for i in range(image.shape[0]):
-        for j in range(image.shape[1]):
-            # Extract the n x n neighborhood around the current pixel
-            neighborhood = padded_image[i : i + size, j : j + size]
-            median_value = np.nanmedian(neighborhood)
-            filtered_image[i, j] = median_value
-
-    return_image = np.copy(image)
-    return_image[np.isnan(image)] = filtered_image[np.isnan(image)]
-
-    return filtered_image
-
-
-def fill_image_nan_median(image: npt.NDArray, size: int = 3) -> npt.NDArray:
+def replace_nan_with_median(arr: npt.NDArray) -> npt.NDArray:
     """
-    Puts corresponsing pixel values from the mean filtered image in the pixel locations where the image is Nan
+    Replaces nan values with mean of surrounding window of 3 by 3 pixels, excluding any nan in the window
     """
-    filtered = median_filter(image)
-    return_image = np.copy(image)
-    return_image[np.isnan(return_image)] = filtered[np.isnan(return_image)]
-    return return_image
+    # Pad the array with NaNs to handle edge cases
+    padded_arr = np.pad(arr, pad_width=1, mode="constant", constant_values=np.nan)
+    nan_mask = np.isnan(arr)
+    indices = np.argwhere(nan_mask)
+    result = np.copy(arr)
+    for i, j in indices:
+        # Extract surrounding 3x3 window, taking into account offset by 1
+        window = padded_arr[i : i + 3, j : j + 3]
+        result[i, j] = np.nanmedian(window)
+    return result
 
 
 def winsorize_image(image: npt.NDArray, upper_percentile: float = 99) -> npt.NDArray:

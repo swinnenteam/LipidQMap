@@ -28,7 +28,6 @@ class FilterSettings(BaseModel):
 
     raw_image_winsorizing_percentile: int = Field(default=99)
     quant_image_winsorizing_percentile: int = Field(default=99)
-    quant_image_nan_fill_block_size: int = Field(default=3)
 
 
 class ProcessingSettings(BaseModel):
