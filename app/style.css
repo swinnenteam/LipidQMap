@@ -2,6 +2,10 @@ QDoubleSpinBox {{
     color: white;
 }}
 
+QSpinBox {{
+    color: white;
+}}
+
 QComboBox {{
     color: white;
 }}

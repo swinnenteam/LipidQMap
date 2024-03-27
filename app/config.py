@@ -35,7 +35,12 @@ class ProcessingSettings(BaseModel):
     Class for validation of the configuration file
     """
 
-    ppm: float = Field(default=10.0)
+    ppm: float = Field(default=15.0)
+    online_calibration: bool = Field(default=True)
+    pos_calibrant: float = Field(default=798.5410)
+    neg_calibrant: float = Field(default=798.5410)
+    calibration_ppm: float = Field(default=30.0)
+    calibration_max_intensity: int = Field(default=10000)
 
 
 class Configuration(BaseModel):

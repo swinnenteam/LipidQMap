@@ -37,7 +37,7 @@ class PandasModelEditable(QAbstractTableModel):
             ):
                 value = self._data.iloc[index.row(), index.column()]
                 if isinstance(value, float):
-                    value = "{:.4f}".format(value)
+                    value = "{:.5f}".format(value)
                 else:
                     value = str(value)
                 return value

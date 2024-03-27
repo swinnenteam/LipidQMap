@@ -1,7 +1,11 @@
 [filter_settings]
 raw_image_winsorizing_percentile = 99
 quant_image_winsorizing_percentile = 99
-quant_image_nan_fill_block_size = 3
 
 [processing_settings]
-ppm = 20.0
+ppm = 15.0
+online_calibration = true
+pos_calibrant = 798.541
+neg_calibrant = 798.541
+calibration_ppm = 30.0
+calibration_max_intensity = 10000

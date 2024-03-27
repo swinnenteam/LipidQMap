@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>350</width>
-    <height>400</height>
+    <width>391</width>
+    <height>564</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -66,6 +66,19 @@
      <property name="topMargin">
       <number>0</number>
      </property>
+     <item row="0" column="3">
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
      <item row="0" column="2">
       <widget class="QRadioButton" name="neg_radio_button">
        <property name="text">
@@ -74,6 +87,13 @@
        <attribute name="buttonGroup">
         <string notr="true">button_group</string>
        </attribute>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>ppm</string>
+       </property>
       </widget>
      </item>
      <item row="0" column="1">
@@ -89,6 +109,9 @@
        </attribute>
       </widget>
      </item>
+     <item row="2" column="1" colspan="3">
+      <widget class="QComboBox" name="database_combo_box"/>
+     </item>
      <item row="0" column="0">
       <widget class="QLabel" name="label_2">
        <property name="text">
@@ -96,18 +119,19 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="3">
-      <spacer name="horizontalSpacer_2">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>Database:</string>
        </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>Accuracy:</string>
        </property>
-      </spacer>
+      </widget>
      </item>
      <item row="1" column="1">
       <widget class="QDoubleSpinBox" name="ppm_spin_box">
@@ -119,31 +143,83 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_3">
+     <item row="3" column="0" colspan="2">
+      <widget class="QCheckBox" name="cal_check_box">
        <property name="text">
-        <string>Accuracy:</string>
+        <string>Online calibration</string>
        </property>
       </widget>
-     </item>
-     <item row="1" column="2">
-      <widget class="QLabel" name="label_4">
-       <property name="text">
-        <string>ppm</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_5">
-       <property name="text">
-        <string>Database:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1" colspan="3">
-      <widget class="QComboBox" name="database_combo_box"/>
      </item>
     </layout>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="cal_group_box">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="title">
+      <string>Online calibration settings</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <layout class="QGridLayout" name="gridLayout_2">
+        <item row="1" column="1">
+         <widget class="QDoubleSpinBox" name="cal_ppm_spin_box"/>
+        </item>
+        <item row="0" column="1">
+         <widget class="QDoubleSpinBox" name="calibrant_spin_box">
+          <property name="decimals">
+           <number>5</number>
+          </property>
+          <property name="maximum">
+           <double>10000.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_8">
+          <property name="text">
+           <string>Calibrate on m/z:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_6">
+          <property name="text">
+           <string>Peak assignment tolerance (ppm):</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_7">
+          <property name="text">
+           <string>Minimum intensity:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QSpinBox" name="cal_int_spin_box">
+          <property name="minimum">
+           <number>100</number>
+          </property>
+          <property name="maximum">
+           <number>10000</number>
+          </property>
+          <property name="singleStep">
+           <number>100</number>
+          </property>
+          <property name="value">
+           <number>10000</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">

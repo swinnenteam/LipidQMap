@@ -11,7 +11,12 @@ from app.database import IonMode, LipidDB
 
 
 class SampleImageCollection:
-    def __init__(self, progress_callback, database: LipidDB, imzml_path: Path) -> None:
+    """todo"""
+
+    def __init__(
+        self, progress_callback, database: LipidDB, imzml_path: Path, ion_mode: IonMode
+    ) -> None:
+        self.ion_mode = ion_mode
         self.raw: dict[str, npt.NDArray]
         self.isotope: dict[str, npt.NDArray]
         self.quant: dict[str, npt.NDArray]
@@ -24,7 +29,9 @@ class SampleImageCollection:
     def load_data(self, progress_callback, database: LipidDB, imzml_path: Path):
         imzml_parser = ImzMLParser(imzml_path)
         progress_callback.emit(10)
-        self.raw = load_ion_images(progress_callback, database=database, imzml=imzml_parser)
+        self.raw = load_ion_images(
+            progress_callback, database=database, imzml=imzml_parser, ion_mode=self.ion_mode
+        )
         self.isotope = isotope_correction(database=database, images=self.raw)
         progress_callback.emit(65)
         self.quant = quantitaton(database=database, images=self.isotope)
@@ -46,16 +53,22 @@ class SampleImageCollection:
 def load_database_image_collection(
     progress_callback, database_path: Path, ion_mode: IonMode, imzml_path: Path
 ) -> tuple[LipidDB, SampleImageCollection]:
+    """todo"""
     database = LipidDB(database_path, ion_mode)
     progress_callback.emit(5)
     image_collection = SampleImageCollection(
-        progress_callback, database=database, imzml_path=imzml_path
+        progress_callback, database=database, imzml_path=imzml_path, ion_mode=ion_mode
     )
     return database, image_collection
 
 
 def getionimage(
-    p, mz_value: float, tol: float = 0.1, z: int = 1, reduce_func: Callable = sum
+    p: ImzMLParser,
+    mz: float,
+    tol: float = 0.1,
+    offsets: npt.NDArray | None = None,
+    z: int = 1,
+    reduce_func: Callable = np.max,
 ) -> npt.NDArray:
     """
     Get an image representation of the intensity distribution
@@ -65,16 +78,18 @@ def getionimage(
 
     :param p:
         the ImzMLParser (or anything else with similar attributes) for the desired dataset
-    :param mz_value:
+    :param mz:
         m/z value for which the ion image shall be returned
     :param tol:
         Absolute tolerance for the m/z value, such that all ions with values
-        mz_value-|tol| <= x <= mz_value+|tol| are included. Defaults to 0.1
+        mz-|tol| <= x <= mz+|tol| are included. Defaults to 0.1
+    :param offsets:
+        recalibrate the mz by these offsets, each row (y coordinate) has a different offset
     :param z:
         z Value if spectrogram is 3-dimensional.
     :param reduce_func:
-        the bahaviour for reducing the intensities between mz_value-|tol| and mz_value+|tol| to a single value. Must
-        be a function that takes a sequence as input and outputs a number. By default, the values are summed.
+        the bahaviour for reducing the intensities between mz-|tol| and mz+|tol| to a single value. Must
+        be a function that takes a sequence as input and outputs a number. By default, the max value is taken.
 
     :return:
         numpy matrix with each element representing the ion intensity in this
@@ -91,30 +106,80 @@ def getionimage(
             )
         if z_ == z:
             mzs, ints = map(lambda x: np.asarray(x), p.getspectrum(i))
-            min_i, max_i = _bisect_spectrum(mzs, mz_value, tol)
+            mzs = mzs + offsets[y - 1] if offsets is not None else mzs
+            min_i, max_i = _bisect_spectrum(mzs, mz, tol)
             values = ints[min_i : max_i + 1]
             values = np.zeros(1) if values.size == 0 else values
             im[y - 1, x - 1] = reduce_func(values)
     return im
 
 
+def get_calibration_offsets(
+    p: ImzMLParser, mz: float, tol: float = 0.1, min_intensity: int = 10000, z: int = 1
+) -> npt.NDArray:
+    """
+    Returns the mass offsets per row. This is calculated as the difference between mz
+    and the closest matching measured mz, averaged for each row of pixels
+    """
+    tol = abs(tol)
+    im = np.full(
+        [p.imzmldict["max count of pixels y"], p.imzmldict["max count of pixels x"]], np.nan
+    )
+    for i, (x, y, z_) in enumerate(p.coordinates):
+        if z_ == 0:
+            UserWarning(
+                "z coordinate = 0 present, if you're getting blank images set getionimage(.., .., z=0)"
+            )
+        if z_ == z:
+            mzs, ints = map(lambda x: np.asarray(x), p.getspectrum(i))
+            min_i, max_i = _bisect_spectrum(mzs, mz, tol)
+            intensity_values = ints[min_i : max_i + 1]
+            mz_values = mzs[min_i : max_i + 1]
+            threshold = intensity_values > min_intensity
+            intensity_values = intensity_values[threshold]
+            mz_values = mz_values[threshold]
+            im[y - 1, x - 1] = (
+                mz_values[np.argmax(intensity_values)] if mz_values.size != 0 else np.nan
+            )
+    offsets = mz - np.nanmean(im, axis=1)
+    offsets[np.isnan(offsets)] = 0
+    return offsets
+
+
 def load_ion_images(
     progress_callback,
     database: LipidDB,
     imzml: ImzMLParser,
+    ion_mode: IonMode,
     classes: list[str] | None = None,
 ) -> dict[str, npt.NDArray]:
+    """todo"""
     images: dict[str, npt.NDArray] = dict()
     species = database.get_all_species(classes)
+
     species_count = len(species)
     progress_start = 10
     progress_end = 60
     progress_slope = (progress_end - progress_start) / (species_count - 1)
+
+    cal_ppm = config.settings.processing_settings.calibration_ppm
+    calibrant_mz = (
+        config.settings.processing_settings.pos_calibrant
+        if ion_mode.value == IonMode.positive
+        else config.settings.processing_settings.neg_calibrant
+    )
+    tolerance = ppm_to_tolerance(ppm=cal_ppm, mz=calibrant_mz)
+    offsets = (
+        get_calibration_offsets(imzml, mz=calibrant_mz, tol=tolerance)
+        if config.settings.processing_settings.online_calibration
+        else None
+    )
+
     ppm = config.settings.processing_settings.ppm
     for count, (id, mz) in enumerate(species):
         progress_callback.emit(int(progress_slope * count + progress_start))
         tolerance = ppm_to_tolerance(ppm=ppm, mz=mz)
-        images[id] = getionimage(imzml, mz_value=mz, tol=tolerance, reduce_func=np.max)
+        images[id] = getionimage(imzml, mz=mz, tol=tolerance, offsets=offsets, reduce_func=np.max)
     return images
 
 
@@ -125,6 +190,7 @@ def ppm_to_tolerance(ppm: float, mz: float) -> float:
 def isotope_correction(
     database: LipidDB, images: dict[str, npt.NDArray], classes: list[str] | None = None
 ) -> dict[str, npt.NDArray]:
+    """todo"""
     corrected_images: dict[str, npt.NDArray] = copy.deepcopy(images)
     for species_id in database.get_ids_sorted_for_isotope(classes=classes):
         m2_isotope = database.get_M2_isotope_ID(id=species_id)
@@ -142,6 +208,7 @@ def isotope_correction(
 def quantitaton(
     database: LipidDB, images: dict[str, npt.NDArray], classes: list[str] | None = None
 ) -> dict[str, npt.NDArray]:
+    """todo"""
     quant_images: dict[str, npt.NDArray] = dict()
     for species_id in database.get_ids_non_standards(classes=classes):
         standard_id, standard_amount = database.get_standard(id=species_id)
