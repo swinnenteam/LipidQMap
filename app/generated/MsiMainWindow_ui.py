@@ -28,6 +28,8 @@ class Ui_MainWindow(object):
         MainWindow.resize(800, 600)
         self.action_open_imzml_dialog = QAction(MainWindow)
         self.action_open_imzml_dialog.setObjectName(u"action_open_imzml_dialog")
+        self.action_save_images = QAction(MainWindow)
+        self.action_save_images.setObjectName(u"action_save_images")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.horizontalLayout = QHBoxLayout(self.centralwidget)
@@ -73,7 +75,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 800, 37))
+        self.menubar.setGeometry(QRect(0, 0, 800, 24))
         self.menu_file = QMenu(self.menubar)
         self.menu_file.setObjectName(u"menu_file")
         MainWindow.setMenuBar(self.menubar)
@@ -83,6 +85,7 @@ class Ui_MainWindow(object):
 
         self.menubar.addAction(self.menu_file.menuAction())
         self.menu_file.addAction(self.action_open_imzml_dialog)
+        self.menu_file.addAction(self.action_save_images)
 
         self.retranslateUi(MainWindow)
 
@@ -92,6 +95,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
         self.action_open_imzml_dialog.setText(QCoreApplication.translate("MainWindow", u"Open imzML file...", None))
+        self.action_save_images.setText(QCoreApplication.translate("MainWindow", u"Save images...", None))
         self.menu_file.setTitle(QCoreApplication.translate("MainWindow", u"&File", None))
     # retranslateUi
 

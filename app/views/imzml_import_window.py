@@ -1,8 +1,7 @@
 import os
 
-from pyimzml.ImzMLParser import ImzMLParser
-from PySide6.QtCore import QItemSelectionModel, Qt, QThreadPool, Signal, Slot
-from PySide6.QtWidgets import QFileDialog, QMainWindow, QWidget
+from PySide6.QtCore import QThreadPool, Signal, Slot
+from PySide6.QtWidgets import QFileDialog, QWidget
 
 from app.config import config, config_paths
 from app.database import IonMode, LipidDB
@@ -21,6 +20,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
     def __init__(self) -> None:
         super().__init__()
         self.threadpool = QThreadPool()
+        self.filepath: list[str] | None = None
         self.database: LipidDB | None = None
         self.setupUi(self)
         self.connect_signals_slots()
@@ -50,6 +50,10 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.database_combo_box.addItems(dbs)
 
     def process_imzml_files(self) -> None:
+
+        if not self.filepath:
+            raise ValueError("Please open an imzML file first.")
+
         self.set_ui_components_status(False)
 
         # process database path
@@ -69,18 +73,19 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
                 database_path=db_path,
                 ion_mode=ion_mode,
                 imzml_path=self.filepath[0],
+                config=config,
             )
             worker.signals.progress.connect(self.handle_progress)
             worker.signals.result.connect(self.handle_finished)
             self.threadpool.start(worker)
 
     @Slot()
-    def handle_progress(self, value) -> None:
+    def handle_progress(self, value: int) -> None:
         """Update progressbar"""
         self.progress_bar.setValue(value)
 
     @Slot()
-    def handle_finished(self, database, image_collection) -> None:
+    def handle_finished(self, database: LipidDB, image_collection: SampleImageCollection) -> None:
         """Emit results to main window"""
         self.image_collection = image_collection
         self.database = database
@@ -92,7 +97,8 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.filepath, __ = QFileDialog.getOpenFileNames(
             self, "Select imzML file(s)", filter=";imzML(*.imzML)"
         )
-
+        if self.filepath is None:
+            return
         self.imzml_list_view.addItems([path.split(os.sep)[-1] for path in self.filepath])
 
     def update_ion_mode(self):

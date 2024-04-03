@@ -13,20 +13,20 @@ class IonMode(str, Enum):
 
 class LipidDB:
 
-    def __init__(self, path: Path, ion_mode: IonMode) -> None:
+    def __init__(self, path: str, ion_mode: IonMode) -> None:
 
         # load database
         self.db = pd.read_excel(path)
         self.db.rename(columns={"m/z": "mz"}, inplace=True)
-        self.db["Class_Adduct"] = self.db.apply(self.add_adduct_to_id, axis=1, column="Class")
-        self.db["ID_Adduct"] = self.db.apply(self.add_adduct_to_id, axis=1, column="ID")
-        self.db["M-2"] = self.db.apply(self.add_adduct_to_id, axis=1, column="M-2")
+        self.db["Class_Adduct"] = self.db.apply(self._add_adduct_to_id, axis=1, column="Class")
+        self.db["ID_Adduct"] = self.db.apply(self._add_adduct_to_id, axis=1, column="ID")
+        self.db["M-2"] = self.db.apply(self._add_adduct_to_id, axis=1, column="M-2")
         self.db.set_index("ID_Adduct", inplace=True, drop=False)
 
         # filter by ion mode
         self.db = self.db[self.db["Adduct"].str.endswith(ion_mode.value)]
 
-    def add_adduct_to_id(self, row: pd.Series, column: str):
+    def _add_adduct_to_id(self, row: pd.Series, column: str):
         if not pd.isnull(row[column]):
             return row[column] + " " + row["Adduct"]
 
@@ -75,3 +75,9 @@ class LipidDB:
         d = {"Species": self.db.index, "m/z": self.db["mz"], "Export": True}
         df = pd.DataFrame(data=d, index=self.db.index)
         return df
+
+    def verify_ion_mode(self, ion_mode: IonMode) -> True:
+        not_present_mode = IonMode.negative if ion_mode == IonMode.positive else IonMode.positive
+        check_1 = self.db["Adduct"].str.endswith(ion_mode.value).all()
+        check_2 = not self.db["Adduct"].str.endswith(not_present_mode).any()
+        return check_1 and check_2

@@ -23,8 +23,12 @@ class PandasModelEditable(QAbstractTableModel):
     def columnCount(self, parent=None):
         return self._data.shape[1]
 
-    def get_checked(self, row) -> bool:
+    def get_is_checked(self, row) -> bool:
         return self._data.iloc[row, 2]
+
+    def get_checked_list(self) -> list[str]:
+        df = self._data[self._data["Export"] == True]
+        return [str(item) for item in df.index.tolist()]
 
     def data(self, index, role):
         if index.isValid():

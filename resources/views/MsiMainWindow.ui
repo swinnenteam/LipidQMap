@@ -95,7 +95,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>37</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_file">
@@ -103,6 +103,7 @@
      <string>&amp;File</string>
     </property>
     <addaction name="action_open_imzml_dialog"/>
+    <addaction name="action_save_images"/>
    </widget>
    <addaction name="menu_file"/>
   </widget>
@@ -110,6 +111,11 @@
   <action name="action_open_imzml_dialog">
    <property name="text">
     <string>Open imzML file...</string>
+   </property>
+  </action>
+  <action name="action_save_images">
+   <property name="text">
+    <string>Save images...</string>
    </property>
   </action>
  </widget>

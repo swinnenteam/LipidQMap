@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 from pyimzml.ImzMLParser import ImzMLParser, _bisect_spectrum
 
-from app.config import config
+from app.config import Config
 from app.database import IonMode, LipidDB
 
 
@@ -14,7 +14,12 @@ class SampleImageCollection:
     """todo"""
 
     def __init__(
-        self, progress_callback, database: LipidDB, imzml_path: Path, ion_mode: IonMode
+        self,
+        progress_callback,
+        database: LipidDB,
+        imzml_path: Path,
+        ion_mode: IonMode,
+        config: Config,
     ) -> None:
         self.ion_mode = ion_mode
         self.raw: dict[str, npt.NDArray]
@@ -23,21 +28,25 @@ class SampleImageCollection:
         self.raw_filtered: dict[str, npt.NDArray]
         self.isotope_filtered: dict[str, npt.NDArray]
         self.quant_filtered: dict[str, npt.NDArray]
-        self.load_data(progress_callback, database=database, imzml_path=imzml_path)
-        self.filter_data(progress_callback)
+        self.load_data(progress_callback, database=database, imzml_path=imzml_path, config=config)
+        self.filter_data(progress_callback, config=config)
 
-    def load_data(self, progress_callback, database: LipidDB, imzml_path: Path):
+    def load_data(self, progress_callback, database: LipidDB, imzml_path: Path, config: Config):
         imzml_parser = ImzMLParser(imzml_path)
         progress_callback.emit(10)
         self.raw = load_ion_images(
-            progress_callback, database=database, imzml=imzml_parser, ion_mode=self.ion_mode
+            progress_callback,
+            database=database,
+            imzml=imzml_parser,
+            ion_mode=self.ion_mode,
+            config=config,
         )
         self.isotope = isotope_correction(database=database, images=self.raw)
         progress_callback.emit(65)
         self.quant = quantitaton(database=database, images=self.isotope)
         progress_callback.emit(70)
 
-    def filter_data(self, progress_callback):
+    def filter_data(self, progress_callback, config: Config):
         n1 = config.settings.filter_settings.raw_image_winsorizing_percentile
         n2 = config.settings.filter_settings.quant_image_winsorizing_percentile
         self.raw_filtered = {k: winsorize_image(v, n1) for (k, v) in self.raw.items()}
@@ -51,13 +60,17 @@ class SampleImageCollection:
 
 
 def load_database_image_collection(
-    progress_callback, database_path: Path, ion_mode: IonMode, imzml_path: Path
+    progress_callback, database_path: str, ion_mode: IonMode, imzml_path: Path, config: Config
 ) -> tuple[LipidDB, SampleImageCollection]:
     """todo"""
     database = LipidDB(database_path, ion_mode)
     progress_callback.emit(5)
     image_collection = SampleImageCollection(
-        progress_callback, database=database, imzml_path=imzml_path, ion_mode=ion_mode
+        progress_callback,
+        database=database,
+        imzml_path=imzml_path,
+        ion_mode=ion_mode,
+        config=config,
     )
     return database, image_collection
 
@@ -151,6 +164,7 @@ def load_ion_images(
     database: LipidDB,
     imzml: ImzMLParser,
     ion_mode: IonMode,
+    config: Config,
     classes: list[str] | None = None,
 ) -> dict[str, npt.NDArray]:
     """todo"""
@@ -184,7 +198,7 @@ def load_ion_images(
 
 
 def ppm_to_tolerance(ppm: float, mz: float) -> float:
-    return abs(ppm / 10e6 * mz)
+    return abs(ppm / 1e6 * mz)
 
 
 def isotope_correction(
