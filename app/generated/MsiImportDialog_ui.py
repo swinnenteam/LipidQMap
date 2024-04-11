@@ -26,7 +26,7 @@ class Ui_Dialog(object):
     def setupUi(self, Dialog):
         if not Dialog.objectName():
             Dialog.setObjectName(u"Dialog")
-        Dialog.resize(389, 621)
+        Dialog.resize(462, 732)
         self.verticalLayout = QVBoxLayout(Dialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.horizontalLayout = QHBoxLayout()
@@ -104,20 +104,32 @@ class Ui_Dialog(object):
 
         self.gridLayout.addWidget(self.label_3, 1, 0, 1, 1)
 
-        self.ppm_spin_box = QDoubleSpinBox(Dialog)
-        self.ppm_spin_box.setObjectName(u"ppm_spin_box")
-        self.ppm_spin_box.setMinimum(0.050000000000000)
-        self.ppm_spin_box.setValue(10.000000000000000)
+        self.ppm_spinbox = QDoubleSpinBox(Dialog)
+        self.ppm_spinbox.setObjectName(u"ppm_spinbox")
+        self.ppm_spinbox.setMinimum(0.050000000000000)
+        self.ppm_spinbox.setValue(10.000000000000000)
 
-        self.gridLayout.addWidget(self.ppm_spin_box, 1, 1, 1, 1)
-
-        self.cal_check_box = QCheckBox(Dialog)
-        self.cal_check_box.setObjectName(u"cal_check_box")
-
-        self.gridLayout.addWidget(self.cal_check_box, 3, 0, 1, 2)
+        self.gridLayout.addWidget(self.ppm_spinbox, 1, 1, 1, 1)
 
 
         self.verticalLayout.addLayout(self.gridLayout)
+
+        self.isotope_group_box = QGroupBox(Dialog)
+        self.isotope_group_box.setObjectName(u"isotope_group_box")
+        self.verticalLayout_3 = QVBoxLayout(self.isotope_group_box)
+        self.verticalLayout_3.setObjectName(u"verticalLayout_3")
+        self.na_iso_cor_checkbox = QCheckBox(self.isotope_group_box)
+        self.na_iso_cor_checkbox.setObjectName(u"na_iso_cor_checkbox")
+
+        self.verticalLayout_3.addWidget(self.na_iso_cor_checkbox)
+
+        self.m2_iso_cor_checkbox = QCheckBox(self.isotope_group_box)
+        self.m2_iso_cor_checkbox.setObjectName(u"m2_iso_cor_checkbox")
+
+        self.verticalLayout_3.addWidget(self.m2_iso_cor_checkbox)
+
+
+        self.verticalLayout.addWidget(self.isotope_group_box)
 
         self.cal_group_box = QGroupBox(Dialog)
         self.cal_group_box.setObjectName(u"cal_group_box")
@@ -126,41 +138,46 @@ class Ui_Dialog(object):
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
         self.gridLayout_2 = QGridLayout()
         self.gridLayout_2.setObjectName(u"gridLayout_2")
-        self.cal_ppm_spin_box = QDoubleSpinBox(self.cal_group_box)
-        self.cal_ppm_spin_box.setObjectName(u"cal_ppm_spin_box")
+        self.cal_int_spinbox = QSpinBox(self.cal_group_box)
+        self.cal_int_spinbox.setObjectName(u"cal_int_spinbox")
+        self.cal_int_spinbox.setMinimum(100)
+        self.cal_int_spinbox.setMaximum(10000)
+        self.cal_int_spinbox.setSingleStep(100)
+        self.cal_int_spinbox.setValue(10000)
 
-        self.gridLayout_2.addWidget(self.cal_ppm_spin_box, 1, 1, 1, 1)
-
-        self.calibrant_spin_box = QDoubleSpinBox(self.cal_group_box)
-        self.calibrant_spin_box.setObjectName(u"calibrant_spin_box")
-        self.calibrant_spin_box.setDecimals(5)
-        self.calibrant_spin_box.setMaximum(10000.000000000000000)
-
-        self.gridLayout_2.addWidget(self.calibrant_spin_box, 0, 1, 1, 1)
-
-        self.label_8 = QLabel(self.cal_group_box)
-        self.label_8.setObjectName(u"label_8")
-
-        self.gridLayout_2.addWidget(self.label_8, 0, 0, 1, 1)
+        self.gridLayout_2.addWidget(self.cal_int_spinbox, 3, 1, 1, 1)
 
         self.label_6 = QLabel(self.cal_group_box)
         self.label_6.setObjectName(u"label_6")
 
-        self.gridLayout_2.addWidget(self.label_6, 1, 0, 1, 1)
+        self.gridLayout_2.addWidget(self.label_6, 2, 0, 1, 1)
 
         self.label_7 = QLabel(self.cal_group_box)
         self.label_7.setObjectName(u"label_7")
 
-        self.gridLayout_2.addWidget(self.label_7, 2, 0, 1, 1)
+        self.gridLayout_2.addWidget(self.label_7, 3, 0, 1, 1)
 
-        self.cal_int_spin_box = QSpinBox(self.cal_group_box)
-        self.cal_int_spin_box.setObjectName(u"cal_int_spin_box")
-        self.cal_int_spin_box.setMinimum(100)
-        self.cal_int_spin_box.setMaximum(10000)
-        self.cal_int_spin_box.setSingleStep(100)
-        self.cal_int_spin_box.setValue(10000)
+        self.cal_ppm_spinbox = QDoubleSpinBox(self.cal_group_box)
+        self.cal_ppm_spinbox.setObjectName(u"cal_ppm_spinbox")
 
-        self.gridLayout_2.addWidget(self.cal_int_spin_box, 2, 1, 1, 1)
+        self.gridLayout_2.addWidget(self.cal_ppm_spinbox, 2, 1, 1, 1)
+
+        self.label_8 = QLabel(self.cal_group_box)
+        self.label_8.setObjectName(u"label_8")
+
+        self.gridLayout_2.addWidget(self.label_8, 1, 0, 1, 1)
+
+        self.calibrant_spinbox = QDoubleSpinBox(self.cal_group_box)
+        self.calibrant_spinbox.setObjectName(u"calibrant_spinbox")
+        self.calibrant_spinbox.setDecimals(5)
+        self.calibrant_spinbox.setMaximum(10000.000000000000000)
+
+        self.gridLayout_2.addWidget(self.calibrant_spinbox, 1, 1, 1, 1)
+
+        self.cal_checkbox = QCheckBox(self.cal_group_box)
+        self.cal_checkbox.setObjectName(u"cal_checkbox")
+
+        self.gridLayout_2.addWidget(self.cal_checkbox, 0, 0, 1, 1)
 
 
         self.verticalLayout_2.addLayout(self.gridLayout_2)
@@ -200,11 +217,20 @@ class Ui_Dialog(object):
         self.label_2.setText(QCoreApplication.translate("Dialog", u"Ion mode:", None))
         self.label_5.setText(QCoreApplication.translate("Dialog", u"Database:", None))
         self.label_3.setText(QCoreApplication.translate("Dialog", u"Accuracy:", None))
-        self.cal_check_box.setText(QCoreApplication.translate("Dialog", u"Online calibration", None))
+        self.isotope_group_box.setTitle(QCoreApplication.translate("Dialog", u"Isotopic correction", None))
+#if QT_CONFIG(tooltip)
+        self.na_iso_cor_checkbox.setToolTip(QCoreApplication.translate("Dialog", u"<html><head/><body><p><span style=\" font-size:14pt;\">Type II isotopic correction for isobaric overlap between [M+H]+ and [M+Na]+ adduct forms. For protonated lipid ions, the sodiated adduct of species [X:Y] (X number of C atoms and Y number of double bonds in the acyl chains) overlaps with species [X+2:Y+3]. The correction algorith is described in H\u00f6ring at el., </span><span style=\" font-size:14pt; font-style:italic;\">Anal. Chem. 2020, 92, 16, 10966\u201310970. </span></p><p><span style=\" font-size:14pt;\">This correction is relevant for measurements with a mass resolution lower than +/- 600.000 (m/z difference 0.0025).</span></p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.na_iso_cor_checkbox.setText(QCoreApplication.translate("Dialog", u"Correct [M+H]+ for [M+Na]+ overlap", None))
+#if QT_CONFIG(tooltip)
+        self.m2_iso_cor_checkbox.setToolTip(QCoreApplication.translate("Dialog", u"<html><head/><body><p><span style=\" font-size:14pt;\">Type II isotopic correction for isobaric overlap between the (M+2) isotopologue of a species and the corresponding species from the same class with 1 double bond less. </span></p><p><span style=\" font-size:14pt;\">This correction is relevant for measurements with a mass resolution lower than +/- 180.000 (m/z difference 0.0089).</span></p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.m2_iso_cor_checkbox.setText(QCoreApplication.translate("Dialog", u"Correct for M+2 double bond isotopologues overlap", None))
         self.cal_group_box.setTitle(QCoreApplication.translate("Dialog", u"Online calibration settings", None))
-        self.label_8.setText(QCoreApplication.translate("Dialog", u"Calibrate on m/z:", None))
         self.label_6.setText(QCoreApplication.translate("Dialog", u"Peak assignment tolerance (ppm):", None))
         self.label_7.setText(QCoreApplication.translate("Dialog", u"Minimum intensity:", None))
+        self.label_8.setText(QCoreApplication.translate("Dialog", u"Calibrate on m/z:", None))
+        self.cal_checkbox.setText(QCoreApplication.translate("Dialog", u"Apply online calibration", None))
         self.import_data_button.setText(QCoreApplication.translate("Dialog", u"Import data", None))
     # retranslateUi
 

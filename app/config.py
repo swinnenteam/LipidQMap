@@ -36,6 +36,8 @@ class ProcessingSettings(BaseModel):
     """
 
     ppm: float = Field(default=15.0)
+    m2_isotope_correction: bool = Field(default=True)
+    na_isotope_correction: bool = Field(default=True)
     online_calibration: bool = Field(default=True)
     pos_calibrant: float = Field(default=798.5410)
     neg_calibrant: float = Field(default=798.5410)

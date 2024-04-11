@@ -93,7 +93,11 @@ class MplCanvas(FigureCanvasQTAgg):
         self.im1.set_data(image_collection.raw_filtered.get(species_id))
         self.im1.autoscale()
         self.im1.set_clim(0, None)
-        self.im2.set_data(image_collection.isotope_filtered.get(species_id))
+        if species_id in image_collection.isotope_filtered:
+            self.im2.set_data(image_collection.isotope_filtered.get(species_id))
+        else:
+            x, y = image_collection.raw_filtered[species_id].shape
+            self.im2.set_data(np.full([x, y], np.nan))
         self.im2.autoscale()
         self.im2.set_clim(0, None)
         if species_id in image_collection.quant_filtered:
@@ -137,6 +141,7 @@ def save_sample_image_collection(species: str, image: npt.NDArray, path: str) ->
     # Take entries from RGB LUT according to greyscale values in image
     result = np.take(lut, rescaled, axis=0, out=result)
     result = np.dstack([result, mask])
-    result = result.copy(order="C")
+    # matplotlib bug workaround, equivalent to setting origin to upper in imsave
+    result = np.ascontiguousarray(result[::-1])
     plt.imsave(fname=f"{full_path}_1to1_pixel.png", arr=result, format="png", origin="upper")
     plt.clf()

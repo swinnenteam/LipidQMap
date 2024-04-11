@@ -1,13 +1,16 @@
 import copy
-from pathlib import Path
+import os
+import timeit
+from concurrent import futures
+from multiprocessing import Pool
 from typing import Callable
 
 import numpy as np
 import numpy.typing as npt
-from pyimzml.ImzMLParser import ImzMLParser, _bisect_spectrum
 
 from app.config import Config
 from app.database import IonMode, LipidDB
+from app.pyimzml_mod import ImzMLParser, get_calibration_offsets, getionimages
 
 
 class SampleImageCollection:
@@ -17,7 +20,7 @@ class SampleImageCollection:
         self,
         progress_callback,
         database: LipidDB,
-        imzml_path: Path,
+        imzml_path: str,
         ion_mode: IonMode,
         config: Config,
     ) -> None:
@@ -31,19 +34,28 @@ class SampleImageCollection:
         self.load_data(progress_callback, database=database, imzml_path=imzml_path, config=config)
         self.filter_data(progress_callback, config=config)
 
-    def load_data(self, progress_callback, database: LipidDB, imzml_path: Path, config: Config):
+    def load_data(self, progress_callback, database: LipidDB, imzml_path: str, config: Config):
         imzml_parser = ImzMLParser(imzml_path)
-        progress_callback.emit(10)
+        progress_callback.emit(20)
         self.raw = load_ion_images(
-            progress_callback,
             database=database,
             imzml=imzml_parser,
             ion_mode=self.ion_mode,
             config=config,
         )
-        self.isotope = isotope_correction(database=database, images=self.raw)
+        self.isotope = dict()
+        if config.settings.processing_settings.na_isotope_correction:
+            self.isotope = na_isotope_correction(database=database, images=self.raw)
+        if config.settings.processing_settings.m2_isotope_correction:
+            if self.isotope:
+                self.isotope = m2_isotope_correction(database=database, images=self.isotope)
+            else:
+                self.isotope = m2_isotope_correction(database=database, images=self.raw)
         progress_callback.emit(65)
-        self.quant = quantitaton(database=database, images=self.isotope)
+        if self.isotope:
+            self.quant = quantitaton(database=database, images=self.isotope)
+        else:
+            self.quant = quantitaton(database=database, images=self.raw)
         progress_callback.emit(70)
 
     def filter_data(self, progress_callback, config: Config):
@@ -60,7 +72,7 @@ class SampleImageCollection:
 
 
 def load_database_image_collection(
-    progress_callback, database_path: str, ion_mode: IonMode, imzml_path: Path, config: Config
+    progress_callback, database_path: str, ion_mode: IonMode, imzml_path: str, config: Config
 ) -> tuple[LipidDB, SampleImageCollection]:
     """todo"""
     database = LipidDB(database_path, ion_mode)
@@ -75,106 +87,16 @@ def load_database_image_collection(
     return database, image_collection
 
 
-def getionimage(
-    p: ImzMLParser,
-    mz: float,
-    tol: float = 0.1,
-    offsets: npt.NDArray | None = None,
-    z: int = 1,
-    reduce_func: Callable = np.max,
-) -> npt.NDArray:
-    """
-    Get an image representation of the intensity distribution
-    of the ion with specified m/z value.
-
-    By default, the intensity values within the tolerance region are summed.
-
-    :param p:
-        the ImzMLParser (or anything else with similar attributes) for the desired dataset
-    :param mz:
-        m/z value for which the ion image shall be returned
-    :param tol:
-        Absolute tolerance for the m/z value, such that all ions with values
-        mz-|tol| <= x <= mz+|tol| are included. Defaults to 0.1
-    :param offsets:
-        recalibrate the mz by these offsets, each row (y coordinate) has a different offset
-    :param z:
-        z Value if spectrogram is 3-dimensional.
-    :param reduce_func:
-        the bahaviour for reducing the intensities between mz-|tol| and mz+|tol| to a single value. Must
-        be a function that takes a sequence as input and outputs a number. By default, the max value is taken.
-
-    :return:
-        numpy matrix with each element representing the ion intensity in this
-        pixel. Can be easily plotted with matplotlib
-    """
-    tol = abs(tol)
-    im = np.full(
-        [p.imzmldict["max count of pixels y"], p.imzmldict["max count of pixels x"]], np.nan
-    )
-    for i, (x, y, z_) in enumerate(p.coordinates):
-        if z_ == 0:
-            UserWarning(
-                "z coordinate = 0 present, if you're getting blank images set getionimage(.., .., z=0)"
-            )
-        if z_ == z:
-            mzs, ints = map(lambda x: np.asarray(x), p.getspectrum(i))
-            mzs = mzs + offsets[y - 1] if offsets is not None else mzs
-            min_i, max_i = _bisect_spectrum(mzs, mz, tol)
-            values = ints[min_i : max_i + 1]
-            values = np.zeros(1) if values.size == 0 else values
-            im[y - 1, x - 1] = reduce_func(values)
-    return im
-
-
-def get_calibration_offsets(
-    p: ImzMLParser, mz: float, tol: float = 0.1, min_intensity: int = 10000, z: int = 1
-) -> npt.NDArray:
-    """
-    Returns the mass offsets per row. This is calculated as the difference between mz
-    and the closest matching measured mz, averaged for each row of pixels
-    """
-    tol = abs(tol)
-    im = np.full(
-        [p.imzmldict["max count of pixels y"], p.imzmldict["max count of pixels x"]], np.nan
-    )
-    for i, (x, y, z_) in enumerate(p.coordinates):
-        if z_ == 0:
-            UserWarning(
-                "z coordinate = 0 present, if you're getting blank images set getionimage(.., .., z=0)"
-            )
-        if z_ == z:
-            mzs, ints = map(lambda x: np.asarray(x), p.getspectrum(i))
-            min_i, max_i = _bisect_spectrum(mzs, mz, tol)
-            intensity_values = ints[min_i : max_i + 1]
-            mz_values = mzs[min_i : max_i + 1]
-            threshold = intensity_values > min_intensity
-            intensity_values = intensity_values[threshold]
-            mz_values = mz_values[threshold]
-            im[y - 1, x - 1] = (
-                mz_values[np.argmax(intensity_values)] if mz_values.size != 0 else np.nan
-            )
-    offsets = mz - np.nanmean(im, axis=1)
-    offsets[np.isnan(offsets)] = 0
-    return offsets
-
-
 def load_ion_images(
-    progress_callback,
     database: LipidDB,
     imzml: ImzMLParser,
     ion_mode: IonMode,
     config: Config,
     classes: list[str] | None = None,
 ) -> dict[str, npt.NDArray]:
-    """todo"""
+    """Load the ion images"""
     images: dict[str, npt.NDArray] = dict()
-    species = database.get_all_species(classes)
-
-    species_count = len(species)
-    progress_start = 10
-    progress_end = 60
-    progress_slope = (progress_end - progress_start) / (species_count - 1)
+    species_ids, species_mzs = database.get_all_species(classes)
 
     cal_ppm = config.settings.processing_settings.calibration_ppm
     calibrant_mz = (
@@ -189,22 +111,35 @@ def load_ion_images(
         else None
     )
 
+    """
+    items = [(imzml, mz, ppm_to_tolerance(ppm=ppm, mz=mz), offsets) for (_, mz) in species]
+    with Pool(processes=4) as pool:
+        for idx, result in enumerate(pool.starmap(getionimage, items)):
+            progress_callback.emit(int(progress_slope * idx + progress_start))
+            id, _ = species[idx]
+            images[id] = result
+    """
+
     ppm = config.settings.processing_settings.ppm
-    for count, (id, mz) in enumerate(species):
-        progress_callback.emit(int(progress_slope * count + progress_start))
-        tolerance = ppm_to_tolerance(ppm=ppm, mz=mz)
-        images[id] = getionimage(imzml, mz=mz, tol=tolerance, offsets=offsets, reduce_func=np.max)
+    tolerances = [ppm_to_tolerance(ppm=ppm, mz=mz) for mz in species_mzs]
+    image_stack = getionimages(imzml, mzs=species_mzs, tolerances=tolerances, offsets=offsets)
+    images = dict(zip(species_ids, list(image_stack)))
+
     return images
 
 
 def ppm_to_tolerance(ppm: float, mz: float) -> float:
+    """Convert ppm mass accuracy to atomic units."""
     return abs(ppm / 1e6 * mz)
 
 
-def isotope_correction(
+def m2_isotope_correction(
     database: LipidDB, images: dict[str, npt.NDArray], classes: list[str] | None = None
 ) -> dict[str, npt.NDArray]:
-    """todo"""
+    """
+    Isotopic correction for species withing same class between the M+2 (two 13C) of a species
+    and a corresponding monoisotopic species with one less double bond (two extra H).
+    """
     corrected_images: dict[str, npt.NDArray] = copy.deepcopy(images)
     for species_id in database.get_ids_sorted_for_isotope(classes=classes):
         m2_isotope = database.get_M2_isotope_ID(id=species_id)
@@ -219,10 +154,47 @@ def isotope_correction(
     return corrected_images
 
 
+def na_isotope_correction(
+    database: LipidDB, images: dict[str, npt.NDArray], classes: list[str] | None = None
+) -> dict[str, npt.NDArray]:
+    """
+    Isotopic correction for [M+H]+ species with overlap from [M+Na]+ species.
+    According to Höring et al. Anal. Chem. 2020, 92, 16, 10966–10970
+    https://pubs.acs.org/doi/10.1021/acs.analchem.0c02408
+    """
+    corrected_images: dict[str, npt.NDArray] = copy.deepcopy(images)
+    h_na_ratio_ims = dict()
+
+    for key, value in database.get_sodium_coef_mzs().items():
+        h_id = value[0]
+        na_id = value[1]
+        ratio_image = np.divide(images[na_id], images[h_id])
+        ratio_image[ratio_image == np.inf] = np.nan
+        ratio_image = replace_nan_with_median(ratio_image)
+        h_na_ratio_ims[key] = ratio_image
+
+    for species_id in database.get_ids_sorted_for_isotope(classes=classes):
+        if "[M+H]+" not in species_id:
+            continue
+        lipid_class = database.get_class(id=species_id)
+        na_isotope = database.get_Na_isotope_ID(id=species_id)
+        if na_isotope:
+            corrected_images[species_id] = (
+                images[species_id] - h_na_ratio_ims[lipid_class] * corrected_images[na_isotope]
+            ).clip(min=0)
+        else:
+            corrected_images[species_id] = np.copy(images[species_id])
+
+    return corrected_images
+
+
 def quantitaton(
     database: LipidDB, images: dict[str, npt.NDArray], classes: list[str] | None = None
 ) -> dict[str, npt.NDArray]:
-    """todo"""
+    """
+    Quantify by dividing the ion images by the ion image of the standard (1 standard per class)
+    and multiplying by a user provided factor (standard amount)
+    """
     quant_images: dict[str, npt.NDArray] = dict()
     for species_id in database.get_ids_non_standards(classes=classes):
         standard_id, standard_amount = database.get_standard(id=species_id)

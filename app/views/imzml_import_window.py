@@ -26,21 +26,27 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.connect_signals_slots()
         self.fetch_db_list()
         self.update_ion_mode()
-        self.ppm_spin_box.setValue(config.settings.processing_settings.ppm)
-        self.cal_check_box.setChecked(config.settings.processing_settings.online_calibration)
-        self.cal_ppm_spin_box.setValue(config.settings.processing_settings.calibration_ppm)
-        self.cal_int_spin_box.setValue(
-            config.settings.processing_settings.calibration_max_intensity
+        self.ppm_spinbox.setValue(config.settings.processing_settings.ppm)
+        self.m2_iso_cor_checkbox.setChecked(
+            config.settings.processing_settings.m2_isotope_correction
         )
+        self.na_iso_cor_checkbox.setChecked(
+            config.settings.processing_settings.na_isotope_correction
+        )
+        self.cal_checkbox.setChecked(config.settings.processing_settings.online_calibration)
+        self.cal_ppm_spinbox.setValue(config.settings.processing_settings.calibration_ppm)
+        self.cal_int_spinbox.setValue(config.settings.processing_settings.calibration_max_intensity)
 
     def connect_signals_slots(self) -> None:
         self.import_data_button.clicked.connect(self.process_imzml_files)
         self.open_imzml_button.clicked.connect(self.open_imzml_files)
-        self.ppm_spin_box.valueChanged.connect(self.update_ppm_value)
-        self.cal_check_box.clicked.connect(self.update_cal_checked_value)
-        self.calibrant_spin_box.valueChanged.connect(self.update_calibrant)
-        self.cal_ppm_spin_box.valueChanged.connect(self.update_cal_ppm)
-        self.cal_int_spin_box.valueChanged.connect(self.update_cal_intensity)
+        self.ppm_spinbox.valueChanged.connect(self.update_ppm_value)
+        self.m2_iso_cor_checkbox.clicked.connect(self.update_m2_iso_cor)
+        self.na_iso_cor_checkbox.clicked.connect(self.update_na_iso_cor)
+        self.cal_checkbox.clicked.connect(self.update_cal_checked_value)
+        self.calibrant_spinbox.valueChanged.connect(self.update_calibrant)
+        self.cal_ppm_spinbox.valueChanged.connect(self.update_cal_ppm)
+        self.cal_int_spinbox.valueChanged.connect(self.update_cal_intensity)
         self.pos_radio_button.clicked.connect(self.update_ion_mode)
 
     def fetch_db_list(self):
@@ -103,34 +109,46 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
 
     def update_ion_mode(self):
         if self.pos_radio_button.isChecked():
-            self.calibrant_spin_box.setValue(config.settings.processing_settings.pos_calibrant)
+            self.calibrant_spinbox.setValue(config.settings.processing_settings.pos_calibrant)
         elif self.neg_radio_button.isChecked():
-            self.calibrant_spin_box.setValue(config.settings.processing_settings.neg_calibrant)
+            self.calibrant_spinbox.setValue(config.settings.processing_settings.neg_calibrant)
+
+    def update_m2_iso_cor(self):
+        config.settings.processing_settings.m2_isotope_correction = (
+            self.m2_iso_cor_checkbox.isChecked()
+        )
+        config.save()
+
+    def update_na_iso_cor(self):
+        config.settings.processing_settings.na_isotope_correction = (
+            self.na_iso_cor_checkbox.isChecked()
+        )
+        config.save()
 
     def update_ppm_value(self):
-        config.settings.processing_settings.ppm = self.ppm_spin_box.value()
+        config.settings.processing_settings.ppm = self.ppm_spinbox.value()
         config.save()
 
     def update_cal_checked_value(self):
-        config.settings.processing_settings.online_calibration = self.cal_check_box.isChecked()
-        self.cal_group_box.setEnabled(self.cal_check_box.isChecked())
+        config.settings.processing_settings.online_calibration = self.cal_checkbox.isChecked()
+        self.calibrant_spinbox.setEnabled(self.cal_checkbox.isChecked())
+        self.cal_ppm_spinbox.setEnabled(self.cal_checkbox.isChecked())
+        self.cal_int_spinbox.setEnabled(self.cal_checkbox.isChecked())
         config.save()
 
     def update_calibrant(self):
         if self.pos_radio_button.isChecked():
-            config.settings.processing_settings.pos_calibrant = self.calibrant_spin_box.value()
+            config.settings.processing_settings.pos_calibrant = self.calibrant_spinbox.value()
         elif self.neg_radio_button.isChecked():
-            config.settings.processing_settings.neg_calibrant = self.calibrant_spin_box.value()
+            config.settings.processing_settings.neg_calibrant = self.calibrant_spinbox.value()
         config.save()
 
     def update_cal_ppm(self):
-        config.settings.processing_settings.calibration_ppm = self.cal_ppm_spin_box.value()
+        config.settings.processing_settings.calibration_ppm = self.cal_ppm_spinbox.value()
         config.save()
 
     def update_cal_intensity(self):
-        config.settings.processing_settings.calibration_max_intensity = (
-            self.cal_int_spin_box.value()
-        )
+        config.settings.processing_settings.calibration_max_intensity = self.cal_int_spinbox.value()
         config.save()
 
     def set_ui_components_status(self, active: bool) -> None:
@@ -138,8 +156,10 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.imzml_list_view.setEnabled(active)
         self.neg_radio_button.setEnabled(active)
         self.pos_radio_button.setEnabled(active)
-        self.ppm_spin_box.setEnabled(active)
+        self.ppm_spinbox.setEnabled(active)
         self.database_combo_box.setEnabled(active)
         self.import_data_button.setEnabled(active)
-        self.cal_check_box.setEnabled(active)
+        self.m2_iso_cor_checkbox.setEnabled(active)
+        self.na_iso_cor_checkbox.setEnabled(active)
+        self.cal_checkbox.setEnabled(active)
         self.cal_group_box.setEnabled(active)

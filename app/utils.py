@@ -28,7 +28,7 @@ class PandasModelEditable(QAbstractTableModel):
 
     def get_checked_list(self) -> list[str]:
         df = self._data[self._data["Export"] == True]
-        return [str(item) for item in df.index.tolist()]
+        return df.index.tolist()
 
     def data(self, index, role):
         if index.isValid():

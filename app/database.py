@@ -1,6 +1,6 @@
 from enum import Enum
-from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from app.config import config_paths
@@ -33,6 +33,9 @@ class LipidDB:
     def get_id(self, index: int) -> str:
         return self.db.index[index]
 
+    def get_class(self, id: str) -> str:
+        return self.db.loc[id, "Class_Adduct"]
+
     def class_filtered_db(self, classes: list[str] | None) -> pd.DataFrame:
         if classes:
             return self.db[self.db["Class_Adduct"].isin(classes)]
@@ -44,11 +47,18 @@ class LipidDB:
         return filtered[filtered["IS amount ()"].isnull()].index.to_list()
 
     def get_standard(self, id: str) -> tuple[str, float]:
-        classes = self.db.loc[id, "Class_Adduct"]
-        filtered = self.class_filtered_db(classes=[classes])
+        """Get standard id and amount for given species id"""
+        class_adduct = self.db.loc[id, "Class_Adduct"]
+        standard = self._get_standard_for_class_adduct(class_adduct)
+        if standard is None:
+            raise ValueError(f"There is no standard in the database for class {class_adduct}")
+        return standard
+
+    def _get_standard_for_class_adduct(self, class_adduct: str) -> tuple[str, float] | None:
+        filtered = self.class_filtered_db(classes=[class_adduct])
         standard = filtered["IS amount ()"].dropna()
-        if standard.shape[0] != 1:
-            raise ValueError(f"There is no standard in the database for class {classes}")
+        if standard.shape[0] < 1:
+            return None
         return (standard.index[0], float(standard[0]))
 
     def get_M2_isotope_ID(self, id: str) -> str | None:
@@ -64,12 +74,38 @@ class LipidDB:
         filtered = self.class_filtered_db(classes)
         return filtered.sort_values(["Class_Adduct", "mz"], ascending=[True, True]).index.to_list()
 
-    def get_all_species(self, classes: list[str] | None = None) -> list[tuple[str, float]]:
-        filtered = self.class_filtered_db(classes)
-        result = []
-        for row in filtered.itertuples():
-            result.append((row.ID_Adduct, row.mz))
+    def get_sodium_coef_mzs(self) -> dict[str, tuple[str, str]]:
+        """
+        Return for all [M+H]+ classes the m/z of the standard of the class and the m/z
+        of the standard of the [Na]+ adduct of that class.
+        """
+        lipid_classes = np.unique(self.db.loc[self.db["Adduct"] == "[M+H]+", "Class"].values)
+        result = dict()
+        for lipid_class in lipid_classes:
+            hydrogen_adduct_std = self._get_standard_for_class_adduct(lipid_class + " [M+H]+")
+            sodium_adduct_std = self._get_standard_for_class_adduct(lipid_class + " [M+Na]+")
+            if hydrogen_adduct_std is not None and sodium_adduct_std is not None:
+                result[str(lipid_class + " [M+H]+")] = (
+                    hydrogen_adduct_std[0],
+                    sodium_adduct_std[0],
+                )
         return result
+
+    def get_Na_isotope_ID(self, id: str) -> str | None:
+        lipid_class = self.get_class(id=id)
+        carbons = self.db.loc[id, "Carbons"] - 2
+        dbonds = self.db.loc[id, "Double bonds"] - 3
+        oxigens = self.db.loc[id, "Oxigens"]
+        result = self.db.query(
+            f'Carbons=={carbons} & `Double bonds`=={dbonds} & Oxigens=={oxigens} & Class_Adduct=="{lipid_class}"'
+        )
+        if result.shape[0] < 1:
+            return None
+        return result.index[0]
+
+    def get_all_species(self, classes: list[str] | None = None) -> tuple[list[str], list[float]]:
+        filtered = self.class_filtered_db(classes)
+        return list(filtered.ID_Adduct), list(filtered.mz)
 
     def get_table(self) -> pd.DataFrame:
         d = {"Species": self.db.index, "m/z": self.db["mz"], "Export": True}

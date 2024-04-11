@@ -4,3 +4,4 @@ toml==0.10.2
 pydantic==2.6.4
 openpyxl==3.1.2
 matplotlib==3.8.3
+lxml==5.2.1
