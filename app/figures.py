@@ -76,7 +76,7 @@ class MplCanvas(FigureCanvasQTAgg):
         cb2.ax.yaxis.set_tick_params(color=fg_color)
         cb2.outline.set_edgecolor(fg_color)  # type: ignore [operator]
         plt.setp(plt.getp(cb2.ax.axes, "yticklabels"), color=fg_color)
-        cb3.set_label("todo: unit of quant", color=fg_color)
+        cb3.set_label("pmol / mm2", color=fg_color)
         cb3.ax.yaxis.set_tick_params(color=fg_color)
         cb3.outline.set_edgecolor(fg_color)  # type: ignore [operator]
         plt.setp(plt.getp(cb3.ax.axes, "yticklabels"), color=fg_color)
@@ -120,9 +120,11 @@ def save_sample_image_collection(species: str, image: npt.NDArray, path: str) ->
     ax = fig.add_axes(rect=(0.0, 0.0, 1.0, 1.0), frameon=False, xticks=[], yticks=[])
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.1)
-    ax.set_title(species)
+    ax.set_title(label=species, size=24)
     img = ax.imshow(image, interpolation="gaussian", origin="lower")
-    plt.colorbar(img, cax=cax)
+    cbar = plt.colorbar(img, cax=cax)
+    cbar.set_label(label="pmol / mm²", size=18)
+    cbar.ax.tick_params(labelsize=18)
     plt.savefig(full_path, bbox_inches="tight", pad_inches=0)
 
     # 1 to 1 pixel image

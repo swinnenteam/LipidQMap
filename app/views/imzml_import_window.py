@@ -1,6 +1,6 @@
 import os
 
-from PySide6.QtCore import QThreadPool, Signal, Slot
+from PySide6.QtCore import Qt, QThreadPool, Signal, Slot
 from PySide6.QtWidgets import QFileDialog, QWidget
 
 from app.config import config, config_paths
@@ -36,6 +36,12 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.cal_checkbox.setChecked(config.settings.processing_settings.online_calibration)
         self.cal_ppm_spinbox.setValue(config.settings.processing_settings.calibration_ppm)
         self.cal_int_spinbox.setValue(config.settings.processing_settings.calibration_max_intensity)
+        # set last used database
+        index = self.database_combo_box.findText(
+            config.settings.database_settings.last_used_database
+        )
+        if index >= 0:
+            self.database_combo_box.setCurrentIndex(index)
 
     def connect_signals_slots(self) -> None:
         self.import_data_button.clicked.connect(self.process_imzml_files)
@@ -48,6 +54,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.cal_ppm_spinbox.valueChanged.connect(self.update_cal_ppm)
         self.cal_int_spinbox.valueChanged.connect(self.update_cal_intensity)
         self.pos_radio_button.clicked.connect(self.update_ion_mode)
+        # self.database_combo_box.currentTextChanged.connect(self.update_last_used_database)
 
     def fetch_db_list(self):
         dbs = os.listdir(config_paths["DATABASE_DIR"])
@@ -100,6 +107,9 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
 
     def open_imzml_files(self) -> None:
         """Open imzML files."""
+
+        # clear file list
+        self.imzml_list_view.clear()
         self.filepath, __ = QFileDialog.getOpenFileNames(
             self, "Select imzML file(s)", filter=";imzML(*.imzML)"
         )
@@ -149,6 +159,10 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
 
     def update_cal_intensity(self):
         config.settings.processing_settings.calibration_max_intensity = self.cal_int_spinbox.value()
+        config.save()
+
+    def update_last_used_database(self):
+        config.settings.database_settings.last_used_database = self.database_combo_box.currentText()
         config.save()
 
     def set_ui_components_status(self, active: bool) -> None:

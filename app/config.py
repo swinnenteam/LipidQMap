@@ -21,6 +21,14 @@ config_paths = {
 }
 
 
+class DatabaseSettings(BaseModel):
+    """
+    Class for validation of the configuration file
+    """
+
+    last_used_database: str = Field(default="")
+
+
 class FilterSettings(BaseModel):
     """
     Class for validation of the configuration file
@@ -52,6 +60,7 @@ class Configuration(BaseModel):
 
     filter_settings: FilterSettings = FilterSettings()
     processing_settings: ProcessingSettings = ProcessingSettings()
+    database_settings: DatabaseSettings = DatabaseSettings()
 
 
 class Config:
