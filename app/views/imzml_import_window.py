@@ -22,6 +22,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.threadpool = QThreadPool()
         self.filepath: list[str] | None = None
         self.database: LipidDB | None = None
+        self.samples: dict[str, SampleImageCollection]
         self.setupUi(self)
         self.connect_signals_slots()
         self.fetch_db_list()
@@ -54,7 +55,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.cal_ppm_spinbox.valueChanged.connect(self.update_cal_ppm)
         self.cal_int_spinbox.valueChanged.connect(self.update_cal_intensity)
         self.pos_radio_button.clicked.connect(self.update_ion_mode)
-        # self.database_combo_box.currentTextChanged.connect(self.update_last_used_database)
+        # TODO self.database_combo_box.currentTextChanged.connect(self.update_last_used_database)
 
     def fetch_db_list(self):
         dbs = os.listdir(config_paths["DATABASE_DIR"])
@@ -85,7 +86,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
                 load_database_image_collection,
                 database_path=db_path,
                 ion_mode=ion_mode,
-                imzml_path=self.filepath[0],
+                imzml_paths=self.filepath,
                 config=config,
             )
             worker.signals.progress.connect(self.handle_progress)
@@ -98,9 +99,9 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.progress_bar.setValue(value)
 
     @Slot()
-    def handle_finished(self, database: LipidDB, image_collection: SampleImageCollection) -> None:
+    def handle_finished(self, database: LipidDB, samples: dict[str, SampleImageCollection]) -> None:
         """Emit results to main window"""
-        self.image_collection = image_collection
+        self.samples = samples
         self.database = database
         self.finished_imzml_loading.emit()
         self.close()

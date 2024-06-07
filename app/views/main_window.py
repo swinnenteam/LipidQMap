@@ -4,12 +4,12 @@ from pathlib import Path
 import pandas as pd
 from pyimzml.ImzMLParser import ImzMLParser
 from PySide6.QtCore import QItemSelectionModel, Qt, QThreadPool
-from PySide6.QtWidgets import QFileDialog, QMainWindow
+from PySide6.QtWidgets import QFileDialog, QMainWindow, QVBoxLayout
 
 from app import __appname__
 from app.config import Config
 from app.database import LipidDB
-from app.dataprocess import SampleImageCollection
+from app.dataprocess import ImageType, SampleImageCollection
 from app.figures import MplCanvas, save_sample_image_collection
 from app.generated.MsiMainWindow_ui import Ui_MainWindow
 from app.utils import BooleanDelegate, PandasModelEditable
@@ -25,9 +25,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super().__init__()
         self.database: LipidDB | None = None
         self.config: Config | None = None
-        self.image_canvas: MplCanvas | None = None
-        # self.imzml_parser: ImzMLParser | None = None
-        self.image_collection: SampleImageCollection
+        self.image_canvas_raw: MplCanvas | None = None
+        self.image_canvas_iso: MplCanvas | None = None
+        self.image_canvas_quant: MplCanvas | None = None
+        self.samples: dict[str, SampleImageCollection]
         self.imzml_import_window = ImzmlImportWindow()
         self.boolean_delegate = BooleanDelegate()
         self.setupUi(self)
@@ -48,6 +49,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             value = model.get_is_checked(index.row())
             model.setData(model.index(index.row(), 2), not value)
 
+        if event.key() == Qt.Key.Key_R:
+            self.tab_widget.setCurrentIndex(0)
+
+        if event.key() == Qt.Key.Key_Q:
+            self.tab_widget.setCurrentIndex(2)
+
+        if event.key() == Qt.Key.Key_I:
+            self.tab_widget.setCurrentIndex(1)
+
     def connect_signals_slots(self) -> None:
         """Connect methods to signal slots."""
         self.action_open_imzml_dialog.triggered.connect(self.open_imzml_dialog)
@@ -61,16 +71,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.imzml_import_window.show()
 
     def handle_species_selection_changed(self) -> None:
-        if self.image_canvas is not None and self.database is not None:
+        if self.image_canvas_raw is not None and self.database is not None:
             index = self.species_table.selectionModel().selectedRows()[0].row()
             species_id = self.database.get_id(index)
-            self.image_canvas.update_figure(
-                image_collection=self.image_collection, species_id=species_id
-            )
+            self.image_canvas_raw.update_figure(samples=self.samples, species_id=species_id)
+            self.image_canvas_iso.update_figure(samples=self.samples, species_id=species_id)
+            self.image_canvas_quant.update_figure(samples=self.samples, species_id=species_id)
 
     def init_data(self) -> None:
-        self.image_collection = self.imzml_import_window.image_collection
+        self.samples = self.imzml_import_window.samples
         self.database = self.imzml_import_window.database
+        assert self.database is not None
         self.species_table_data = self.database.get_table()
         self.species_table.setModel(PandasModelEditable(self.species_table_data))
         self.species_table.setItemDelegateForColumn(2, self.boolean_delegate)
@@ -87,9 +98,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.frame_2.setMaximumWidth(hint.width() * 1.2)
         self.frame_2.adjustSize()
 
-        self.image_canvas = MplCanvas(self)
-        self.image_canvas.setup()
-        self.gridLayout.addWidget(self.image_canvas)
+        num_samples = len(self.samples)
+        nrows = num_samples // 2 + (num_samples % 2 > 0)
+        self.image_canvas_raw = MplCanvas(parent=self, canvas_type=ImageType.raw)
+        self.image_canvas_raw.setup(num_samples=num_samples)
+        self.verticalLayout_4.addWidget(self.image_canvas_raw)
+        self.scroll_area_raw_contents.setMinimumHeight(400 * nrows)
+
+        self.image_canvas_iso = MplCanvas(parent=self, canvas_type=ImageType.isotope)
+        self.image_canvas_iso.setup(num_samples=num_samples)
+        self.verticalLayout_2.addWidget(self.image_canvas_iso)
+        self.scroll_area_iso_contents.setMinimumHeight(400 * nrows)
+
+        self.image_canvas_quant = MplCanvas(parent=self, canvas_type=ImageType.quant)
+        self.image_canvas_quant.setup(num_samples=num_samples)
+        self.verticalLayout_3.addWidget(self.image_canvas_quant)
+        self.scroll_area_quant_contents.setMinimumHeight(400 * nrows)
 
         self.handle_species_selection_changed()
 
@@ -103,18 +127,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # save raw images
             path = os.path.join(save_filepath, "raw")
             Path(path).mkdir(parents=True, exist_ok=True)
-            for species, image in self.image_collection.raw_filtered.items():
+            for species, image in next(iter(self.samples.values())).raw_filtered.items():
                 if species in selection:
                     save_sample_image_collection(species, image, path)
             # save deisotoped images
             path = os.path.join(save_filepath, "deisotoped")
             Path(path).mkdir(parents=True, exist_ok=True)
-            for species, image in self.image_collection.isotope_filtered.items():
+            for species, image in next(iter(self.samples.values())).isotope_filtered.items():
                 if species in selection:
                     save_sample_image_collection(species, image, path)
             # save quant images
             path = os.path.join(save_filepath, "quantified")
             Path(path).mkdir(parents=True, exist_ok=True)
-            for species, image in self.image_collection.quant_filtered.items():
+            for species, image in next(iter(self.samples.values())).quant_filtered.items():
                 if species in selection:
                     save_sample_image_collection(species, image, path)

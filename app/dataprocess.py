@@ -1,9 +1,8 @@
 import copy
-import os
-import timeit
 from concurrent import futures
+from enum import Enum
 from multiprocessing import Pool
-from typing import Callable
+from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
@@ -11,6 +10,12 @@ import numpy.typing as npt
 from app.config import Config
 from app.database import IonMode, LipidDB
 from app.pyimzml_mod import ImzMLParser, get_calibration_offsets, getionimages
+
+
+class ImageType(str, Enum):
+    raw = "raw"
+    isotope = "isotope"
+    quant = "quant"
 
 
 class SampleImageCollection:
@@ -31,11 +36,16 @@ class SampleImageCollection:
         self.raw_filtered: dict[str, npt.NDArray]
         self.isotope_filtered: dict[str, npt.NDArray]
         self.quant_filtered: dict[str, npt.NDArray]
+        self.shape: tuple[int, int]
         self.load_data(progress_callback, database=database, imzml_path=imzml_path, config=config)
         self.filter_data(progress_callback, config=config)
 
     def load_data(self, progress_callback, database: LipidDB, imzml_path: str, config: Config):
         imzml_parser = ImzMLParser(imzml_path)
+        self.shape = (
+            int(imzml_parser.imzmldict["max count of pixels x"]),
+            int(imzml_parser.imzmldict["max count of pixels y"]),
+        )
         progress_callback.emit(20)
         self.raw = load_ion_images(
             database=database,
@@ -70,21 +80,36 @@ class SampleImageCollection:
         self.quant_filtered = {k: winsorize_image(v, n2) for (k, v) in self.quant_filtered.items()}
         progress_callback.emit(100)
 
+    def get(self, image_type: ImageType, species_id: str) -> npt.NDArray | None:
+        match image_type:
+            case ImageType.raw:
+                return self.raw_filtered.get(species_id)
+            case ImageType.isotope:
+                return self.isotope_filtered.get(species_id)
+            case ImageType.quant:
+                return self.quant_filtered.get(species_id)
+            case _:
+                return None
+
 
 def load_database_image_collection(
-    progress_callback, database_path: str, ion_mode: IonMode, imzml_path: str, config: Config
-) -> tuple[LipidDB, SampleImageCollection]:
+    progress_callback, database_path: str, ion_mode: IonMode, imzml_paths: list[str], config: Config
+) -> tuple[LipidDB, dict[str, SampleImageCollection]]:
     """todo"""
+    samples: dict[str, SampleImageCollection] = dict()
     database = LipidDB(database_path, ion_mode)
-    progress_callback.emit(5)
-    image_collection = SampleImageCollection(
-        progress_callback,
-        database=database,
-        imzml_path=imzml_path,
-        ion_mode=ion_mode,
-        config=config,
-    )
-    return database, image_collection
+    for path in imzml_paths:
+        progress_callback.emit(5)
+        image_collection = SampleImageCollection(
+            progress_callback,
+            database=database,
+            imzml_path=path,
+            ion_mode=ion_mode,
+            config=config,
+        )
+        samples[Path(path).stem] = image_collection
+
+    return database, samples
 
 
 def load_ion_images(
