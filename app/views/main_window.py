@@ -25,13 +25,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super().__init__()
         self.database: LipidDB | None = None
         self.config: Config | None = None
-        self.image_canvas_raw: MplCanvas | None = None
-        self.image_canvas_iso: MplCanvas | None = None
-        self.image_canvas_quant: MplCanvas | None = None
         self.samples: dict[str, SampleImageCollection]
+        self.ncols: int = 2
         self.imzml_import_window = ImzmlImportWindow()
         self.boolean_delegate = BooleanDelegate()
+
         self.setupUi(self)
+        self.image_canvas_raw = MplCanvas(parent=self, canvas_type=ImageType.raw)
+        self.verticalLayout_4.addWidget(self.image_canvas_raw)
+        self.image_canvas_iso = MplCanvas(parent=self, canvas_type=ImageType.isotope)
+        self.verticalLayout_2.addWidget(self.image_canvas_iso)
+        self.image_canvas_quant = MplCanvas(parent=self, canvas_type=ImageType.quant)
+        self.verticalLayout_3.addWidget(self.image_canvas_quant)
+
         self.connect_signals_slots()
 
     def keyPressEvent(self, event) -> None:
@@ -58,25 +64,41 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if event.key() == Qt.Key.Key_I:
             self.tab_widget.setCurrentIndex(1)
 
+        if event.key() == Qt.Key.Key_G:
+            self.action_global.trigger()
+
     def connect_signals_slots(self) -> None:
         """Connect methods to signal slots."""
         self.action_open_imzml_dialog.triggered.connect(self.open_imzml_dialog)
         self.action_save_images.triggered.connect(self.save_images)
+        self.action_global.triggered.connect(self.handle_species_selection_changed)
+        self.action_zoom_in.triggered.connect(self.zoom_in)
+        self.action_zoom_out.triggered.connect(self.zoom_out)
         self.imzml_import_window.finished_imzml_loading.connect(self.init_data)
 
     def open_imzml_dialog(self):
         """Launch the imzML import dialog."""
-        # self.db_window.fatty_acid_database = self.fatty_acid_database
         self.imzml_import_window.set_ui_components_status(True)
         self.imzml_import_window.show()
 
     def handle_species_selection_changed(self) -> None:
-        if self.image_canvas_raw is not None and self.database is not None:
+        global_scale = self.action_global.isChecked()
+        species_id = None
+        if self.database is not None:
             index = self.species_table.selectionModel().selectedRows()[0].row()
             species_id = self.database.get_id(index)
-            self.image_canvas_raw.update_figure(samples=self.samples, species_id=species_id)
-            self.image_canvas_iso.update_figure(samples=self.samples, species_id=species_id)
-            self.image_canvas_quant.update_figure(samples=self.samples, species_id=species_id)
+        if self.image_canvas_raw is not None and species_id is not None:
+            self.image_canvas_raw.update_figure(
+                samples=self.samples, species_id=species_id, global_scale=global_scale
+            )
+        if self.image_canvas_iso is not None and species_id is not None:
+            self.image_canvas_iso.update_figure(
+                samples=self.samples, species_id=species_id, global_scale=global_scale
+            )
+        if self.image_canvas_quant is not None and species_id is not None:
+            self.image_canvas_quant.update_figure(
+                samples=self.samples, species_id=species_id, global_scale=global_scale
+            )
 
     def init_data(self) -> None:
         self.samples = self.imzml_import_window.samples
@@ -97,24 +119,45 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         hint = self.species_table.sizeHint()
         self.frame_2.setMaximumWidth(hint.width() * 1.2)
         self.frame_2.adjustSize()
+        self.reset_canvas()
+        self.setup_plots()
+        self.handle_species_selection_changed()
 
-        num_samples = len(self.samples)
-        nrows = num_samples // 2 + (num_samples % 2 > 0)
-        self.image_canvas_raw = MplCanvas(parent=self, canvas_type=ImageType.raw)
-        self.image_canvas_raw.setup(num_samples=num_samples)
-        self.verticalLayout_4.addWidget(self.image_canvas_raw)
-        self.scroll_area_raw_contents.setMinimumHeight(400 * nrows)
+    def setup_plots(self) -> None:
+        nsamples = len(self.samples)
+        nrows = nsamples // self.ncols + (nsamples % self.ncols > 0)
+        self.image_canvas_raw.setup(nrows=nrows, ncols=self.ncols, nsamples=nsamples)
+        self.image_canvas_iso.setup(nrows=nrows, ncols=self.ncols, nsamples=nsamples)
+        self.image_canvas_quant.setup(nrows=nrows, ncols=self.ncols, nsamples=nsamples)
+        # set height according to heuristic (multiply nrows by a factor that decreases by number of columns)
+        self.scroll_area_raw_contents.setMinimumHeight((1 / self.ncols) * 800 * nrows)
+        self.scroll_area_iso_contents.setMinimumHeight((1 / self.ncols) * 800 * nrows)
+        self.scroll_area_quant_contents.setMinimumHeight((1 / self.ncols) * 800 * nrows)
 
-        self.image_canvas_iso = MplCanvas(parent=self, canvas_type=ImageType.isotope)
-        self.image_canvas_iso.setup(num_samples=num_samples)
-        self.verticalLayout_2.addWidget(self.image_canvas_iso)
-        self.scroll_area_iso_contents.setMinimumHeight(400 * nrows)
+    def reset_canvas(self) -> None:
+        for ax in self.image_canvas_raw.fig.get_axes():
+            ax.cla()
+            ax.remove()
+        for ax in self.image_canvas_iso.fig.get_axes():
+            ax.cla()
+            ax.remove()
+        for ax in self.image_canvas_quant.fig.get_axes():
+            ax.cla()
+            ax.remove()
 
-        self.image_canvas_quant = MplCanvas(parent=self, canvas_type=ImageType.quant)
-        self.image_canvas_quant.setup(num_samples=num_samples)
-        self.verticalLayout_3.addWidget(self.image_canvas_quant)
-        self.scroll_area_quant_contents.setMinimumHeight(400 * nrows)
+    def zoom_in(self) -> None:
+        self.ncols -= 1
+        if self.ncols < 1:
+            self.ncols = 1
+            return
+        self.reset_canvas()
+        self.setup_plots()
+        self.handle_species_selection_changed()
 
+    def zoom_out(self) -> None:
+        self.ncols += 1
+        self.reset_canvas()
+        self.setup_plots()
         self.handle_species_selection_changed()
 
     def save_images(self) -> None:

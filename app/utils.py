@@ -3,8 +3,24 @@ from PySide6.QtWidgets import QItemDelegate
 
 
 class PandasModelEditable(QAbstractTableModel):
+    """
+    A Qt model that adapts a pandas DataFrame for use in a QTableView,
+    with support for checkable columns.
+
+    Attributes:
+        _data (pandas.DataFrame): The data source for the model.
+        checkableColumns (list[int]): List of column indices that are checkable.
+        boolean_delegate (BooleanDelegate): Delegate for handling boolean values.
+    """
 
     def __init__(self, data, parent=None):
+        """
+        Initialize the model with a pandas DataFrame.
+
+        Args:
+            data (pandas.DataFrame): The data to be displayed and edited.
+            parent: The parent object (default is None).
+        """
         QAbstractTableModel.__init__(self, parent)
         self._data = data
         self.checkableColumns = [2]
@@ -74,6 +90,9 @@ class PandasModelEditable(QAbstractTableModel):
 
 
 class BooleanDelegate(QItemDelegate):
+    """
+    A delegate that handles the display and editing of boolean values in a model.
+    """
 
     def __init__(self, *args, **kwargs):
         super(BooleanDelegate, self).__init__(*args, **kwargs)

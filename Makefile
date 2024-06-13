@@ -19,7 +19,8 @@ deps: ## Reinstalls dependencies
 	./venv/bin/python3 -m pip install -r requirements/dev.txt
 
 ui: ## Converts ui files in resources/views to python
-	for i in `ls resources/views/*.ui`; do FNAME=`basename $${i} ".ui"`; ./venv/bin/pyside6-uic $${i} > "app/generated/$${FNAME}_ui.py"; done
+	./venv/bin/pyside6-uic --from-imports resources/views/MsiImportDialog.ui -o app/generated/MsiImportDialog_ui.py
+	./venv/bin/pyside6-uic --from-imports resources/views/MsiMainWindow.ui -o app/generated/MsiMainWindow_ui.py
 
 res: ## Generates and compresses resource listed in resources/resources.qrc
 	./venv/bin/pyside6-rcc -compress 9 -o app/generated/resources_rc.py resources/resources.qrc

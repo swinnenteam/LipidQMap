@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>462</width>
-    <height>732</height>
+    <width>460</width>
+    <height>840</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -157,7 +157,7 @@
          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;Type II isotopic correction for isobaric overlap between [M+H]+ and [M+Na]+ adduct forms. For protonated lipid ions, the sodiated adduct of species [X:Y] (X number of C atoms and Y number of double bonds in the acyl chains) overlaps with species [X+2:Y+3]. The correction algorith is described in Höring at el., &lt;/span&gt;&lt;span style=&quot; font-size:14pt; font-style:italic;&quot;&gt;Anal. Chem. 2020, 92, 16, 10966–10970. &lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;This correction is relevant for measurements with a mass resolution lower than +/- 600.000 (m/z difference 0.0025).&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="text">
-         <string>Correct [M+H]+ for [M+Na]+ overlap</string>
+         <string>Correct [M+H]+ for [M+Na]+ overlap ⓘ</string>
         </property>
        </widget>
       </item>
@@ -167,7 +167,7 @@
          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;Type II isotopic correction for isobaric overlap between the (M+2) isotopologue of a species and the corresponding species from the same class with 1 double bond less. &lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;This correction is relevant for measurements with a mass resolution lower than +/- 180.000 (m/z difference 0.0089).&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="text">
-         <string>Correct for M+2 double bond isotopologues overlap</string>
+         <string>Correct for M+2 double bond isotopologues overlap ⓘ</string>
         </property>
        </widget>
       </item>
@@ -251,9 +251,16 @@
     </widget>
    </item>
    <item>
+    <widget class="QProgressBar" name="progress_bar_overall">
+     <property name="value">
+      <number>0</number>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
-      <widget class="QProgressBar" name="progress_bar">
+      <widget class="QProgressBar" name="progress_bar_file">
        <property name="value">
         <number>0</number>
        </property>

@@ -3,10 +3,12 @@ from enum import Enum
 import numpy as np
 import pandas as pd
 
-from app.config import config_paths
-
 
 class IonMode(str, Enum):
+    """
+    Enum for specifying ion mode.
+    """
+
     positive = "+"
     negative = "-"
 

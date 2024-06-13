@@ -7,7 +7,7 @@ from app.config import config, config_paths
 from app.database import IonMode, LipidDB
 from app.dataprocess import SampleImageCollection, load_database_image_collection
 from app.generated.MsiImportDialog_ui import Ui_Dialog
-from app.multithreading import Worker2
+from app.multithreading import Worker
 
 
 class ImzmlImportWindow(QWidget, Ui_Dialog):
@@ -82,21 +82,27 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
 
         # start database loading and imzML file processing on a new thread
         if self.filepath:
-            worker = Worker2(
+            worker = Worker(
                 load_database_image_collection,
                 database_path=db_path,
                 ion_mode=ion_mode,
                 imzml_paths=self.filepath,
                 config=config,
             )
-            worker.signals.progress.connect(self.handle_progress)
+            worker.signals.progress_file.connect(self.handle_progress_file)
+            worker.signals.progress_overall.connect(self.handle_progress_overall)
             worker.signals.result.connect(self.handle_finished)
             self.threadpool.start(worker)
 
     @Slot()
-    def handle_progress(self, value: int) -> None:
+    def handle_progress_file(self, file_progress: int) -> None:
         """Update progressbar"""
-        self.progress_bar.setValue(value)
+        self.progress_bar_file.setValue(file_progress)
+
+    @Slot()
+    def handle_progress_overall(self, overall_progress: int) -> None:
+        """Update progressbar"""
+        self.progress_bar_overall.setValue(overall_progress)
 
     @Slot()
     def handle_finished(self, database: LipidDB, samples: dict[str, SampleImageCollection]) -> None:

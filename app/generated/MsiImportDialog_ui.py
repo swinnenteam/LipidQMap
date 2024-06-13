@@ -26,7 +26,7 @@ class Ui_Dialog(object):
     def setupUi(self, Dialog):
         if not Dialog.objectName():
             Dialog.setObjectName(u"Dialog")
-        Dialog.resize(462, 732)
+        Dialog.resize(460, 840)
         self.verticalLayout = QVBoxLayout(Dialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.horizontalLayout = QHBoxLayout()
@@ -185,13 +185,19 @@ class Ui_Dialog(object):
 
         self.verticalLayout.addWidget(self.cal_group_box)
 
+        self.progress_bar_overall = QProgressBar(Dialog)
+        self.progress_bar_overall.setObjectName(u"progress_bar_overall")
+        self.progress_bar_overall.setValue(0)
+
+        self.verticalLayout.addWidget(self.progress_bar_overall)
+
         self.horizontalLayout_2 = QHBoxLayout()
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
-        self.progress_bar = QProgressBar(Dialog)
-        self.progress_bar.setObjectName(u"progress_bar")
-        self.progress_bar.setValue(0)
+        self.progress_bar_file = QProgressBar(Dialog)
+        self.progress_bar_file.setObjectName(u"progress_bar_file")
+        self.progress_bar_file.setValue(0)
 
-        self.horizontalLayout_2.addWidget(self.progress_bar)
+        self.horizontalLayout_2.addWidget(self.progress_bar_file)
 
         self.import_data_button = QPushButton(Dialog)
         self.import_data_button.setObjectName(u"import_data_button")
@@ -221,11 +227,11 @@ class Ui_Dialog(object):
 #if QT_CONFIG(tooltip)
         self.na_iso_cor_checkbox.setToolTip(QCoreApplication.translate("Dialog", u"<html><head/><body><p><span style=\" font-size:14pt;\">Type II isotopic correction for isobaric overlap between [M+H]+ and [M+Na]+ adduct forms. For protonated lipid ions, the sodiated adduct of species [X:Y] (X number of C atoms and Y number of double bonds in the acyl chains) overlaps with species [X+2:Y+3]. The correction algorith is described in H\u00f6ring at el., </span><span style=\" font-size:14pt; font-style:italic;\">Anal. Chem. 2020, 92, 16, 10966\u201310970. </span></p><p><span style=\" font-size:14pt;\">This correction is relevant for measurements with a mass resolution lower than +/- 600.000 (m/z difference 0.0025).</span></p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
-        self.na_iso_cor_checkbox.setText(QCoreApplication.translate("Dialog", u"Correct [M+H]+ for [M+Na]+ overlap", None))
+        self.na_iso_cor_checkbox.setText(QCoreApplication.translate("Dialog", u"Correct [M+H]+ for [M+Na]+ overlap \u24d8", None))
 #if QT_CONFIG(tooltip)
         self.m2_iso_cor_checkbox.setToolTip(QCoreApplication.translate("Dialog", u"<html><head/><body><p><span style=\" font-size:14pt;\">Type II isotopic correction for isobaric overlap between the (M+2) isotopologue of a species and the corresponding species from the same class with 1 double bond less. </span></p><p><span style=\" font-size:14pt;\">This correction is relevant for measurements with a mass resolution lower than +/- 180.000 (m/z difference 0.0089).</span></p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
-        self.m2_iso_cor_checkbox.setText(QCoreApplication.translate("Dialog", u"Correct for M+2 double bond isotopologues overlap", None))
+        self.m2_iso_cor_checkbox.setText(QCoreApplication.translate("Dialog", u"Correct for M+2 double bond isotopologues overlap \u24d8", None))
         self.cal_group_box.setTitle(QCoreApplication.translate("Dialog", u"Online calibration settings", None))
         self.label_6.setText(QCoreApplication.translate("Dialog", u"Peak assignment tolerance (ppm):", None))
         self.label_7.setText(QCoreApplication.translate("Dialog", u"Minimum intensity:", None))

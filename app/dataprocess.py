@@ -1,7 +1,5 @@
 import copy
-from concurrent import futures
 from enum import Enum
-from multiprocessing import Pool
 from pathlib import Path
 
 import numpy as np
@@ -13,22 +11,48 @@ from app.pyimzml_mod import ImzMLParser, get_calibration_offsets, getionimages
 
 
 class ImageType(str, Enum):
+    """
+    Enum for specifying image types.
+    """
+
     raw = "raw"
     isotope = "isotope"
     quant = "quant"
 
 
 class SampleImageCollection:
-    """todo"""
+    """
+    Class for handling collections of sample images with different types (raw, isotope, quant).
+
+    Attributes:
+        ion_mode (IonMode): Ionization mode of the sample.
+        raw (dict[str, npt.NDArray]): Dictionary of raw images.
+        isotope (dict[str, npt.NDArray]): Dictionary of isotope corrected images.
+        quant (dict[str, npt.NDArray]): Dictionary of quantitated images.
+        raw_filtered (dict[str, npt.NDArray]): Dictionary of filtered raw images.
+        isotope_filtered (dict[str, npt.NDArray]): Dictionary of filtered isotope images.
+        quant_filtered (dict[str, npt.NDArray]): Dictionary of filtered quantitated images.
+        shape (tuple[int, int]): Shape of the images.
+    """
 
     def __init__(
         self,
-        progress_callback,
+        progress_file_callback,
         database: LipidDB,
         imzml_path: str,
         ion_mode: IonMode,
         config: Config,
     ) -> None:
+        """
+        Initialize the SampleImageCollection.
+
+        Args:
+            progress_file_callback: Callback for updating progress.
+            database (LipidDB): Database object containing lipid information.
+            imzml_path (str): Path to the imzML file.
+            ion_mode (IonMode): Ionization mode of the sample.
+            config (Config): Configuration settings.
+        """
         self.ion_mode = ion_mode
         self.raw: dict[str, npt.NDArray]
         self.isotope: dict[str, npt.NDArray]
@@ -37,16 +61,27 @@ class SampleImageCollection:
         self.isotope_filtered: dict[str, npt.NDArray]
         self.quant_filtered: dict[str, npt.NDArray]
         self.shape: tuple[int, int]
-        self.load_data(progress_callback, database=database, imzml_path=imzml_path, config=config)
-        self.filter_data(progress_callback, config=config)
+        self.load_data(
+            progress_file_callback, database=database, imzml_path=imzml_path, config=config
+        )
+        self.filter_data(progress_file_callback, config=config)
 
-    def load_data(self, progress_callback, database: LipidDB, imzml_path: str, config: Config):
+    def load_data(self, progress_file_callback, database: LipidDB, imzml_path: str, config: Config):
+        """
+        Load raw images from the imzML file and calculate isotope and quantitative images.
+
+        Args:
+            progress_file_callback: Callback for updating progress.
+            database (LipidDB): Database object containing lipid information.
+            imzml_path (str): Path to the imzML file.
+            config (Config): Configuration settings.
+        """
         imzml_parser = ImzMLParser(imzml_path)
         self.shape = (
             int(imzml_parser.imzmldict["max count of pixels x"]),
             int(imzml_parser.imzmldict["max count of pixels y"]),
         )
-        progress_callback.emit(20)
+        progress_file_callback.emit(20)
         self.raw = load_ion_images(
             database=database,
             imzml=imzml_parser,
@@ -61,26 +96,44 @@ class SampleImageCollection:
                 self.isotope = m2_isotope_correction(database=database, images=self.isotope)
             else:
                 self.isotope = m2_isotope_correction(database=database, images=self.raw)
-        progress_callback.emit(65)
+        progress_file_callback.emit(65)
         if self.isotope:
             self.quant = quantitaton(database=database, images=self.isotope)
         else:
             self.quant = quantitaton(database=database, images=self.raw)
-        progress_callback.emit(70)
+        progress_file_callback.emit(70)
 
-    def filter_data(self, progress_callback, config: Config):
+    def filter_data(self, progress_file_callback, config: Config):
+        """
+        Apply winsorize filtering to raw, isotope, and quant images and replace nan
+        values in the quant images.
+
+        Args:
+            progress_file_callback: Callback for updating progress.
+            config (Config): Configuration settings.
+        """
         n1 = config.settings.filter_settings.raw_image_winsorizing_percentile
         n2 = config.settings.filter_settings.quant_image_winsorizing_percentile
         self.raw_filtered = {k: winsorize_image(v, n1) for (k, v) in self.raw.items()}
-        progress_callback.emit(75)
+        progress_file_callback.emit(75)
         self.isotope_filtered = {k: winsorize_image(v, n1) for (k, v) in self.isotope.items()}
-        progress_callback.emit(80)
+        progress_file_callback.emit(80)
         self.quant_filtered = {k: replace_nan_with_median(v) for (k, v) in self.quant.items()}
-        progress_callback.emit(95)
+        progress_file_callback.emit(95)
         self.quant_filtered = {k: winsorize_image(v, n2) for (k, v) in self.quant_filtered.items()}
-        progress_callback.emit(100)
+        progress_file_callback.emit(100)
 
     def get(self, image_type: ImageType, species_id: str) -> npt.NDArray | None:
+        """
+        Get a specific image by type and species ID.
+
+        Args:
+            image_type (ImageType): Type of the image (raw, isotope, quant).
+            species_id (str): ID of the species.
+
+        Returns:
+            npt.NDArray | None: The requested image or None if not found.
+        """
         match image_type:
             case ImageType.raw:
                 return self.raw_filtered.get(species_id)
@@ -93,22 +146,30 @@ class SampleImageCollection:
 
 
 def load_database_image_collection(
-    progress_callback, database_path: str, ion_mode: IonMode, imzml_paths: list[str], config: Config
+    progress_file_callback,
+    progress_overall_callback,
+    database_path: str,
+    ion_mode: IonMode,
+    imzml_paths: list[str],
+    config: Config,
 ) -> tuple[LipidDB, dict[str, SampleImageCollection]]:
-    """todo"""
+    """
+    Load a collection of sample images from multiple imzML files.
+    """
     samples: dict[str, SampleImageCollection] = dict()
     database = LipidDB(database_path, ion_mode)
-    for path in imzml_paths:
-        progress_callback.emit(5)
+    for idx, path in enumerate(imzml_paths):
+        progress_overall_callback.emit(int(idx / len(imzml_paths) * 100))
+        progress_file_callback.emit(5)
         image_collection = SampleImageCollection(
-            progress_callback,
+            progress_file_callback,
             database=database,
             imzml_path=path,
             ion_mode=ion_mode,
             config=config,
         )
         samples[Path(path).stem] = image_collection
-
+    progress_overall_callback.emit(100)
     return database, samples
 
 
@@ -117,11 +178,21 @@ def load_ion_images(
     imzml: ImzMLParser,
     ion_mode: IonMode,
     config: Config,
-    classes: list[str] | None = None,
 ) -> dict[str, npt.NDArray]:
-    """Load the ion images"""
+    """
+    Load ion images from the imzML file based on the species in the database.
+
+    Args:
+        database (LipidDB): Database object containing lipid information.
+        imzml (ImzMLParser): Parser for the imzML file.
+        ion_mode (IonMode): Ionization mode for the sample images.
+        config (Config): Configuration settings.
+
+    Returns:
+        dict[str, npt.NDArray]: Dictionary of loaded ion images.
+    """
     images: dict[str, npt.NDArray] = dict()
-    species_ids, species_mzs = database.get_all_species(classes)
+    species_ids, species_mzs = database.get_all_species()
 
     cal_ppm = config.settings.processing_settings.calibration_ppm
     calibrant_mz = (
@@ -135,15 +206,6 @@ def load_ion_images(
         if config.settings.processing_settings.online_calibration
         else None
     )
-
-    """
-    items = [(imzml, mz, ppm_to_tolerance(ppm=ppm, mz=mz), offsets) for (_, mz) in species]
-    with Pool(processes=4) as pool:
-        for idx, result in enumerate(pool.starmap(getionimage, items)):
-            progress_callback.emit(int(progress_slope * idx + progress_start))
-            id, _ = species[idx]
-            images[id] = result
-    """
 
     ppm = config.settings.processing_settings.ppm
     tolerances = [ppm_to_tolerance(ppm=ppm, mz=mz) for mz in species_mzs]

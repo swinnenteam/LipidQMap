@@ -1,0 +1,9 @@
+<RCC>
+  <qresource prefix="images">
+    <file>icons/zoom_out.png</file>
+    <file>icons/zoom_in.png</file>
+    <file>icons/save.png</file>
+    <file>icons/open_file.png</file>
+    <file>icons/global.png</file>
+  </qresource>
+</RCC>
