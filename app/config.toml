@@ -14,3 +14,11 @@ calibration_max_intensity = 10000
 
 [database_settings]
 last_used_database = "database_LPC_Carla"
+
+[save_settings]
+save_raw_images = true
+save_iso_images = true
+save_quant_images = true
+save_individual_unfiltered = false
+save_individual_filtered_scaled = false
+save_panel_filtered_scaled = true

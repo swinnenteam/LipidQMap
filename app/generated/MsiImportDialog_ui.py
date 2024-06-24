@@ -141,7 +141,7 @@ class Ui_Dialog(object):
         self.cal_int_spinbox = QSpinBox(self.cal_group_box)
         self.cal_int_spinbox.setObjectName(u"cal_int_spinbox")
         self.cal_int_spinbox.setMinimum(100)
-        self.cal_int_spinbox.setMaximum(10000)
+        self.cal_int_spinbox.setMaximum(1000000)
         self.cal_int_spinbox.setSingleStep(100)
         self.cal_int_spinbox.setValue(10000)
 

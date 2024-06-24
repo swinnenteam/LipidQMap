@@ -1,6 +1,3 @@
-import os
-from pathlib import Path
-
 import pandas as pd
 from pyimzml.ImzMLParser import ImzMLParser
 from PySide6.QtCore import QItemSelectionModel, Qt, QThreadPool
@@ -10,9 +7,10 @@ from app import __appname__
 from app.config import Config
 from app.database import LipidDB
 from app.dataprocess import ImageType, SampleImageCollection
-from app.figures import MplCanvas, save_sample_image_collection
+from app.figures import MplCanvas
 from app.generated.MsiMainWindow_ui import Ui_MainWindow
 from app.utils import BooleanDelegate, PandasModelEditable
+from app.views.file_save_window import FileSaveWindow
 from app.views.imzml_import_window import ImzmlImportWindow
 
 
@@ -25,9 +23,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super().__init__()
         self.database: LipidDB | None = None
         self.config: Config | None = None
-        self.samples: dict[str, SampleImageCollection]
+        self.samples: dict[str, SampleImageCollection] | None = None
         self.ncols: int = 2
+        self.nrows: int
         self.imzml_import_window = ImzmlImportWindow()
+        self.save_window = FileSaveWindow()
         self.boolean_delegate = BooleanDelegate()
 
         self.setupUi(self)
@@ -70,7 +70,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def connect_signals_slots(self) -> None:
         """Connect methods to signal slots."""
         self.action_open_imzml_dialog.triggered.connect(self.open_imzml_dialog)
-        self.action_save_images.triggered.connect(self.save_images)
+        self.action_open_save_dialog.triggered.connect(self.open_save_dialog)
         self.action_global.triggered.connect(self.handle_species_selection_changed)
         self.action_zoom_in.triggered.connect(self.zoom_in)
         self.action_zoom_out.triggered.connect(self.zoom_out)
@@ -80,6 +80,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Launch the imzML import dialog."""
         self.imzml_import_window.set_ui_components_status(True)
         self.imzml_import_window.show()
+
+    def open_save_dialog(self) -> None:
+        """Launch the save images dialog."""
+        self.save_window.set_ui_components_status(True)
+        if self.database is not None:
+            self.save_window.species_selection = self.species_table.model().get_checked_list()
+            self.save_window.samples = self.samples
+            self.save_window.global_scale = self.action_global.isChecked()
+            self.save_window.nrows = self.nrows
+            self.save_window.ncols = self.ncols
+            self.save_window.show()
 
     def handle_species_selection_changed(self) -> None:
         global_scale = self.action_global.isChecked()
@@ -125,14 +136,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def setup_plots(self) -> None:
         nsamples = len(self.samples)
-        nrows = nsamples // self.ncols + (nsamples % self.ncols > 0)
-        self.image_canvas_raw.setup(nrows=nrows, ncols=self.ncols, nsamples=nsamples)
-        self.image_canvas_iso.setup(nrows=nrows, ncols=self.ncols, nsamples=nsamples)
-        self.image_canvas_quant.setup(nrows=nrows, ncols=self.ncols, nsamples=nsamples)
+        self.nrows = nsamples // self.ncols + (nsamples % self.ncols > 0)
+        self.image_canvas_raw.setup(nrows=self.nrows, ncols=self.ncols, nsamples=nsamples)
+        self.image_canvas_iso.setup(nrows=self.nrows, ncols=self.ncols, nsamples=nsamples)
+        self.image_canvas_quant.setup(nrows=self.nrows, ncols=self.ncols, nsamples=nsamples)
         # set height according to heuristic (multiply nrows by a factor that decreases by number of columns)
-        self.scroll_area_raw_contents.setMinimumHeight((1 / self.ncols) * 800 * nrows)
-        self.scroll_area_iso_contents.setMinimumHeight((1 / self.ncols) * 800 * nrows)
-        self.scroll_area_quant_contents.setMinimumHeight((1 / self.ncols) * 800 * nrows)
+        self.scroll_area_raw_contents.setMinimumHeight((1 / self.ncols) * 800 * self.nrows)
+        self.scroll_area_iso_contents.setMinimumHeight((1 / self.ncols) * 800 * self.nrows)
+        self.scroll_area_quant_contents.setMinimumHeight((1 / self.ncols) * 800 * self.nrows)
 
     def reset_canvas(self) -> None:
         for ax in self.image_canvas_raw.fig.get_axes():
@@ -159,29 +170,3 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.reset_canvas()
         self.setup_plots()
         self.handle_species_selection_changed()
-
-    def save_images(self) -> None:
-        save_filepath = QFileDialog.getExistingDirectory(self, "Select Folder")
-
-        model = self.species_table.model()
-        selection: list[str] = model.get_checked_list()
-
-        if save_filepath:
-            # save raw images
-            path = os.path.join(save_filepath, "raw")
-            Path(path).mkdir(parents=True, exist_ok=True)
-            for species, image in next(iter(self.samples.values())).raw_filtered.items():
-                if species in selection:
-                    save_sample_image_collection(species, image, path)
-            # save deisotoped images
-            path = os.path.join(save_filepath, "deisotoped")
-            Path(path).mkdir(parents=True, exist_ok=True)
-            for species, image in next(iter(self.samples.values())).isotope_filtered.items():
-                if species in selection:
-                    save_sample_image_collection(species, image, path)
-            # save quant images
-            path = os.path.join(save_filepath, "quantified")
-            Path(path).mkdir(parents=True, exist_ok=True)
-            for species, image in next(iter(self.samples.values())).quant_filtered.items():
-                if species in selection:
-                    save_sample_image_collection(species, image, path)

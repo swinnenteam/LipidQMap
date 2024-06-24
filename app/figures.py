@@ -1,5 +1,8 @@
 import os
+from pathlib import Path
 
+import matplotlib
+import matplotlib.figure
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
@@ -7,7 +10,10 @@ from matplotlib import colormaps
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+from app.config import Config
 from app.dataprocess import ImageType, SampleImageCollection
+
+matplotlib.use("Qtagg")
 
 plt.set_loglevel(level="warning")
 plt.rcParams.update(
@@ -40,7 +46,7 @@ class MplCanvas(FigureCanvasQTAgg):
         """
         self.ncols: int = 2
         self.ims: list = []
-        self.fig = plt.figure()
+        self.fig: matplotlib.figure.Figure = plt.figure()
         self.canvas_type = canvas_type
         super(MplCanvas, self).__init__(self.fig)
 
@@ -54,7 +60,7 @@ class MplCanvas(FigureCanvasQTAgg):
             nsamples (int): Number of samples to display.
         """
 
-        self.fig.set_size_inches(20, 6 * nrows)
+        # self.fig.set_size_inches(20, 6 * nrows)
         self.ims = []
         cmap = colormaps.get_cmap("viridis")
         blank_image = np.full([300, 500], np.nan)
@@ -96,12 +102,9 @@ class MplCanvas(FigureCanvasQTAgg):
 
         max_value: int | None
         if global_scale:
-            max_value = 0
-            for i, (key, image_collection) in enumerate(samples.items()):
-                image = image_collection.get(self.canvas_type, species_id)
-                image_max = np.nanmax(image) if image is not None else 0
-                max_value = image_max if image_max > max_value else max_value
-            max_value = None if max_value == 0 else max_value
+            max_value = get_max_from_image_collection(
+                samples=samples, species_id=species_id, image_type=self.canvas_type
+            )
         else:
             max_value = None
 
@@ -110,7 +113,7 @@ class MplCanvas(FigureCanvasQTAgg):
             if image is None:
                 x, y = image_collection.shape
                 image = np.full([x, y], np.nan)
-            if i > len(self.ims):
+            if i >= len(self.ims):
                 return
             self.ims[i].set_data(image)
             self.ims[i].autoscale()
@@ -121,30 +124,60 @@ class MplCanvas(FigureCanvasQTAgg):
         self.draw()
 
 
-def save_sample_image_collection(species: str, image: npt.NDArray, path: str) -> None:
+def get_max_from_image_collection(
+    samples: dict[str, SampleImageCollection],
+    species_id: str,
+    image_type: ImageType,
+) -> int | None:
+    max_value: int | None = 0
+    for i, (key, image_collection) in enumerate(samples.items()):
+        image = image_collection.get(image_type, species_id)
+        image_max = np.nanmax(image) if image is not None else 0
+        max_value = image_max if image_max > max_value else max_value
+    max_value = None if max_value == 0 else max_value
+    return max_value
+
+
+def save_individual_image(
+    species_id: str, image: npt.NDArray, max_scale: int | None, path: str
+) -> None:
     """
-    Save a SampleImageCollection to PNG files.
+    Save an interpolated image with color scalebar to a PNG file.
+
+    Args:
+        species (str): The species name.
+        image (npt.NDArray): The image data array.
+        max_scale: (int | None): the maximum value for the color scale
+        path (str): The directory path to save the image.
+    """
+
+    # image with colorbar
+    full_path = os.path.join(path, species_id.replace(":", "_"))
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_axes(rect=(0.0, 0.0, 1.0, 1.0), frameon=False, xticks=[], yticks=[])
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.1)
+    ax.set_title(label=species_id, size=24)
+    # image = np.rot90(image)
+    img = ax.imshow(image, interpolation="gaussian", origin="lower")
+    img.set_clim(vmin=0, vmax=max_scale)
+    # ax.invert_xaxis()
+    cbar = plt.colorbar(img, cax=cax)
+    cbar.set_label(label="pmol / mm²", size=18)
+    cbar.ax.tick_params(labelsize=18)
+    plt.savefig(full_path, bbox_inches="tight", pad_inches=0)
+    plt.close()
+
+
+def save_individual_unfiltered_image(species_id: str, image: npt.NDArray, path: str) -> None:
+    """
+    Save a 1 to 1 pixel representation of the image to a PNG file.
 
     Args:
         species (str): The species name.
         image (npt.NDArray): The image data array.
         path (str): The directory path to save the image.
     """
-
-    # image with colorbar
-    full_path = os.path.join(path, species.replace(":", "_"))
-    fig = plt.figure(figsize=(8, 8))
-    ax = fig.add_axes(rect=(0.0, 0.0, 1.0, 1.0), frameon=False, xticks=[], yticks=[])
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.1)
-    ax.set_title(label=species, size=24)
-    # image = np.rot90(image)
-    img = ax.imshow(image, interpolation="gaussian", origin="lower")
-    ax.invert_xaxis()
-    cbar = plt.colorbar(img, cax=cax)
-    cbar.set_label(label="pmol / mm²", size=18)
-    cbar.ax.tick_params(labelsize=18)
-    plt.savefig(full_path, bbox_inches="tight", pad_inches=0)
 
     # 1 to 1 pixel image
     image_no_nan = np.nan_to_num(x=image, nan=0, copy=True)
@@ -164,5 +197,122 @@ def save_sample_image_collection(species: str, image: npt.NDArray, path: str) ->
     result = np.dstack([result, mask])
     # matplotlib bug workaround, equivalent to setting origin to upper in imsave
     result = np.ascontiguousarray(result[::-1])
+    full_path = os.path.join(path, species_id.replace(":", "_"))
     plt.imsave(fname=f"{full_path}_1to1_pixel.png", arr=result, format="png", origin="upper")
-    plt.clf()
+    plt.close()
+
+
+def save_panel_image(
+    samples: dict[str, SampleImageCollection],
+    global_scale: bool,
+    path: str,
+    nrows: int,
+    ncols: int,
+    image_type: ImageType,
+    species_selection: list[str],
+) -> None:
+    """
+    Save a matplotlib image panel to a PNG file.
+
+    Args:
+        species (str): The species name.
+        image (matplotlib.figure.Figure): A matplotlib figure.
+        path (str): The directory path to save the image.
+    """
+    base_path = os.path.join(path, image_type, "combined")
+    Path(base_path).mkdir(parents=True, exist_ok=True)
+    for species_id in species_selection:
+        fig: matplotlib.figure.Figure = plt.figure(figsize=(6 * ncols, 4 * nrows))
+        max_value: int | None
+        if global_scale:
+            max_value = get_max_from_image_collection(
+                samples=samples, species_id=species_id, image_type=image_type
+            )
+        else:
+            max_value = None
+        for sample_idx, (sample_id, image_collection) in enumerate(samples.items()):
+            ax = fig.add_subplot(nrows, ncols, sample_idx + 1)
+            image = image_collection.get(image_type=image_type, species_id=species_id)
+            if image is None:
+                x, y = image_collection.shape
+                image = np.full([x, y], np.nan)
+            im = ax.imshow(
+                image,
+                origin="lower",
+                interpolation="gaussian",
+                cmap=colormaps.get_cmap("viridis"),
+                vmin=0,
+            )
+            im.set_clim(vmin=0, vmax=max_value)
+
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="3%", pad=0.2)
+            ax.set_title(sample_id)
+            cb = plt.colorbar(im, ax=ax, cax=cax)
+            ax.set_axis_off()
+            ax.set_aspect("auto")
+            ax.apply_aspect()
+
+            if image_type == ImageType.quant:
+                cb.set_label("pmol / mm2")
+
+        fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.2, hspace=0.2)
+        full_path = os.path.join(base_path, species_id.replace(":", "_"))
+        plt.draw()
+        fig.tight_layout()
+
+        plt.savefig(
+            fname=f"{full_path}.png", bbox_inches="tight", pad_inches=0, format="png", dpi=200
+        )
+        plt.close()
+
+
+def save_image_collection(
+    savepath: str,
+    samples: dict[str, SampleImageCollection],
+    species_selection: list[str],
+    global_scale: bool,
+    nrows: int,
+    ncols: int,
+    config: Config,
+) -> None:
+    """
+    Save image collection.
+    """
+    # save raw images
+
+    image_types = []
+    if config.settings.save_settings.save_raw_images:
+        image_types.append(ImageType.raw)
+    if config.settings.save_settings.save_iso_images:
+        image_types.append(ImageType.isotope)
+    if config.settings.save_settings.save_quant_images:
+        image_types.append(ImageType.quant)
+
+    for image_type in image_types:
+        for sample_name, sample in samples.items():
+            path = os.path.join(savepath, image_type, sample_name)
+            for species in species_selection:
+                max_scale = get_max_from_image_collection(samples, species, image_type)
+                image = sample.get(image_type, species)
+                if image is None:
+                    continue
+                if config.settings.save_settings.save_individual_filtered_scaled:
+                    Path(path).mkdir(parents=True, exist_ok=True)
+                    save_individual_image(
+                        species_id=species, image=image, max_scale=max_scale, path=path
+                    )
+                if config.settings.save_settings.save_individual_unfiltered:
+                    Path(path).mkdir(parents=True, exist_ok=True)
+                    save_individual_unfiltered_image(species_id=species, image=image, path=path)
+        if config.settings.save_settings.save_panel_filtered_scaled:
+            save_panel_image(
+                samples=samples,
+                path=savepath,
+                global_scale=global_scale,
+                nrows=nrows,
+                ncols=ncols,
+                image_type=image_type,
+                species_selection=species_selection,
+            )
+    # progress_overall_callback.emit(100)

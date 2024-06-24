@@ -20,7 +20,9 @@ deps: ## Reinstalls dependencies
 
 ui: ## Converts ui files in resources/views to python
 	./venv/bin/pyside6-uic --from-imports resources/views/MsiImportDialog.ui -o app/generated/MsiImportDialog_ui.py
+	./venv/bin/pyside6-uic --from-imports resources/views/MsiSaveDialog.ui -o app/generated/MsiSaveDialog_ui.py
 	./venv/bin/pyside6-uic --from-imports resources/views/MsiMainWindow.ui -o app/generated/MsiMainWindow_ui.py
+	
 
 res: ## Generates and compresses resource listed in resources/resources.qrc
 	./venv/bin/pyside6-rcc -compress 9 -o app/generated/resources_rc.py resources/resources.qrc

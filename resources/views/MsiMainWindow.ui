@@ -78,7 +78,7 @@
           </widget>
           <widget class="QWidget" name="tab_iso">
            <attribute name="title">
-            <string>Iso</string>
+            <string>Isotope corrected</string>
            </attribute>
            <attribute name="toolTip">
             <string>Isotope corrected images</string>
@@ -118,7 +118,7 @@
           </widget>
           <widget class="QWidget" name="tab_quant">
            <attribute name="title">
-            <string>Quant</string>
+            <string>Quantitative</string>
            </attribute>
            <attribute name="toolTip">
             <string>Quantified images</string>
@@ -216,7 +216,7 @@
      <string>&amp;File</string>
     </property>
     <addaction name="action_open_imzml_dialog"/>
-    <addaction name="action_save_images"/>
+    <addaction name="action_open_save_dialog"/>
    </widget>
    <addaction name="menu_file"/>
   </widget>
@@ -224,6 +224,9 @@
   <widget class="QToolBar" name="toolBar">
    <property name="windowTitle">
     <string>toolBar</string>
+   </property>
+   <property name="movable">
+    <bool>false</bool>
    </property>
    <property name="iconSize">
     <size>
@@ -238,7 +241,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="action_open_imzml_dialog"/>
-   <addaction name="action_save_images"/>
+   <addaction name="action_open_save_dialog"/>
    <addaction name="separator"/>
    <addaction name="action_zoom_out"/>
    <addaction name="action_zoom_in"/>
@@ -254,7 +257,7 @@
     <string>Open imzML file...</string>
    </property>
   </action>
-  <action name="action_save_images">
+  <action name="action_open_save_dialog">
    <property name="icon">
     <iconset resource="../resources.qrc">
      <normaloff>:/images/icons/save.png</normaloff>:/images/icons/save.png</iconset>
@@ -303,9 +306,6 @@
    </property>
    <property name="text">
     <string>global</string>
-   </property>
-   <property name="toolTip">
-    <string>Set quantitation scale globally across all images.</string>
    </property>
    <property name="menuRole">
     <enum>QAction::NoRole</enum>

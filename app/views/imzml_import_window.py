@@ -47,13 +47,14 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
     def connect_signals_slots(self) -> None:
         self.import_data_button.clicked.connect(self.process_imzml_files)
         self.open_imzml_button.clicked.connect(self.open_imzml_files)
-        self.ppm_spinbox.valueChanged.connect(self.update_ppm_value)
-        self.m2_iso_cor_checkbox.clicked.connect(self.update_m2_iso_cor)
-        self.na_iso_cor_checkbox.clicked.connect(self.update_na_iso_cor)
-        self.cal_checkbox.clicked.connect(self.update_cal_checked_value)
-        self.calibrant_spinbox.valueChanged.connect(self.update_calibrant)
-        self.cal_ppm_spinbox.valueChanged.connect(self.update_cal_ppm)
-        self.cal_int_spinbox.valueChanged.connect(self.update_cal_intensity)
+        self.cal_checkbox.clicked.connect(self.toggle_cal_checked_value)
+        self.cal_checkbox.clicked.connect(self.update_save_setting)
+        self.ppm_spinbox.valueChanged.connect(self.update_save_setting)
+        self.m2_iso_cor_checkbox.clicked.connect(self.update_save_setting)
+        self.na_iso_cor_checkbox.clicked.connect(self.update_save_setting)
+        self.calibrant_spinbox.valueChanged.connect(self.update_save_setting)
+        self.cal_ppm_spinbox.valueChanged.connect(self.update_save_setting)
+        self.cal_int_spinbox.valueChanged.connect(self.update_save_setting)
         self.pos_radio_button.clicked.connect(self.update_ion_mode)
         # TODO self.database_combo_box.currentTextChanged.connect(self.update_last_used_database)
 
@@ -130,46 +131,32 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         elif self.neg_radio_button.isChecked():
             self.calibrant_spinbox.setValue(config.settings.processing_settings.neg_calibrant)
 
-    def update_m2_iso_cor(self):
-        config.settings.processing_settings.m2_isotope_correction = (
-            self.m2_iso_cor_checkbox.isChecked()
-        )
-        config.save()
-
-    def update_na_iso_cor(self):
-        config.settings.processing_settings.na_isotope_correction = (
-            self.na_iso_cor_checkbox.isChecked()
-        )
-        config.save()
-
-    def update_ppm_value(self):
-        config.settings.processing_settings.ppm = self.ppm_spinbox.value()
-        config.save()
-
-    def update_cal_checked_value(self):
-        config.settings.processing_settings.online_calibration = self.cal_checkbox.isChecked()
+    def toggle_cal_checked_value(self):
         self.calibrant_spinbox.setEnabled(self.cal_checkbox.isChecked())
         self.cal_ppm_spinbox.setEnabled(self.cal_checkbox.isChecked())
         self.cal_int_spinbox.setEnabled(self.cal_checkbox.isChecked())
-        config.save()
 
-    def update_calibrant(self):
-        if self.pos_radio_button.isChecked():
-            config.settings.processing_settings.pos_calibrant = self.calibrant_spinbox.value()
-        elif self.neg_radio_button.isChecked():
-            config.settings.processing_settings.neg_calibrant = self.calibrant_spinbox.value()
-        config.save()
-
-    def update_cal_ppm(self):
-        config.settings.processing_settings.calibration_ppm = self.cal_ppm_spinbox.value()
-        config.save()
-
-    def update_cal_intensity(self):
-        config.settings.processing_settings.calibration_max_intensity = self.cal_int_spinbox.value()
-        config.save()
-
-    def update_last_used_database(self):
-        config.settings.database_settings.last_used_database = self.database_combo_box.currentText()
+    def update_save_setting(self):
+        sender = self.sender()
+        if sender == self.database_combo_box:
+            config.settings.database_settings.last_used_database = sender.currentText()
+        elif sender == self.cal_int_spinbox:
+            config.settings.processing_settings.calibration_max_intensity = sender.value()
+        elif sender == self.cal_ppm_spinbox:
+            config.settings.processing_settings.calibration_ppm = sender.value()
+        elif sender == self.calibrant_spinbox:
+            if self.pos_radio_button.isChecked():
+                config.settings.processing_settings.pos_calibrant = sender.value()
+            elif self.neg_radio_button.isChecked():
+                config.settings.processing_settings.neg_calibrant = sender.value()
+        elif sender == self.ppm_spinbox:
+            config.settings.processing_settings.ppm = sender.value()
+        elif sender == self.na_iso_cor_checkbox:
+            config.settings.processing_settings.na_isotope_correction = sender.isChecked()
+        elif sender == self.m2_iso_cor_checkbox:
+            config.settings.processing_settings.m2_isotope_correction = sender.isChecked()
+        elif sender == self.cal_checkbox:
+            config.settings.processing_settings.online_calibration = sender.isChecked()
         config.save()
 
     def set_ui_components_status(self, active: bool) -> None:

@@ -38,6 +38,19 @@ class FilterSettings(BaseModel):
     quant_image_winsorizing_percentile: int = Field(default=99)
 
 
+class SaveSettings(BaseModel):
+    """
+    Class for validation of the configuration file
+    """
+
+    save_raw_images: bool = Field(default=True)
+    save_iso_images: bool = Field(default=False)
+    save_quant_images: bool = Field(default=True)
+    save_individual_unfiltered: bool = Field(default=False)
+    save_individual_filtered_scaled: bool = Field(default=True)
+    save_panel_filtered_scaled: bool = Field(default=True)
+
+
 class ProcessingSettings(BaseModel):
     """
     Class for validation of the configuration file
@@ -61,6 +74,7 @@ class Configuration(BaseModel):
     filter_settings: FilterSettings = FilterSettings()
     processing_settings: ProcessingSettings = ProcessingSettings()
     database_settings: DatabaseSettings = DatabaseSettings()
+    save_settings: SaveSettings = SaveSettings()
 
 
 class Config:
