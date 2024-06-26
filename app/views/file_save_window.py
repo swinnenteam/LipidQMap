@@ -1,10 +1,9 @@
 import os
 
-from PySide6.QtCore import Qt, QThreadPool, Signal, Slot
+from PySide6.QtCore import QThreadPool, Slot
 from PySide6.QtWidgets import QFileDialog, QWidget
 
-from app.config import config, config_paths
-from app.database import IonMode, LipidDB
+from app.config import config
 from app.dataprocess import SampleImageCollection
 from app.figures import save_image_collection
 from app.generated.MsiSaveDialog_ui import Ui_MsiSaveDialog

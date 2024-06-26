@@ -56,10 +56,10 @@ class SampleImageCollection:
         self.ion_mode = ion_mode
         self.raw: dict[str, npt.NDArray]
         self.isotope: dict[str, npt.NDArray]
-        self.quant: dict[str, npt.NDArray]
-        self.raw_filtered: dict[str, npt.NDArray]
-        self.isotope_filtered: dict[str, npt.NDArray]
-        self.quant_filtered: dict[str, npt.NDArray]
+        self.quant: dict[str, npt.NDArray | None]
+        self.raw_filtered: dict[str, npt.NDArray | None]
+        self.isotope_filtered: dict[str, npt.NDArray | None]
+        self.quant_filtered: dict[str, npt.NDArray | None]
         self.shape: tuple[int, int]
         self.load_data(
             progress_file_callback, database=database, imzml_path=imzml_path, config=config
@@ -221,14 +221,14 @@ def ppm_to_tolerance(ppm: float, mz: float) -> float:
 
 
 def m2_isotope_correction(
-    database: LipidDB, images: dict[str, npt.NDArray], classes: list[str] | None = None
+    database: LipidDB, images: dict[str, npt.NDArray]
 ) -> dict[str, npt.NDArray]:
     """
     Isotopic correction for species withing same class between the M+2 (two 13C) of a species
     and a corresponding monoisotopic species with one less double bond (two extra H).
     """
     corrected_images: dict[str, npt.NDArray] = copy.deepcopy(images)
-    for species_id in database.get_ids_sorted_for_isotope(classes=classes):
+    for species_id in database.get_ids_sorted_for_isotope():
         m2_isotope = database.get_M2_isotope_ID(id=species_id)
         if m2_isotope:
             corrected_images[species_id] = (
@@ -242,7 +242,7 @@ def m2_isotope_correction(
 
 
 def na_isotope_correction(
-    database: LipidDB, images: dict[str, npt.NDArray], classes: list[str] | None = None
+    database: LipidDB, images: dict[str, npt.NDArray]
 ) -> dict[str, npt.NDArray]:
     """
     Isotopic correction for [M+H]+ species with overlap from [M+Na]+ species.
@@ -252,22 +252,19 @@ def na_isotope_correction(
     corrected_images: dict[str, npt.NDArray] = copy.deepcopy(images)
     h_na_ratio_ims = dict()
 
-    for key, value in database.get_sodium_coef_mzs().items():
-        h_id = value[0]
-        na_id = value[1]
+    for h_id, na_id in database.get_hydrogen_sodium_std_pairs():
         ratio_image = np.divide(images[na_id], images[h_id])
         ratio_image[ratio_image == np.inf] = np.nan
-        ratio_image = replace_nan_with_median(ratio_image)
-        h_na_ratio_ims[key] = ratio_image
+        h_na_ratio_ims[h_id] = replace_nan_with_median(ratio_image)
 
-    for species_id in database.get_ids_sorted_for_isotope(classes=classes):
+    for species_id in database.get_ids_sorted_for_isotope():
         if "[M+H]+" not in species_id:
             continue
-        lipid_class = database.get_class(id=species_id)
+        standard, _ = database.get_standard(id=species_id)
         na_isotope = database.get_Na_isotope_ID(id=species_id)
-        if na_isotope:
+        if na_isotope is not None and standard is not None:
             corrected_images[species_id] = (
-                images[species_id] - h_na_ratio_ims[lipid_class] * corrected_images[na_isotope]
+                images[species_id] - h_na_ratio_ims[standard] * corrected_images[na_isotope]
             ).clip(min=0)
         else:
             corrected_images[species_id] = np.copy(images[species_id])
@@ -275,27 +272,30 @@ def na_isotope_correction(
     return corrected_images
 
 
-def quantitaton(
-    database: LipidDB, images: dict[str, npt.NDArray], classes: list[str] | None = None
-) -> dict[str, npt.NDArray]:
+def quantitaton(database: LipidDB, images: dict[str, npt.NDArray]) -> dict[str, npt.NDArray | None]:
     """
     Quantify by dividing the ion images by the ion image of the standard (1 standard per class)
     and multiplying by a user provided factor (standard amount)
     """
-    quant_images: dict[str, npt.NDArray] = dict()
-    for species_id in database.get_ids_non_standards(classes=classes):
+    quant_images: dict[str, npt.NDArray | None] = dict()
+    for species_id in database.get_ids_non_standards():
         standard_id, standard_amount = database.get_standard(id=species_id)
-        quant_image = np.divide(images[species_id], images[standard_id]) * standard_amount
-        quant_image[quant_image == np.inf] = np.nan
-        quant_images[species_id] = quant_image
+        if standard_id is not None and standard_amount is not None:
+            quant_image = np.divide(images[species_id], images[standard_id]) * standard_amount
+            quant_image[quant_image == np.inf] = np.nan
+            quant_images[species_id] = quant_image
+        else:
+            quant_images[species_id] = None
 
     return quant_images
 
 
-def replace_nan_with_median(arr: npt.NDArray) -> npt.NDArray:
+def replace_nan_with_median(arr: npt.NDArray | None) -> npt.NDArray | None:
     """
     Replaces nan values with mean of surrounding window of 3 by 3 pixels, excluding any nan in the window
     """
+    if arr is None:
+        return None
     # Pad the array with NaNs to handle edge cases
     padded_arr = np.pad(arr, pad_width=1, mode="constant", constant_values=np.nan)
     nan_mask = np.isnan(arr)
@@ -308,10 +308,12 @@ def replace_nan_with_median(arr: npt.NDArray) -> npt.NDArray:
     return result
 
 
-def winsorize_image(image: npt.NDArray, upper_percentile: float = 99) -> npt.NDArray:
+def winsorize_image(image: npt.NDArray | None, upper_percentile: float = 99) -> npt.NDArray | None:
     """
     Set extreme high values to some percentile of the data
     """
+    if image is None:
+        return None
     upper_bound = np.nanpercentile(image, upper_percentile)
     winsorized_image = np.copy(image)
     winsorized_image[winsorized_image > upper_bound] = upper_bound

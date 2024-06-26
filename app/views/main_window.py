@@ -1,7 +1,5 @@
-import pandas as pd
-from pyimzml.ImzMLParser import ImzMLParser
-from PySide6.QtCore import QItemSelectionModel, Qt, QThreadPool
-from PySide6.QtWidgets import QFileDialog, QMainWindow, QVBoxLayout
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QMainWindow
 
 from app import __appname__
 from app.config import Config
@@ -16,10 +14,16 @@ from app.views.imzml_import_window import ImzmlImportWindow
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     """
-    Main window of the application
+    Main window of the application.
+
+    This class manages the main interface of the application, handling user interactions,
+    displaying sample images, and managing the application's state.
     """
 
     def __init__(self) -> None:
+        """
+        Initialize the main window and set up the UI components.
+        """
         super().__init__()
         self.database: LipidDB | None = None
         self.config: Config | None = None
@@ -41,6 +45,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.connect_signals_slots()
 
     def keyPressEvent(self, event) -> None:
+        """
+        Handle key press events for navigation and interaction.
+
+        Parameters:
+        event (QKeyEvent): The key event to handle.
+        """
         if event.key() == Qt.Key.Key_Down:
             index = self.species_table.selectionModel().selectedRows()[0].row()
             self.species_table.selectRow(index + 1)
@@ -93,25 +103,35 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.save_window.show()
 
     def handle_species_selection_changed(self) -> None:
+        """
+        Handle the event when the species selection is changed.
+        """
         global_scale = self.action_global.isChecked()
         species_id = None
         if self.database is not None:
             index = self.species_table.selectionModel().selectedRows()[0].row()
             species_id = self.database.get_id(index)
-        if self.image_canvas_raw is not None and species_id is not None:
+
+        if species_id is None or self.samples is None:
+            return
+
+        if self.image_canvas_iso is not None:
             self.image_canvas_raw.update_figure(
                 samples=self.samples, species_id=species_id, global_scale=global_scale
             )
-        if self.image_canvas_iso is not None and species_id is not None:
+        if self.image_canvas_iso is not None:
             self.image_canvas_iso.update_figure(
                 samples=self.samples, species_id=species_id, global_scale=global_scale
             )
-        if self.image_canvas_quant is not None and species_id is not None:
+        if self.image_canvas_quant is not None:
             self.image_canvas_quant.update_figure(
                 samples=self.samples, species_id=species_id, global_scale=global_scale
             )
 
     def init_data(self) -> None:
+        """
+        Initialize data after loading imzML files.
+        """
         self.samples = self.imzml_import_window.samples
         self.database = self.imzml_import_window.database
         assert self.database is not None
@@ -135,6 +155,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.handle_species_selection_changed()
 
     def setup_plots(self) -> None:
+        """
+        Set up the plots for displaying sample images.
+        """
+        if self.samples is None:
+            return
         nsamples = len(self.samples)
         self.nrows = nsamples // self.ncols + (nsamples % self.ncols > 0)
         self.image_canvas_raw.setup(nrows=self.nrows, ncols=self.ncols, nsamples=nsamples)
@@ -146,6 +171,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.scroll_area_quant_contents.setMinimumHeight((1 / self.ncols) * 800 * self.nrows)
 
     def reset_canvas(self) -> None:
+        """
+        Reset the canvases by clearing and removing all axes.
+        """
         for ax in self.image_canvas_raw.fig.get_axes():
             ax.cla()
             ax.remove()
@@ -157,6 +185,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             ax.remove()
 
     def zoom_in(self) -> None:
+        """
+        Zoom in by decreasing the number of columns and adjusting the layout.
+        """
         self.ncols -= 1
         if self.ncols < 1:
             self.ncols = 1
@@ -166,6 +197,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.handle_species_selection_changed()
 
     def zoom_out(self) -> None:
+        """
+        Zoom out by increasing the number of columns and adjusting the layout.
+        """
         self.ncols += 1
         self.reset_canvas()
         self.setup_plots()

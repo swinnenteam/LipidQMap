@@ -1,6 +1,6 @@
 import os
 
-from PySide6.QtCore import Qt, QThreadPool, Signal, Slot
+from PySide6.QtCore import QThreadPool, Signal, Slot
 from PySide6.QtWidgets import QFileDialog, QWidget
 
 from app.config import config, config_paths
@@ -61,7 +61,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
     def fetch_db_list(self):
         dbs = os.listdir(config_paths["DATABASE_DIR"])
         dbs = list(filter(lambda f: f.endswith(".xlsx"), dbs))
-        dbs = [s.strip(".xlsx") for s in dbs]
+        dbs = [os.path.splitext(s)[0] for s in dbs]
         self.database_combo_box.addItems(dbs)
 
     def process_imzml_files(self) -> None:

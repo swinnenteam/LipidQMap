@@ -31,6 +31,7 @@ run: ## Runs the application
 	export PYTHONPATH=$(PWD) && ./venv/bin/python3 app
 
 build: ## Builds the application
+	make clean
 	./venv/bin/pyinstaller msi-quant.spec
 
 installer-spec:
