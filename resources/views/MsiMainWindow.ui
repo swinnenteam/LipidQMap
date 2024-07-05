@@ -14,189 +14,203 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout">
-    <item>
-     <widget class="QSplitter" name="splitter">
+   <layout class="QGridLayout" name="gridLayout_2">
+    <item row="0" column="0">
+     <widget class="QSplitter" name="splitter_barplot">
       <property name="orientation">
-       <enum>Qt::Horizontal</enum>
+       <enum>Qt::Vertical</enum>
       </property>
-      <widget class="QFrame" name="frame_1">
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>0</height>
-        </size>
+      <widget class="QSplitter" name="splitter">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
        </property>
-       <property name="frameShape">
-        <enum>QFrame::StyledPanel</enum>
-       </property>
-       <property name="frameShadow">
-        <enum>QFrame::Raised</enum>
-       </property>
-       <layout class="QGridLayout" name="gridLayout">
-        <property name="leftMargin">
-         <number>0</number>
+       <widget class="QFrame" name="frame_1">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
         </property>
-        <property name="rightMargin">
-         <number>0</number>
+        <property name="frameShape">
+         <enum>QFrame::StyledPanel</enum>
         </property>
-        <property name="bottomMargin">
-         <number>0</number>
+        <property name="frameShadow">
+         <enum>QFrame::Raised</enum>
         </property>
-        <item row="0" column="0">
-         <widget class="QTabWidget" name="tab_widget">
-          <property name="currentIndex">
-           <number>0</number>
-          </property>
-          <widget class="QWidget" name="tab_raw">
-           <attribute name="title">
-            <string>Raw</string>
-           </attribute>
-           <attribute name="toolTip">
-            <string>Raw images</string>
-           </attribute>
-           <layout class="QGridLayout" name="gridLayout_5">
-            <item row="0" column="0">
-             <widget class="QScrollArea" name="scroll_area_raw">
-              <property name="widgetResizable">
-               <bool>true</bool>
-              </property>
-              <widget class="QWidget" name="scroll_area_raw_contents">
-               <property name="geometry">
-                <rect>
-                 <x>0</x>
-                 <y>0</y>
-                 <width>319</width>
-                 <height>422</height>
-                </rect>
+        <layout class="QGridLayout" name="gridLayout">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item row="0" column="0">
+          <widget class="QTabWidget" name="tab_widget">
+           <property name="currentIndex">
+            <number>0</number>
+           </property>
+           <widget class="QWidget" name="tab_raw">
+            <attribute name="title">
+             <string>Raw</string>
+            </attribute>
+            <attribute name="toolTip">
+             <string>Raw images</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_5">
+             <item row="0" column="0">
+              <widget class="QScrollArea" name="scroll_area_raw">
+               <property name="widgetResizable">
+                <bool>true</bool>
                </property>
-               <layout class="QVBoxLayout" name="verticalLayout_4"/>
+               <widget class="QWidget" name="scroll_area_raw_contents">
+                <property name="geometry">
+                 <rect>
+                  <x>0</x>
+                  <y>0</y>
+                  <width>337</width>
+                  <height>363</height>
+                 </rect>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_4"/>
+               </widget>
               </widget>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-          <widget class="QWidget" name="tab_iso">
-           <attribute name="title">
-            <string>Isotope corrected</string>
-           </attribute>
-           <attribute name="toolTip">
-            <string>Isotope corrected images</string>
-           </attribute>
-           <layout class="QGridLayout" name="gridLayout_3">
-            <item row="0" column="0">
-             <widget class="QScrollArea" name="scroll_area_iso">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="minimumSize">
-               <size>
-                <width>0</width>
-                <height>0</height>
-               </size>
-              </property>
-              <property name="widgetResizable">
-               <bool>true</bool>
-              </property>
-              <widget class="QWidget" name="scroll_area_iso_contents">
-               <property name="geometry">
-                <rect>
-                 <x>0</x>
-                 <y>0</y>
-                 <width>319</width>
-                 <height>422</height>
-                </rect>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_iso">
+            <attribute name="title">
+             <string>Isotope corrected</string>
+            </attribute>
+            <attribute name="toolTip">
+             <string>Isotope corrected images</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_3">
+             <item row="0" column="0">
+              <widget class="QScrollArea" name="scroll_area_iso">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
                </property>
-               <layout class="QVBoxLayout" name="verticalLayout_2"/>
-              </widget>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-          <widget class="QWidget" name="tab_quant">
-           <attribute name="title">
-            <string>Quantitative</string>
-           </attribute>
-           <attribute name="toolTip">
-            <string>Quantified images</string>
-           </attribute>
-           <layout class="QGridLayout" name="gridLayout_4">
-            <item row="0" column="0">
-             <widget class="QScrollArea" name="scroll_area_quant">
-              <property name="widgetResizable">
-               <bool>true</bool>
-              </property>
-              <widget class="QWidget" name="scroll_area_quant_contents">
-               <property name="geometry">
-                <rect>
-                 <x>0</x>
-                 <y>0</y>
-                 <width>319</width>
-                 <height>422</height>
-                </rect>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
                </property>
-               <layout class="QVBoxLayout" name="verticalLayout_3"/>
+               <property name="widgetResizable">
+                <bool>true</bool>
+               </property>
+               <widget class="QWidget" name="scroll_area_iso_contents">
+                <property name="geometry">
+                 <rect>
+                  <x>0</x>
+                  <y>0</y>
+                  <width>337</width>
+                  <height>363</height>
+                 </rect>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_2"/>
+               </widget>
               </widget>
-             </widget>
-            </item>
-           </layout>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_quant">
+            <attribute name="title">
+             <string>Quantitative</string>
+            </attribute>
+            <attribute name="toolTip">
+             <string>Quantified images</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_4">
+             <item row="0" column="0">
+              <widget class="QScrollArea" name="scroll_area_quant">
+               <property name="widgetResizable">
+                <bool>true</bool>
+               </property>
+               <widget class="QWidget" name="scroll_area_quant_contents">
+                <property name="geometry">
+                 <rect>
+                  <x>0</x>
+                  <y>0</y>
+                  <width>337</width>
+                  <height>363</height>
+                 </rect>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_3"/>
+               </widget>
+              </widget>
+             </item>
+            </layout>
+           </widget>
           </widget>
-         </widget>
-        </item>
-       </layout>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QFrame" name="frame_2">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>400</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="baseSize">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::StyledPanel</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Raised</enum>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout">
+         <item>
+          <widget class="QTableView" name="species_table">
+           <property name="baseSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="editTriggers">
+            <set>QAbstractItemView::DoubleClicked</set>
+           </property>
+           <property name="tabKeyNavigation">
+            <bool>false</bool>
+           </property>
+           <property name="selectionMode">
+            <enum>QAbstractItemView::ExtendedSelection</enum>
+           </property>
+           <property name="selectionBehavior">
+            <enum>QAbstractItemView::SelectRows</enum>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
       </widget>
-      <widget class="QFrame" name="frame_2">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>400</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="baseSize">
-        <size>
-         <width>0</width>
-         <height>0</height>
-        </size>
-       </property>
+      <widget class="QFrame" name="barplot_frame">
        <property name="frameShape">
         <enum>QFrame::StyledPanel</enum>
        </property>
        <property name="frameShadow">
         <enum>QFrame::Raised</enum>
        </property>
-       <layout class="QVBoxLayout" name="verticalLayout">
-        <item>
-         <widget class="QTableView" name="species_table">
-          <property name="baseSize">
-           <size>
-            <width>0</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="editTriggers">
-           <set>QAbstractItemView::DoubleClicked</set>
-          </property>
-          <property name="tabKeyNavigation">
-           <bool>false</bool>
-          </property>
-          <property name="selectionMode">
-           <enum>QAbstractItemView::ExtendedSelection</enum>
-          </property>
-          <property name="selectionBehavior">
-           <enum>QAbstractItemView::SelectRows</enum>
-          </property>
-         </widget>
-        </item>
-       </layout>
+       <layout class="QVBoxLayout" name="verticalLayout_5"/>
       </widget>
      </widget>
     </item>
@@ -218,7 +232,24 @@
     <addaction name="action_open_imzml_dialog"/>
     <addaction name="action_open_save_dialog"/>
    </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>Edit</string>
+    </property>
+    <addaction name="action_rotate_left"/>
+    <addaction name="action_rotate_right"/>
+    <addaction name="action_reflect_horizontal"/>
+    <addaction name="action_reflect_vertical"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="action_open_about_dialog"/>
+   </widget>
    <addaction name="menu_file"/>
+   <addaction name="menuEdit"/>
+   <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="toolBar">
@@ -246,7 +277,14 @@
    <addaction name="action_zoom_out"/>
    <addaction name="action_zoom_in"/>
    <addaction name="separator"/>
+   <addaction name="action_rotate_left"/>
+   <addaction name="action_rotate_right"/>
+   <addaction name="action_reflect_horizontal"/>
+   <addaction name="action_reflect_vertical"/>
+   <addaction name="separator"/>
    <addaction name="action_global"/>
+   <addaction name="separator"/>
+   <addaction name="action_open_about_dialog"/>
   </widget>
   <action name="action_open_imzml_dialog">
    <property name="icon">
@@ -306,6 +344,69 @@
    </property>
    <property name="text">
     <string>global</string>
+   </property>
+   <property name="toolTip">
+    <string>Global scale</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::NoRole</enum>
+   </property>
+  </action>
+  <action name="action_rotate_left">
+   <property name="icon">
+    <iconset resource="../resources.qrc">
+     <normaloff>:/images/icons/rotate_left.png</normaloff>:/images/icons/rotate_left.png</iconset>
+   </property>
+   <property name="text">
+    <string>Rotate Left</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::NoRole</enum>
+   </property>
+  </action>
+  <action name="action_rotate_right">
+   <property name="icon">
+    <iconset resource="../resources.qrc">
+     <normaloff>:/images/icons/rotate_right.png</normaloff>:/images/icons/rotate_right.png</iconset>
+   </property>
+   <property name="text">
+    <string>Rotate Right</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::NoRole</enum>
+   </property>
+  </action>
+  <action name="action_reflect_horizontal">
+   <property name="icon">
+    <iconset resource="../resources.qrc">
+     <normaloff>:/images/icons/reflect_horizontal.png</normaloff>:/images/icons/reflect_horizontal.png</iconset>
+   </property>
+   <property name="text">
+    <string>Reflect Horizontal</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::NoRole</enum>
+   </property>
+  </action>
+  <action name="action_reflect_vertical">
+   <property name="icon">
+    <iconset resource="../resources.qrc">
+     <normaloff>:/images/icons/reflect_vertical.png</normaloff>:/images/icons/reflect_vertical.png</iconset>
+   </property>
+   <property name="text">
+    <string>Reflect Vertical</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::NoRole</enum>
+   </property>
+  </action>
+  <action name="action_open_about_dialog">
+   <property name="icon">
+    <iconset resource="../resources.qrc">
+     <normaloff>:/images/icons/help.png</normaloff>:/images/icons/help.png</iconset>
+   </property>
+   <property name="text">
+    <string>About</string>
    </property>
    <property name="menuRole">
     <enum>QAction::NoRole</enum>

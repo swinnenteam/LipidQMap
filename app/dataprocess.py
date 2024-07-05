@@ -1,6 +1,8 @@
 import copy
 from enum import Enum
+from functools import cache
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 import numpy.typing as npt
@@ -60,7 +62,6 @@ class SampleImageCollection:
         self.raw_filtered: dict[str, npt.NDArray | None]
         self.isotope_filtered: dict[str, npt.NDArray | None]
         self.quant_filtered: dict[str, npt.NDArray | None]
-        self.shape: tuple[int, int]
         self.load_data(
             progress_file_callback, database=database, imzml_path=imzml_path, config=config
         )
@@ -77,10 +78,11 @@ class SampleImageCollection:
             config (Config): Configuration settings.
         """
         imzml_parser = ImzMLParser(imzml_path)
-        self.shape = (
-            int(imzml_parser.imzmldict["max count of pixels x"]),
-            int(imzml_parser.imzmldict["max count of pixels y"]),
-        )
+
+        # self.shape = (
+        #    int(imzml_parser.imzmldict["max count of pixels x"]),
+        #    int(imzml_parser.imzmldict["max count of pixels y"]),
+        # )
         progress_file_callback.emit(20)
         self.raw = load_ion_images(
             database=database,
@@ -143,6 +145,101 @@ class SampleImageCollection:
                 return self.quant_filtered.get(species_id)
             case _:
                 return None
+
+    @cache
+    def get_mean(self, image_type: ImageType, species_id: str) -> int:
+        """
+        Get the mean intensity of a specific image by type and species ID.
+
+        Args:
+            image_type (ImageType): Type of the image (raw, isotope, quant).
+            species_id (str): ID of the species.
+
+        Returns:
+            int: The mean of the requested image or zero if not found.
+        """
+        match image_type:
+            case ImageType.raw:
+                image = self.raw_filtered.get(species_id)
+                if image is None:
+                    return 0
+                return np.nanmean(image, axis=(0, 1))
+            case ImageType.isotope:
+                image = self.isotope_filtered.get(species_id)
+                if image is None:
+                    return 0
+                return np.nanmean(image, axis=(0, 1))
+            case ImageType.quant:
+                image = self.quant_filtered.get(species_id)
+                if image is None:
+                    return 0
+                return np.nanmean(image, axis=(0, 1))
+            case _:
+                return 0
+
+    def transform(self, transformation: str) -> None:
+        """
+        Applies a specified transformation to the images.
+
+        Parameters:
+        transformation : str
+            The transformation to apply. Supported values are:
+            - "rotate_left": Rotates the image 90 degrees counterclockwise.
+            - "rotate_right": Rotates the image 90 degrees clockwise.
+            - "reflect_horizontal": Reflects the image horizontally (left-right flip).
+            - "reflect_vertical": Reflects the image vertically (up-down flip).
+
+        Returns:
+            None
+                The function modifies the images in place and does not return any value.
+        """
+
+        func: Callable
+        param: int
+
+        match transformation:
+            case "rotate_left":
+                func = np.rot90
+                param = -1
+            case "rotate_right":
+                func = np.rot90
+                param = 1
+                pass
+            case "reflect_horizontal":
+                func = np.flip
+                param = 1
+            case "reflect_vertical":
+                func = np.flip
+                param = 0
+            case _:
+                return
+
+        self.raw = {
+            key: func(value, param) if value is not None else value
+            for (key, value) in self.raw.items()
+        }
+        self.raw_filtered = {
+            key: func(value, param) if value is not None else value
+            for (key, value) in self.raw_filtered.items()
+        }
+        self.isotope = {key: func(value, param) for (key, value) in self.isotope.items()}
+        self.isotope_filtered = {
+            key: func(value, param) if value is not None else value
+            for (key, value) in self.isotope_filtered.items()
+        }
+        self.quant = {
+            key: func(value, param) if value is not None else value
+            for (key, value) in self.quant.items()
+        }
+        self.quant_filtered = {
+            key: func(value, param) if value is not None else value
+            for (key, value) in self.quant_filtered.items()
+        }
+
+    @property
+    def shape(self) -> tuple[int, int]:
+        x, y = self.raw[next(iter(self.raw))].shape
+        return (x, y)
 
 
 def load_database_image_collection(

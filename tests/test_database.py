@@ -38,6 +38,22 @@ def test_get_ids_non_standards(database: LipidDB) -> None:
     assert not "PC 33:1 d7" in species_ids
 
 
+def test_get_all_species_same_class(database: LipidDB) -> None:
+    assert database.get_all_species_same_class("PC 32:1 [M+H]+") == [
+        "PC 33:1 d7 [M+H]+",
+        "PC 32:1 [M+H]+",
+        "PC 34:1 [M+H]+",
+        "PC 36:1 [M+H]+",
+        "PC 32:2 [M+H]+",
+        "PC 34:2 [M+H]+",
+        "PC 36:2 [M+H]+",
+        "PC 32:4 [M+H]+",
+        "PC 34:4 [M+H]+",
+        "PC 36:4 [M+H]+",
+        "PC 38:4 [M+H]+",
+    ]
+
+
 def test_get_standard(database: LipidDB) -> None:
     assert database.get_standard("PC 32:1 [M+Na]+") == ("PC 33:1 d7 [M+Na]+", 1.5)
 

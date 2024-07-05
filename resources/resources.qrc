@@ -1,6 +1,11 @@
 <RCC>
   <qresource prefix="images">
+    <file>icons/rotate_left.png</file>
+    <file>icons/rotate_right.png</file>
+    <file>icons/reflect_horizontal.png</file>
+    <file>icons/reflect_vertical.png</file>
     <file>icons/zoom_out.png</file>
+    <file>icons/help.png</file>
     <file>icons/zoom_in.png</file>
     <file>icons/save.png</file>
     <file>icons/open_file.png</file>

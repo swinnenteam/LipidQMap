@@ -7,7 +7,7 @@ ppm = 15.0
 m2_isotope_correction = true
 na_isotope_correction = false
 online_calibration = true
-pos_calibrant = 798.541
+pos_calibrant = 734.5694
 neg_calibrant = 798.541
 calibration_ppm = 30.0
 calibration_max_intensity = 10000
@@ -17,8 +17,8 @@ last_used_database = "database_LPC_Carla"
 
 [save_settings]
 save_raw_images = true
-save_iso_images = true
-save_quant_images = true
-save_individual_unfiltered = false
-save_individual_filtered_scaled = false
+save_iso_images = false
+save_quant_images = false
+save_individual_unfiltered = true
+save_individual_filtered_scaled = true
 save_panel_filtered_scaled = true

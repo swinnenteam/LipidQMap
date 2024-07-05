@@ -129,6 +129,7 @@ class LipidDB:
         """
 
         # Add species with multiple adduct forms as individual rows for each adduct.
+        self.db["Adducts"] = self.db["Adducts"].str.replace(" ", "")
         self.db["Adducts"] = self.db["Adducts"].str.split(",")
         self.db = self.db.explode("Adducts")
 
@@ -165,6 +166,11 @@ class LipidDB:
         Returns the Lipid_id at the requested index
         """
         return self.db.index[index]
+
+    def get_all_species_same_class(self, species_id: str) -> list[str]:
+        class_adduct = self.db.loc[self.db.index == species_id, "Class_Adduct"]
+        class_adduct = class_adduct.values[0]
+        return self.db[self.db.Class_Adduct == class_adduct].index.to_list()
 
     def _add_adduct_to_id(self, row: pd.Series, column: str):
         """

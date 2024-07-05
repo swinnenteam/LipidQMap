@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 import matplotlib
@@ -9,6 +10,7 @@ import numpy.typing as npt
 from matplotlib import colormaps
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from PySide6.QtCore import Signal
 
 from app.config import Config
 from app.dataprocess import ImageType, SampleImageCollection
@@ -24,6 +26,72 @@ plt.rcParams.update(
     }
 )
 
+cyan = "#1de9b6"
+
+
+class BarplotCanvas(FigureCanvasQTAgg):
+    """
+    A custom matplotlib canvas for displaying a barplot.
+
+    Attributes:
+        fig (matplotlib.figure.Figure): The figure object.
+    """
+
+    def __init__(self, parent=None):
+        """
+        Initialize the MplCanvas.
+        """
+        self.fig = matplotlib.figure.Figure = plt.figure()
+        self.fig.set_tight_layout(True)
+        self.ax = self.fig.add_subplot(111)
+        super(BarplotCanvas, self).__init__(self.fig)
+
+    def setup(self) -> None:
+        """
+        Set up the figure configuration.
+        """
+        # self.ax = self.fig.add_subplot(111)
+        self.ax.tick_params(axis="x", labelrotation=90)
+        self.ax.set_ylabel("Average Intensity")
+        self.ax.spines["bottom"].set_color("white")
+        self.ax.spines["top"].set_color((0, 0, 0, 0))
+        self.ax.spines["right"].set_color((0, 0, 0, 0))
+        self.ax.spines["left"].set_color("white")
+        self.ax.tick_params(axis="x", colors="white", labelsize=9)
+        self.ax.tick_params(axis="y", colors="white", labelsize=9)
+        self.ax.yaxis.label.set_color("white")
+        self.ax.xaxis.label.set_color("white")
+
+    def update_figure(self, sample: SampleImageCollection, species: list[str]) -> None:
+        """
+        Update the figure with new image data.
+
+        Args:
+            sample: SampleImageCollection
+            species: list[str]
+        """
+        adduct = re.findall("\s\[.+\][+-]", species[0])[0]
+        values = [sample.get_mean(image_type=ImageType.raw, species_id=id) for id in species]
+        species = [re.sub("\s\[.+\][+-]", "", s) for s in species]
+        self.ax.cla()
+        self.ax.bar(species, values, color=[cyan])
+        self.ax.text(
+            0.99,
+            0.99,
+            adduct,
+            ha="right",
+            va="top",
+            fontdict={"color": "white", "size": 10},
+            transform=self.ax.transAxes,
+        )
+        self.draw()
+
+    def reset_canvas(self) -> None:
+        """
+        Reset the canvas by clearing and removing all axes.
+        """
+        self.ax.cla()
+
 
 class MplCanvas(FigureCanvasQTAgg):
     """
@@ -36,6 +104,8 @@ class MplCanvas(FigureCanvasQTAgg):
         canvas_type (ImageType): Type of the image to be displayed (Raw, Iso or Quant).
     """
 
+    image_clicked = Signal(str)
+
     def __init__(self, canvas_type: ImageType, parent=None):
         """
         Initialize the MplCanvas.
@@ -44,13 +114,19 @@ class MplCanvas(FigureCanvasQTAgg):
             canvas_type (ImageType): The type of image to be displayed.
             parent: The parent widget.
         """
+
         self.ncols: int = 2
         self.ims: list = []
         self.fig: matplotlib.figure.Figure = plt.figure()
         self.canvas_type = canvas_type
         super(MplCanvas, self).__init__(self.fig)
+        self.mpl_connect("button_press_event", self.on_press)
 
-    def setup(self, nrows: int, ncols: int, nsamples: int) -> None:
+    def on_press(self, event):
+        if event.inaxes is not None:
+            self.image_clicked.emit(event.inaxes.get_title())
+
+    def setup(self, nrows: int, ncols: int, dimensions: list[tuple[int, int]]) -> None:
         """
         Set up the grid layout for displaying images.
 
@@ -58,18 +134,24 @@ class MplCanvas(FigureCanvasQTAgg):
             nrows (int): Number of rows in the grid.
             ncols (int): Number of columns in the grid.
             nsamples (int): Number of samples to display.
+            dimensions list[tuple[int,int]]: list of x and y dimensions of the images
         """
 
-        # self.fig.set_size_inches(20, 6 * nrows)
         self.ims = []
         cmap = colormaps.get_cmap("viridis")
-        blank_image = np.full([300, 500], np.nan)
         fg_color = "white"
 
-        for sample_idx in range(nsamples):
+        for sample_idx, (x, y) in enumerate(dimensions):
             ax = self.fig.add_subplot(nrows, ncols, sample_idx + 1)
             # interpolation nearest or gaussian
-            im = ax.imshow(blank_image, origin="lower", interpolation="gaussian", cmap=cmap, vmin=0)
+            im = ax.imshow(
+                np.full([x, y], np.nan),
+                origin="lower",
+                interpolation="gaussian",
+                cmap=cmap,
+                vmin=0,
+                aspect="equal",
+            )
             self.ims.append(im)
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="3%", pad=0.2)
@@ -89,7 +171,11 @@ class MplCanvas(FigureCanvasQTAgg):
         )
 
     def update_figure(
-        self, samples: dict[str, SampleImageCollection], species_id: str, global_scale: bool = True
+        self,
+        samples: dict[str, SampleImageCollection],
+        species_id: str,
+        active_sample_id: str,
+        global_scale: bool = True,
     ) -> None:
         """
         Update the figure with new image data.
@@ -110,18 +196,39 @@ class MplCanvas(FigureCanvasQTAgg):
 
         for i, (key, image_collection) in enumerate(samples.items()):
             image = image_collection.get(self.canvas_type, species_id)
+            x, y = image_collection.shape
             if image is None:
-                x, y = image_collection.shape
                 image = np.full([x, y], np.nan)
             if i >= len(self.ims):
                 return
             self.ims[i].set_data(image)
+            self.ims[i].set_extent((0, y, 0, x))
             self.ims[i].autoscale()
             self.ims[i].set_clim(vmin=0, vmax=max_value)
-            self.fig.axes[i * 2].set_title(key, color="white")
+            color = "white"
+            if key == active_sample_id:
+                color = cyan
+            self.fig.axes[i * 2].set_title(key, fontdict={"color": color, "size": 10})
 
         self.flush_events()
         self.draw()
+
+    def set_active_image(self, image_id) -> None:
+        for ax in self.fig.get_axes():
+            if image_id == ax.get_title():
+                ax.title.set_color(cyan)
+            else:
+                ax.title.set_color("white")
+        self.flush_events()
+        self.draw()
+
+    def reset_canvas(self) -> None:
+        """
+        Reset the canvases by clearing and removing all axes.
+        """
+        for ax in self.fig.get_axes():
+            ax.cla()
+            ax.remove()
 
 
 def get_max_from_image_collection(
@@ -182,7 +289,7 @@ def save_individual_unfiltered_image(species_id: str, image: npt.NDArray, path: 
     # 1 to 1 pixel image
     image_no_nan = np.nan_to_num(x=image, nan=0, copy=True)
     colmap = plt.get_cmap("viridis", 256)
-    lut = (colmap.colors[..., 0:3] * 255).astype(np.uint8)
+    lut = (colmap.colors[..., 0:3] * 255).astype(np.uint8)  # type: ignore
     # to map the image to RGBA, scale to [0-255]
     rescaled = (
         (image_no_nan.astype(float) - image_no_nan.min())
@@ -243,6 +350,7 @@ def save_panel_image(
                 cmap=colormaps.get_cmap("viridis"),
                 vmin=0,
             )
+
             im.set_clim(vmin=0, vmax=max_value)
 
             divider = make_axes_locatable(ax)
@@ -250,7 +358,8 @@ def save_panel_image(
             ax.set_title(sample_id)
             cb = plt.colorbar(im, ax=ax, cax=cax)
             ax.set_axis_off()
-            ax.set_aspect("auto")
+            # ax.set_aspect("auto")
+            ax.set(adjustable="datalim")
             ax.apply_aspect()
 
             if image_type == ImageType.quant:
@@ -315,4 +424,3 @@ def save_image_collection(
                 image_type=image_type,
                 species_selection=species_selection,
             )
-    # progress_overall_callback.emit(100)
