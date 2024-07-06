@@ -37,10 +37,10 @@ class Ui_Dialog(object):
 
         self.verticalLayout_2.addWidget(self.label)
 
-        self.label_2 = QLabel(Dialog)
-        self.label_2.setObjectName(u"label_2")
+        self.label_version = QLabel(Dialog)
+        self.label_version.setObjectName(u"label_version")
 
-        self.verticalLayout_2.addWidget(self.label_2)
+        self.verticalLayout_2.addWidget(self.label_version)
 
         self.verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
@@ -170,7 +170,7 @@ class Ui_Dialog(object):
     def retranslateUi(self, Dialog):
         Dialog.setWindowTitle(QCoreApplication.translate("Dialog", u"About", None))
         self.label.setText(QCoreApplication.translate("Dialog", u"MSI-Quant", None))
-        self.label_2.setText(QCoreApplication.translate("Dialog", u"Version: 1.0.0", None))
+        self.label_version.setText(QCoreApplication.translate("Dialog", u"Version: 1.0.0", None))
         self.label_3.setText(QCoreApplication.translate("Dialog", u"Keyboard shortcuts:", None))
         self.label_12.setText(QCoreApplication.translate("Dialog", u"Toggle Quantitative view", None))
         self.label_6.setText(QCoreApplication.translate("Dialog", u"Q", None))

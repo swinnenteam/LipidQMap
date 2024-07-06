@@ -1,4 +1,5 @@
 import copy
+import timeit
 from enum import Enum
 from functools import cache
 from pathlib import Path
@@ -6,10 +7,14 @@ from typing import Callable
 
 import numpy as np
 import numpy.typing as npt
+from numba import njit
 
 from app.config import Config
 from app.database import IonMode, LipidDB
-from app.pyimzml_mod import ImzMLParser, get_calibration_offsets, getionimages
+from app.pyimzml_mod import ImzMLParser, get_calibration_offsets, get_ion_images
+
+# start_time = timeit.default_timer()
+# print(timeit.default_timer() - start_time)
 
 
 class ImageType(str, Enum):
@@ -84,12 +89,15 @@ class SampleImageCollection:
         #    int(imzml_parser.imzmldict["max count of pixels y"]),
         # )
         progress_file_callback.emit(20)
+
+        start_time = timeit.default_timer()
         self.raw = load_ion_images(
             database=database,
             imzml=imzml_parser,
             ion_mode=self.ion_mode,
             config=config,
         )
+        print(timeit.default_timer() - start_time)
         self.isotope = dict()
         if config.settings.processing_settings.na_isotope_correction:
             self.isotope = na_isotope_correction(database=database, images=self.raw)
@@ -306,7 +314,7 @@ def load_ion_images(
 
     ppm = config.settings.processing_settings.ppm
     tolerances = [ppm_to_tolerance(ppm=ppm, mz=mz) for mz in species_mzs]
-    image_stack = getionimages(imzml, mzs=species_mzs, tolerances=tolerances, offsets=offsets)
+    image_stack = get_ion_images(p=imzml, mzs=species_mzs, tolerances=tolerances, offsets=offsets)
     images = dict(zip(species_ids, list(image_stack)))
 
     return images
@@ -387,6 +395,18 @@ def quantitaton(database: LipidDB, images: dict[str, npt.NDArray]) -> dict[str, 
     return quant_images
 
 
+@njit
+def _add_padding(arr, pad_width):
+    """
+    Pads the array with NaNs to handle edge cases.
+    """
+    padded_shape = (arr.shape[0] + 2 * pad_width, arr.shape[1] + 2 * pad_width)
+    padded_arr = np.full(padded_shape, np.nan)
+    padded_arr[pad_width:-pad_width, pad_width:-pad_width] = arr
+    return padded_arr
+
+
+@njit
 def replace_nan_with_median(arr: npt.NDArray | None) -> npt.NDArray | None:
     """
     Replaces nan values with mean of surrounding window of 3 by 3 pixels, excluding any nan in the window
@@ -394,7 +414,7 @@ def replace_nan_with_median(arr: npt.NDArray | None) -> npt.NDArray | None:
     if arr is None:
         return None
     # Pad the array with NaNs to handle edge cases
-    padded_arr = np.pad(arr, pad_width=1, mode="constant", constant_values=np.nan)
+    padded_arr = _add_padding(arr, 1)
     nan_mask = np.isnan(arr)
     indices = np.argwhere(nan_mask)
     result = np.copy(arr)

@@ -7,6 +7,7 @@ from warnings import warn
 import numpy as np
 import numpy.typing as npt
 from lxml.etree import _Element, iterparse
+from numba import njit, prange
 from pyimzml.ImzMLParser import PRECISION_DICT, SIZE_DICT, _bisect_spectrum, _get_cv_param
 from pyimzml.metadata import Metadata, SpectrumData
 
@@ -385,17 +386,15 @@ class ImzMLParser:
         return mz_string, intensity_string
 
 
-def getionimages(
+def get_ion_images(
     p: ImzMLParser,
     mzs: list[float],
     tolerances: list[float],
     offsets: npt.NDArray | None = None,
 ) -> npt.NDArray:
     """
-    Get an image representation of the intensity distribution
-    of the ion with specified m/z value. Images are assumed 2D
-
-    By default, the intensity values within the tolerance region are summed.
+    Helper function for get_ion_images_numba, which uses the Numba library which isn't compatible
+    with complex objects such as ImzMLParser.
 
     :param p:
         the ImzMLParser (or anything else with similar attributes) for the desired dataset
@@ -409,25 +408,75 @@ def getionimages(
 
     :return:
         numpy matrix with each element representing the ion intensity in this
-        pixel. Can be easily plotted with matplotlib
+        pixel.
+    """
+    img_shape = (
+        int(p.imzmldict["max count of pixels x"]),
+        int(p.imzmldict["max count of pixels y"]),
+    )
+    return get_ion_images_numba(
+        coordinates=p.coordinates,
+        spectra=p.spectra,
+        img_shape=img_shape,
+        mzs=mzs,
+        tolerances=tolerances,
+        offsets=offsets,
+    )
+
+
+@njit(parallel=True)
+def get_ion_images_numba(
+    coordinates: list[tuple[int, int, int]],
+    spectra: list[tuple[npt.NDArray, npt.NDArray]],
+    img_shape: tuple[int, int],
+    mzs: list[float],
+    tolerances: list[float],
+    offsets: npt.NDArray | None = None,
+) -> npt.NDArray:
+    """
+    Get an image representation of the intensity distribution
+    of the ion with specified m/z value. Images are assumed 2D
+
+
+    By default, the intensity values within the tolerance region are summed.
+
+    :param coordinates:
+        list of (x,y,z) pixel coordinates for each spectrum
+    :param spectra:
+        list of tuples, each tuple containing the mz array and intensity array of a spectrum
+    :param img_shape:
+        tuple of number of pixels in the x and y dimension of the image
+    :param mzs:
+        list of m/z values for which the ion images shall be returned
+    :param tolerances:
+        Absolute tolerance for the m/z value, such that all ions with values
+        mz-|tol| <= x <= mz+|tol| are included.
+    :param offsets:
+        recalibrate the mz by these offsets, each row (y coordinate) has a different offset
+
+    :return:
+        numpy matrix with each element representing the ion intensity in this
+        pixel.
     """
     mzs_array = np.array(mzs)
     ims = np.full(
-        [
+        (
             len(mzs),
-            int(p.imzmldict["max count of pixels y"]),
-            int(p.imzmldict["max count of pixels x"]),
-        ],
+            img_shape[1],
+            img_shape[0],
+        ),
         np.nan,
     )
 
-    for i, (x, y, z_) in enumerate(p.coordinates):
-
-        spec_mzs, spec_ints = p.getspectrum(i)
+    for i in prange(len(coordinates)):
+        (x, y, z_) = coordinates[i]
+        spec_mzs, spec_ints = spectra[i]
         spec_mzs = spec_mzs + offsets[y - 1] if offsets is not None else spec_mzs
-        indices = _bisect_spectrum_multi(spec_mzs, mzs_array, tolerances)
-        spec_ints = np.append(spec_ints, 0)
-        values = [np.max(spec_ints[i], initial=0) for i in indices]
+        indices = _bisect_spectrum_multi(spec_mzs, mzs_array, np.array(tolerances))
+        values = np.zeros(len(indices))
+        for j, index in enumerate(indices):
+            if len(spec_ints[index]) > 0:
+                values[j] = np.max(spec_ints[index])
         ims[:, y - 1, x - 1] = values
     return ims
 
@@ -461,8 +510,9 @@ def get_calibration_offsets(
     return offsets
 
 
+@njit
 def _bisect_spectrum_multi(
-    spectrum_mzs: npt.NDArray, mz_values: npt.NDArray, tolerances: list[float]
+    spectrum_mzs: npt.NDArray, mz_values: npt.NDArray, tolerances: npt.NDArray
 ):
     """
     Given a spectrum, an array of mz values, and a list of tolerances,

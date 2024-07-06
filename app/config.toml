@@ -1,3 +1,5 @@
+debug = false
+
 [filter_settings]
 raw_image_winsorizing_percentile = 98
 quant_image_winsorizing_percentile = 98

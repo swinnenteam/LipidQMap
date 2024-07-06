@@ -29,15 +29,11 @@ def main() -> NoReturn:
     apply_stylesheet(
         app,
         theme="dark_teal.xml",
-        css_file="app/style.css",
+        css_file=str(config_paths["STYLE_FILE"]),
         extra={
             "density_scale": "-1",
         },
     )
-
-    # load database
-    # window.database = load_database(config_paths["DATABASE_FILE"])
-    # window.init_date()
 
     window.resize(1800, 1000)
     window.show()

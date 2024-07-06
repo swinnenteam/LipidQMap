@@ -11,13 +11,14 @@ import toml
 from pydantic import BaseModel, Field
 
 if getattr(sys, "frozen", False):
-    bundle_dir = os.path.dirname(sys.executable)  # type: ignore # pylint: disable=W0212
+    bundle_dir = sys._MEIPASS  # type: ignore # pylint: disable=W0212
 else:
     bundle_dir = str(os.path.dirname(__file__))
 
 config_paths = {
     "DATABASE_DIR": os.path.join(bundle_dir, "database"),
     "USER_CONFIG_FILE": os.path.join(bundle_dir, "config.toml"),
+    "STYLE_FILE": os.path.join(bundle_dir, "style.css"),
 }
 
 
@@ -75,6 +76,7 @@ class Configuration(BaseModel):
     processing_settings: ProcessingSettings = ProcessingSettings()
     database_settings: DatabaseSettings = DatabaseSettings()
     save_settings: SaveSettings = SaveSettings()
+    debug: bool = Field(default=False)
 
 
 class Config:

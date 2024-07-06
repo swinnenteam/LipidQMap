@@ -1,7 +1,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMainWindow
 
-from app import __appname__
+from app import __appname__, __version__
 from app.config import Config
 from app.database import LipidDB
 from app.dataprocess import ImageType, SampleImageCollection
@@ -34,7 +34,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.nrows: int
         self.imzml_import_window = ImzmlImportWindow()
         self.save_window = FileSaveWindow()
-        self.about_window = AboutWindow()
+        self.about_window = AboutWindow(__version__)
         self.boolean_delegate = BooleanDelegate()
 
         self.setupUi(self)
