@@ -5,7 +5,6 @@ https://tech.preferred.jp/en/blog/working-with-configuration-in-python/
 
 import os
 import sys
-from pathlib import Path
 
 import toml
 from pydantic import BaseModel, Field
@@ -35,8 +34,18 @@ class FilterSettings(BaseModel):
     Class for validation of the configuration file
     """
 
-    raw_image_winsorizing_percentile: int = Field(default=99)
-    quant_image_winsorizing_percentile: int = Field(default=99)
+    raw_image_winsorizing_percentile: float = Field(default=99.0)
+    quant_image_winsorizing_percentile: float = Field(default=99.0)
+    gaussian_filter: bool = Field(default=True)
+
+
+class SelectionSettings(BaseModel):
+    """
+    Class for validation of the configuration file
+    """
+
+    minimum_pixels: int = Field(default=100)
+    minimum_intensity: int = Field(default=1000)
 
 
 class SaveSettings(BaseModel):
@@ -74,6 +83,7 @@ class Configuration(BaseModel):
 
     filter_settings: FilterSettings = FilterSettings()
     processing_settings: ProcessingSettings = ProcessingSettings()
+    selection_settings: SelectionSettings = SelectionSettings()
     database_settings: DatabaseSettings = DatabaseSettings()
     save_settings: SaveSettings = SaveSettings()
     debug: bool = Field(default=False)

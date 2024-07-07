@@ -1,8 +1,9 @@
 debug = false
 
 [filter_settings]
-raw_image_winsorizing_percentile = 98
-quant_image_winsorizing_percentile = 98
+raw_image_winsorizing_percentile = 99.0
+quant_image_winsorizing_percentile = 99.0
+gaussian_filter = true
 
 [processing_settings]
 ppm = 15.0
@@ -14,8 +15,12 @@ neg_calibrant = 798.541
 calibration_ppm = 30.0
 calibration_max_intensity = 10000
 
+[selection_settings]
+minimum_pixels = 100
+minimum_intensity = 1000
+
 [database_settings]
-last_used_database = "database_LPC_Carla"
+last_used_database = "MSI_database_V1.0"
 
 [save_settings]
 save_raw_images = true

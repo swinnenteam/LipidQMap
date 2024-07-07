@@ -1,5 +1,5 @@
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QMainWindow
+from PySide6.QtWidgets import QApplication, QMainWindow
 
 from app import __appname__, __version__
 from app.config import Config
@@ -11,6 +11,7 @@ from app.utils import BooleanDelegate, PandasModelEditable
 from app.views.about_window import AboutWindow
 from app.views.file_save_window import FileSaveWindow
 from app.views.imzml_import_window import ImzmlImportWindow
+from app.views.settings_window import SettingsWindow
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -35,6 +36,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.imzml_import_window = ImzmlImportWindow()
         self.save_window = FileSaveWindow()
         self.about_window = AboutWindow(__version__)
+        self.settings_window = SettingsWindow()
         self.boolean_delegate = BooleanDelegate()
 
         self.setupUi(self)
@@ -48,6 +50,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.verticalLayout_5.addWidget(self.barplot_canvas)
         self.splitter_barplot.setSizes([100, 0])
         self.connect_signals_slots()
+
+    def closeEvent(self, event):
+        for window in QApplication.topLevelWidgets():
+            window.close()
 
     def keyPressEvent(self, event) -> None:
         """
@@ -87,6 +93,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_open_imzml_dialog.triggered.connect(self.open_imzml_dialog)
         self.action_open_save_dialog.triggered.connect(self.open_save_dialog)
         self.action_open_about_dialog.triggered.connect(self.open_about_dialog)
+        self.action_open_settings_window.triggered.connect(self.open_settings_dialog)
         self.action_global.triggered.connect(self.handle_species_selection_changed)
         self.action_zoom_in.triggered.connect(self.zoom_in)
         self.action_zoom_out.triggered.connect(self.zoom_out)
@@ -117,6 +124,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def open_about_dialog(self) -> None:
         self.about_window.show()
+
+    def open_settings_dialog(self) -> None:
+        self.settings_window.show()
 
     def handle_species_selection_changed(self) -> None:
         """
@@ -175,9 +185,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.species_table.resizeColumnsToContents()
         self.species_table.keyPressEvent = self.keyPressEvent
 
-        hint = self.species_table.sizeHint()
-        self.frame_2.setMaximumWidth(hint.width() * 1.2)
-        self.frame_2.adjustSize()
+        # hint = self.species_table.sizeHint()
+        # self.frame_2.setMaximumWidth(hint.width() * 1.3)
+        # self.frame_2.adjustSize()
 
         self.active_sample_id = next(iter(self.samples))
 

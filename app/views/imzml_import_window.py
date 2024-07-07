@@ -24,7 +24,6 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.database: LipidDB | None = None
         self.samples: dict[str, SampleImageCollection]
         self.setupUi(self)
-        self.connect_signals_slots()
         self.fetch_db_list()
         self.update_ion_mode()
         self.ppm_spinbox.setValue(config.settings.processing_settings.ppm)
@@ -43,6 +42,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         )
         if index >= 0:
             self.database_combo_box.setCurrentIndex(index)
+        self.connect_signals_slots()
 
     def connect_signals_slots(self) -> None:
         self.import_data_button.clicked.connect(self.process_imzml_files)
@@ -56,7 +56,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.cal_ppm_spinbox.valueChanged.connect(self.update_save_setting)
         self.cal_int_spinbox.valueChanged.connect(self.update_save_setting)
         self.pos_radio_button.clicked.connect(self.update_ion_mode)
-        # TODO self.database_combo_box.currentTextChanged.connect(self.update_last_used_database)
+        self.database_combo_box.currentTextChanged.connect(self.update_save_setting)
 
     def fetch_db_list(self):
         dbs = os.listdir(config_paths["DATABASE_DIR"])

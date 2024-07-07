@@ -459,15 +459,7 @@ def get_ion_images_numba(
         pixel.
     """
     mzs_array = np.array(mzs)
-    ims = np.full(
-        (
-            len(mzs),
-            img_shape[1],
-            img_shape[0],
-        ),
-        np.nan,
-    )
-
+    ims = np.full((len(mzs), img_shape[1], img_shape[0]), np.nan)
     for i in prange(len(coordinates)):
         (x, y, z_) = coordinates[i]
         spec_mzs, spec_ints = spectra[i]

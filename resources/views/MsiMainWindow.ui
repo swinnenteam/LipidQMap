@@ -71,7 +71,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>337</width>
-                  <height>363</height>
+                  <height>352</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_4"/>
@@ -111,7 +111,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>337</width>
-                  <height>363</height>
+                  <height>352</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_2"/>
@@ -139,7 +139,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>337</width>
-                  <height>363</height>
+                  <height>352</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_3"/>
@@ -222,7 +222,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>24</height>
+     <height>37</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_file">
@@ -247,8 +247,15 @@
     </property>
     <addaction name="action_open_about_dialog"/>
    </widget>
+   <widget class="QMenu" name="menuSettings">
+    <property name="title">
+     <string>Settings</string>
+    </property>
+    <addaction name="action_open_settings_window"/>
+   </widget>
    <addaction name="menu_file"/>
    <addaction name="menuEdit"/>
+   <addaction name="menuSettings"/>
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -284,6 +291,7 @@
    <addaction name="separator"/>
    <addaction name="action_global"/>
    <addaction name="separator"/>
+   <addaction name="action_open_settings_window"/>
    <addaction name="action_open_about_dialog"/>
   </widget>
   <action name="action_open_imzml_dialog">
@@ -292,7 +300,7 @@
      <normaloff>:/images/icons/open_file.png</normaloff>:/images/icons/open_file.png</iconset>
    </property>
    <property name="text">
-    <string>Open imzML file...</string>
+    <string>Open imzML files...</string>
    </property>
   </action>
   <action name="action_open_save_dialog">
@@ -407,6 +415,18 @@
    </property>
    <property name="text">
     <string>About</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::NoRole</enum>
+   </property>
+  </action>
+  <action name="action_open_settings_window">
+   <property name="icon">
+    <iconset resource="../resources.qrc">
+     <normaloff>:/images/icons/settings.png</normaloff>:/images/icons/settings.png</iconset>
+   </property>
+   <property name="text">
+    <string>Settings</string>
    </property>
    <property name="menuRole">
     <enum>QAction::NoRole</enum>
