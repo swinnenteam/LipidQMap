@@ -10,7 +10,7 @@ import numpy.typing as npt
 from numba import njit
 
 from app.config import Config
-from app.database import IonMode, LipidDB
+from app.database import DatabaseFactory, IonMode, LipidDB
 from app.pyimzml_mod import ImzMLParser, get_calibration_offsets, get_ion_images
 
 # start_time = timeit.default_timer()
@@ -262,7 +262,7 @@ def load_database_image_collection(
     Load a collection of sample images from multiple imzML files.
     """
     samples: dict[str, SampleImageCollection] = dict()
-    database = LipidDB(database_path, ion_mode)
+    database = DatabaseFactory(database_path, ion_mode).create_database()
     for idx, path in enumerate(imzml_paths):
         progress_overall_callback.emit(int(idx / len(imzml_paths) * 100))
         progress_file_callback.emit(5)

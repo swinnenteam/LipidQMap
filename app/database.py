@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 from enum import Enum
+from functools import cached_property
+from typing import Any, Self
 
 import numpy as np
 import pandas as pd
 from molmass import Formula
+from pydantic import BaseModel, ConfigDict
 
 
 class IonMode(str, Enum):
@@ -14,7 +19,195 @@ class IonMode(str, Enum):
     negative = "-"
 
 
-def adduct_furmula(formula: str, adduct: str) -> Formula:
+class LipidSpecies(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    id: str
+    mz: float
+    lipid_class: str
+    adduct: str
+    neutral_formula: Formula
+    formula: Formula
+    m2_isotope: Self | None
+    m2_rel_abundance: float
+    na_isotope: Self | None
+    standard: LipidStandard | None
+
+    @cached_property
+    def id_adduct(self) -> str:
+        return self.id + " " + self.adduct
+
+    @cached_property
+    def class_adduct(self) -> str:
+        return self.lipid_class + " " + self.adduct
+
+    @cached_property
+    def is_standard(self) -> bool:
+        return self.__class__ is LipidStandard
+
+    @cached_property
+    def ion_mode(self) -> IonMode:
+        if self.adduct.endswith("+"):
+            return IonMode.positive
+        else:
+            return IonMode.negative
+
+    def __lt__(self, other):
+        return (self.adduct, self.mz) < (other.adduct, other.mz)
+
+
+class LipidStandard(LipidSpecies):
+    amount: float
+
+
+class LipidDB:
+    def __init__(self, species: dict[str, LipidSpecies]):
+        self.species = species
+        self.index: list[str] = list(species.keys())
+
+    def get_id(self, index: int) -> str:
+        """
+        Returns the Lipid_id at the requested index
+        """
+        return self.species[self.index[index]].id_adduct
+
+    def get_all_species_same_class(self, id: str) -> list[str]:
+        current_specie = self.species[id]
+        return [
+            specie.id_adduct
+            for specie in self.species.values()
+            if current_specie.class_adduct == specie.class_adduct
+        ]
+
+    def get_ids_non_standards(self) -> list[str]:
+        """
+        Get a list of IDs for non-standard species.
+        Returns:
+            list[str]: A list of non-standard species IDs.
+        """
+        return [specie.id_adduct for specie in self.species.values() if not specie.is_standard]
+
+    def get_standard(self, id: str) -> tuple[str, float] | tuple[None, None]:
+        """
+        Get the standard ID and amount for a given species ID.
+        Args:
+            id (str): The species ID.
+        Returns:
+            tuple[str, float]: The standard ID and its amount.
+        Raises:
+            ValueError: If there is no standard for the given species ID.
+        """
+
+        standard = self.species[id].standard
+        if standard is None:
+            return (None, None)
+        return (standard.id_adduct, standard.amount)
+
+    def get_M2_isotope_ID(self, id: str) -> str | None:
+        """
+        Get the ID of the M-2 isotope for a given species ID.
+        Args:
+            id (str): The species ID.
+        Returns:
+            str | None: The M-2 isotope ID or None if not present.
+        """
+
+        m2_isotope = self.species[id].m2_isotope
+        if m2_isotope is None:
+            return None
+        return m2_isotope.id_adduct
+
+    def get_M2_isotope_percent(self, id: str) -> float:
+        """
+        Get the M+2 isotope percent intensity for a given species ID.
+        Args:
+            id (str): The species ID.
+        Returns:
+            float: The M+2 isotope percent intensity.
+        """
+
+        return self.species[id].m2_rel_abundance / 100
+
+    def get_ids_sorted_for_isotope(self) -> list[str]:
+        """
+        Get a list of species IDs sorted by lowest mz first.
+        Returns:
+            list[str]: A list of species IDs sorted by Class_Adduct and m/z.
+        """
+        species = list(self.species.values())
+        species.sort()
+        return [specie.id_adduct for specie in species]
+
+    def get_hydrogen_sodium_std_pairs(self) -> list[tuple[str, str]]:
+        """
+        Get all [M+H]+ and [M+Na]+ standard pairs.
+        Returns:
+            list[tuple[str, str]]: A list of tuples containing pairs of [M+H]+ and [M+Na]+ standard IDs.
+
+        """
+
+        standard_pairs = []
+        # get all [M+H]+ standards
+        h_standards = [
+            specie
+            for specie in self.species.values()
+            if specie.adduct == "[M+H]+" and specie.is_standard
+        ]
+        # check if corresponding [M+Na]+ standard is present
+        for h_standard in h_standards:
+            if h_standard.id + " [M+Na]+" in self.index:
+                standard_pairs.append((h_standard.id_adduct, h_standard.id + " [M+Na]+"))
+        return standard_pairs
+
+    def get_Na_isotope_ID(self, id: str) -> str | None:
+        """
+        Get the Na+ isotope ID for a given species ID.
+        Args:
+            id (str): The species ID.
+        Returns:
+            str | None: The Na+ isotope ID or None if not present.
+        """
+        na_isotope = self.species[id].na_isotope
+        if na_isotope is None:
+            return None
+        return na_isotope.id + " [M+Na]+"
+
+    def get_all_species(self) -> tuple[list[str], list[float]]:
+        """
+        Get all species IDs and their m/z values.
+        Returns:
+            tuple[list[str], list[float]]: A tuple containing a list of species IDs and a list of their m/z values.
+        """
+        mzs = [specie.mz for specie in self.species.values()]
+        return (self.index, mzs)
+
+    def get_table(self) -> pd.DataFrame:
+        """
+        Get a DataFrame of the LipidDB for representation in the gui.
+        Returns:
+            pd.DataFrame: A DataFrame containing species IDs and their m/z values, marked for export.
+        """
+
+        d = {
+            "Species": self.index,
+            "m/z": [specie.mz for specie in self.species.values()],
+            "Export": True,
+        }
+        df = pd.DataFrame(data=d, index=self.index)
+        return df
+
+    def verify_ion_mode(self, ion_mode: IonMode) -> True:
+        """
+        Verify that the database contains only the specified ion mode.
+        Args:
+            ion_mode (IonMode): The ion mode to verify.
+        Returns:
+            bool: True if the database contains only the specified ion mode, False otherwise.
+        """
+        return all(specie.ion_mode == ion_mode for specie in self.species.values())
+
+
+def adduct_formula(formula: str, adduct: str) -> Formula:
     """
     Generate an adduct formula based on the given molecular formula and adduct type.
     Args:
@@ -81,26 +274,12 @@ def adduct_furmula(formula: str, adduct: str) -> Formula:
             raise ValueError(f"Unsupported adduct in database: {adduct}")
 
 
-class LipidDB:
-    """
-    Class for handling lipid databases and performing operations based on ion modes and adducts.
-
-    Attributes:
-        db (pd.DataFrame): The loaded lipid database.
-    """
-
+class DatabaseFactory:
     def __init__(self, path: str, ion_mode: IonMode) -> None:
-        """
-        Initialize the LipidDB object by loading the database and setting up based on ion mode.
-
-        Args:
-            path (str): The file path to the lipid database (Excel file).
-            ion_mode (IonMode): The ion mode to filter the database.
-        """
-
-        self.db = pd.read_excel(path)
+        self.df = pd.read_excel(path)
+        self.ion_mode = ion_mode
         self.check_columns()
-        self.setup_database(ion_mode=ion_mode)
+        self.setup_dataframe()
 
     def check_columns(self) -> None:
         """
@@ -118,196 +297,113 @@ class LipidDB:
             "IS amount (pmol / mm2)",
         ]
         for col in columns:
-            if not col in self.db.columns:
+            if not col in self.df.columns:
                 raise ValueError(f"The excel database is missing the '{col}' column.")
 
-    def setup_database(self, ion_mode: IonMode) -> None:
+    def setup_dataframe(self) -> None:
         """
-        Set up the database by expanding adduct forms and calculating necessary values.
+        Set up the dataframe by expanding adduct forms and filtering on ion mode.
         Args:
             ion_mode (IonMode): The ion mode to filter the database.
         """
 
+        # replace spaces in column names with underscores and remove special characters +,-,/
+        self.df.rename(columns={"IS amount (pmol / mm2)": "IS amount"}, inplace=True)
+        self.df.rename(columns={"M-2 Isotope": "M2 Isotope"}, inplace=True)
+        self.df.rename(columns={"Na+ Isotope": "Na Isotope"}, inplace=True)
+        self.df.columns = [c.replace(" ", "_") for c in self.df.columns]
+
         # Add species with multiple adduct forms as individual rows for each adduct.
-        self.db["Adducts"] = self.db["Adducts"].str.replace(" ", "")
-        self.db["Adducts"] = self.db["Adducts"].str.split(",")
-        self.db = self.db.explode("Adducts")
-
-        # Add adduct str to the values of columns Class, ID, M-2 isotope and IS
-        self.db["Class_Adduct"] = self.db.apply(self._add_adduct_to_id, axis=1, column="Class")
-        self.db["ID_Adduct"] = self.db.apply(self._add_adduct_to_id, axis=1, column="ID")
-        self.db["M-2 Isotope"] = self.db.apply(self._add_adduct_to_id, axis=1, column="M-2 Isotope")
-        self.db["IS"] = self.db.apply(self._add_adduct_to_id, axis=1, column="IS")
-        self.db.set_index("ID_Adduct", inplace=True, drop=False)
-
-        # Add adduct Formula, mz and M+2 % intensity columns
-        formula: Formula
-        formulas: list[Formula] = []
-        mz: list[float] = []
-        m2_intensities: list[float] = []
-
-        for str_formula, str_adduct in zip(
-            self.db["Neutral Formula"].values, self.db["Adducts"].values
-        ):
-            formula = adduct_furmula(str_formula, str_adduct)
-            formulas.append(formula)
-            mz.append(formula.monoisotopic_mass)
-            m2_intensities.append([item for (_, item) in formula.spectrum().items()][2].intensity)
-
-        self.db["Formula"] = formulas
-        self.db["mz"] = mz
-        self.db["M+2 % intensity"] = m2_intensities
+        self.df["Adducts"] = self.df["Adducts"].str.replace(" ", "")
+        self.df["Adducts"] = self.df["Adducts"].str.split(",")
+        self.df = self.df.explode("Adducts")
 
         # filter by ion mode
-        self.db = self.db[self.db["Adducts"].str.endswith(ion_mode.value)]
+        self.df = self.df[self.df["Adducts"].str.endswith(self.ion_mode.value)]
 
-    def get_id(self, index: int) -> str:
-        """
-        Returns the Lipid_id at the requested index
-        """
-        return self.db.index[index]
-
-    def get_all_species_same_class(self, species_id: str) -> list[str]:
-        class_adduct = self.db.loc[self.db.index == species_id, "Class_Adduct"]
-        class_adduct = class_adduct.values[0]
-        return self.db[self.db.Class_Adduct == class_adduct].index.to_list()
-
-    def _add_adduct_to_id(self, row: pd.Series, column: str):
-        """
-        Append the adduct to the specified column value in the row.
-        Args:
-            row (pd.Series): A row from the DataFrame.
-            column (str): The column to which the adduct should be appended.
-        Returns:
-            str: The modified column value with the adduct appended.
-        """
-
-        if not pd.isnull(row[column]):
-            return row[column] + " " + row["Adducts"]
-
-    def get_ids_non_standards(self) -> list[str]:
-        """
-        Get a list of IDs for non-standard species.
-        Returns:
-            list[str]: A list of non-standard species IDs.
-        """
-
-        return self.db[self.db["IS amount (pmol / mm2)"].isnull()].index.to_list()
-
-    def get_standard(self, id: str) -> tuple[str, float] | tuple[None, None]:
-        """
-        Get the standard ID and amount for a given species ID.
-        Args:
-            id (str): The species ID.
-        Returns:
-            tuple[str, float]: The standard ID and its amount.
-        Raises:
-            ValueError: If there is no standard for the given species ID.
-        """
-
-        standard_id = self.db.loc[id, "IS"]
-        if pd.isnull(standard_id):
-            return (None, None)
-        return (standard_id, self.db.loc[standard_id, "IS amount (pmol / mm2)"])
-
-    def get_M2_isotope_ID(self, id: str) -> str | None:
-        """
-        Get the ID of the M-2 isotope for a given species ID.
-        Args:
-            id (str): The species ID.
-        Returns:
-            str | None: The M-2 isotope ID or None if not present.
-        """
-
-        isotope_id = self.db.loc[id, "M-2 Isotope"]
-        if pd.isnull(isotope_id):
+    @staticmethod
+    def none_if_nan(value) -> Any | None:
+        """if value is nan returns None else return the value"""
+        if value != value:
             return None
-        return isotope_id
+        else:
+            return value
 
-    def get_M2_isotope_percent(self, id: str) -> float:
-        """
-        Get the M+2 isotope percent intensity for a given species ID.
-        Args:
-            id (str): The species ID.
-        Returns:
-            float: The M+2 isotope percent intensity.
-        """
+    def create_database(self) -> LipidDB:
 
-        return self.db.loc[id, "M+2 % intensity"] / 100
+        species: dict[str, LipidSpecies] = dict()
 
-    def get_ids_sorted_for_isotope(self) -> list[str]:
-        """
-        Get a list of species IDs sorted by lowest mz first.
-        Returns:
-            list[str]: A list of species IDs sorted by Class_Adduct and m/z.
-        """
+        for row in self.df.itertuples():
+            id = getattr(row, "ID")
+            adduct = getattr(row, "Adducts")
+            formula = adduct_formula(getattr(row, "Neutral_Formula"), adduct)
+            attributes = dict(
+                adduct=getattr(row, "Adducts"),
+                id=id,
+                lipid_class=getattr(row, "Class"),
+                neutral_formula=Formula(getattr(row, "Neutral_Formula")),
+                formula=formula,
+                mz=formula.monoisotopic_mass,
+                m2_rel_abundance=[item for (_, item) in formula.spectrum().items()][2].intensity,
+                amount=self.none_if_nan(getattr(row, "IS_amount")),
+                m2_isotope=None,
+                na_isotope=None,
+                standard=None,
+            )
 
-        return self.db.sort_values(["Class_Adduct", "mz"], ascending=[True, True]).index.to_list()
+            if attributes.get("amount") is None:
+                species[id + " " + adduct] = LipidSpecies(**attributes)
+            else:
+                species[id + " " + adduct] = LipidStandard(**attributes)
 
-    def get_hydrogen_sodium_std_pairs(self) -> list[tuple[str, str]]:
-        """
-        Get all [M+H]+ and [M+Na]+ standard pairs.
-        Returns:
-            list[tuple[str, str]]: A list of tuples containing pairs of [M+H]+ and [M+Na]+ standard IDs.
+        for i, row in enumerate(self.df.itertuples()):
+            adduct = getattr(row, "Adducts")
+            id = getattr(row, "ID")
+            specie = species[id + " " + adduct]
 
-        """
+            standard = self.none_if_nan(getattr(row, "IS"))
+            try:
+                standard = species[standard + " " + adduct] if standard is not None else None
+            except:
+                raise (
+                    ValueError(
+                        f"Value '{standard}' found in column 'IS' on row {i+2} is not a species defined \
+                            in column 'ID'. Check for typos in the IDs."
+                    )
+                )
+            if standard is not None and not isinstance(standard, LipidStandard):
+                raise (
+                    ValueError(
+                        f"On row {i+2} of column 'IS' the species '{standard}' has not been properly defined \
+                            in the database as a standard. Check that '{standard}' has a value for 'IS amount \
+                            (pmol / mm2)'."
+                    )
+                )
+            specie.standard = standard
 
-        standard_pairs = []
-        # get all [M+H]+ standards
-        h_standards = self.db.loc[self.db["Adducts"] == "[M+H]+", "IS"].values
-        h_standards = [value for value in h_standards if value is not None]
-        h_standards = np.unique(h_standards)
-        # check if corresponding [M+H]+ standard is present
-        for h_standard_id in h_standards:
-            standard_id = self.db.loc[h_standard_id, "ID"]
-            if standard_id + " [M+Na]+" in self.db.index:
-                standard_pairs.append((h_standard_id, standard_id + " [M+Na]+"))
-        return standard_pairs
+            m2_isotope = self.none_if_nan(getattr(row, "M2_Isotope"))
+            try:
+                m2_isotope = species[m2_isotope + " " + adduct] if m2_isotope is not None else None
+            except:
+                raise (
+                    ValueError(
+                        f"Value '{standard}' found in column 'M-2 Isotope' on row {i+2} is not a species defined \
+                            in column 'ID'. Check for typos in the IDs."
+                    )
+                )
+            specie.m2_isotope = m2_isotope
 
-    def get_Na_isotope_ID(self, id: str) -> str | None:
-        """
-        Get the Na+ isotope ID for a given species ID.
-        Args:
-            id (str): The species ID.
-        Returns:
-            str | None: The Na+ isotope ID or None if not present.
-        """
+            na_isotope = self.none_if_nan(getattr(row, "Na_Isotope"))
+            try:
+                na_isotope = species[na_isotope + " " + adduct] if na_isotope is not None else None
+            except:
+                raise (
+                    ValueError(
+                        f"Value '{standard}' found in column 'Na+ Isotope' on row {i+2} is not a species defined \
+                            in column 'ID'. Check that '{standard}' is defined as a species and check for typos \
+                            in the IDs."
+                    )
+                )
+            specie.na_isotope = na_isotope
 
-        isotope_id = self.db.loc[id, "Na+ Isotope"]
-        if pd.isnull(isotope_id):
-            return None
-        return isotope_id + " [M+Na]+"
-
-    def get_all_species(self) -> tuple[list[str], list[float]]:
-        """
-        Get all species IDs and their m/z values.
-        Returns:
-            tuple[list[str], list[float]]: A tuple containing a list of species IDs and a list of their m/z values.
-        """
-
-        return list(self.db.ID_Adduct), list(self.db.mz)
-
-    def get_table(self) -> pd.DataFrame:
-        """
-        Get a DataFrame of the LipidDB for representation in the gui.
-        Returns:
-            pd.DataFrame: A DataFrame containing species IDs and their m/z values, marked for export.
-        """
-
-        d = {"Species": self.db.index, "m/z": self.db["mz"], "Export": True}
-        df = pd.DataFrame(data=d, index=self.db.index)
-        return df
-
-    def verify_ion_mode(self, ion_mode: IonMode) -> True:
-        """
-        Verify that the database contains only the specified ion mode.
-        Args:
-            ion_mode (IonMode): The ion mode to verify.
-        Returns:
-            bool: True if the database contains only the specified ion mode, False otherwise.
-        """
-
-        not_present_mode = IonMode.negative if ion_mode == IonMode.positive else IonMode.positive
-        check_1 = self.db["Adducts"].str.endswith(ion_mode.value).all()
-        check_2 = not self.db["Adducts"].str.endswith(not_present_mode).any()
-        return check_1 and check_2
+        return LipidDB(species=species)

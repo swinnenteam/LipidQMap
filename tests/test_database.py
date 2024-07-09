@@ -2,34 +2,44 @@ import pandas as pd
 import pytest
 from molmass import Formula
 
-from app.database import IonMode, LipidDB, adduct_furmula
+from app.database import DatabaseFactory, IonMode, LipidDB, adduct_formula
 
 
 @pytest.fixture(name="database")
 def fixture_database() -> LipidDB:
-    return LipidDB("tests/database/test_database.xlsx", ion_mode=IonMode.positive)
+    database = DatabaseFactory(
+        "tests/database/test_database.xlsx", ion_mode=IonMode.positive
+    ).create_database()
+    return database
 
 
 @pytest.fixture(name="neg_database")
 def fixture_neg_database() -> LipidDB:
-    return LipidDB("tests/database/test_database.xlsx", ion_mode=IonMode.negative)
+    database = DatabaseFactory(
+        "tests/database/test_database.xlsx", ion_mode=IonMode.negative
+    ).create_database()
+    return database
 
 
 def test_load_database_positive() -> None:
-    database = LipidDB("tests/database/test_database.xlsx", ion_mode=IonMode.positive)
+    database = DatabaseFactory(
+        "tests/database/test_database.xlsx", ion_mode=IonMode.positive
+    ).create_database()
     assert database.verify_ion_mode(ion_mode=IonMode.positive)
 
 
 def test_load_database_negative() -> None:
-    database = LipidDB("tests/database/test_database.xlsx", ion_mode=IonMode.negative)
+    database = DatabaseFactory(
+        "tests/database/test_database.xlsx", ion_mode=IonMode.negative
+    ).create_database()
     assert database.verify_ion_mode(ion_mode=IonMode.negative)
 
 
 def test_load_database_column_missing() -> None:
-    database = LipidDB("tests/database/test_database.xlsx", ion_mode=IonMode.positive)
-    database.db.drop("IS", axis=1, inplace=True)
     with pytest.raises(ValueError):
-        database.check_columns()
+        DatabaseFactory(
+            "tests/database/test_database_column_missing.xlsx", ion_mode=IonMode.negative
+        )
 
 
 def test_get_ids_non_standards(database: LipidDB) -> None:
@@ -137,138 +147,138 @@ def test_get_table(database: LipidDB) -> None:
 
 
 def test_adduct_mh_plus():
-    result = adduct_furmula("C6H12O6", "[M+H]+")
+    result = adduct_formula("C6H12O6", "[M+H]+")
     expected = Formula("C6H12O6") + Formula("[H]+")
     assert result.formula == expected.formula
 
 
 def test_adduct_mh_h2o_plus():
-    result = adduct_furmula("C6H12O6", "[M+H-H2O]+")
+    result = adduct_formula("C6H12O6", "[M+H-H2O]+")
     expected = Formula("C6H12O6") + Formula("[H]+") - Formula("[H2O]")
     assert result.formula == expected.formula
 
 
 def test_adduct_m_dot_plus():
-    result = adduct_furmula("C6H12O6", "[M.]+")
+    result = adduct_formula("C6H12O6", "[M.]+")
     expected = Formula("C6H12O6") + Formula("[]+")
     assert result.formula == expected.formula
 
 
 def test_adduct_m2h_2plus():
-    result = adduct_furmula("C6H12O6", "[M+2H]2+")
+    result = adduct_formula("C6H12O6", "[M+2H]2+")
     expected = Formula("C6H12O6") + Formula("[H2]2+")
     assert result.formula == expected.formula
 
 
 def test_adduct_m3h_3plus():
-    result = adduct_furmula("C6H12O6", "[M+3H]3+")
+    result = adduct_formula("C6H12O6", "[M+3H]3+")
     expected = Formula("C6H12O6") + Formula("[H3]3+")
     assert result.formula == expected.formula
 
 
 def test_adduct_m4h_4plus():
-    result = adduct_furmula("C6H12O6", "[M+4H]4+")
+    result = adduct_formula("C6H12O6", "[M+4H]4+")
     expected = Formula("C6H12O6") + Formula("[H4]4+")
     assert result.formula == expected.formula
 
 
 def test_adduct_mk_plus():
-    result = adduct_furmula("C6H12O6", "[M+K]+")
+    result = adduct_formula("C6H12O6", "[M+K]+")
     expected = Formula("C6H12O6") + Formula("[K]+")
     assert result.formula == expected.formula
 
 
 def test_adduct_m2k_2plus():
-    result = adduct_furmula("C6H12O6", "[M+2K]2+")
+    result = adduct_formula("C6H12O6", "[M+2K]2+")
     expected = Formula("C6H12O6") + Formula("[K2]2+")
     assert result.formula == expected.formula
 
 
 def test_adduct_m2k_h_plus():
-    result = adduct_furmula("C6H12O6", "[M+2K-H]+")
+    result = adduct_formula("C6H12O6", "[M+2K-H]+")
     expected = Formula("C6H12O6") + Formula("[K2]+") - Formula("[H]")
     assert result.formula == expected.formula
 
 
 def test_adduct_mna_plus():
-    result = adduct_furmula("C6H12O6", "[M+Na]+")
+    result = adduct_formula("C6H12O6", "[M+Na]+")
     expected = Formula("C6H12O6") + Formula("[Na]+")
     assert result.formula == expected.formula
 
 
 def test_adduct_m2na_2plus():
-    result = adduct_furmula("C6H12O6", "[M+2Na]2+")
+    result = adduct_formula("C6H12O6", "[M+2Na]2+")
     expected = Formula("C6H12O6") + Formula("[Na2]2+")
     assert result.formula == expected.formula
 
 
 def test_adduct_m2na_h_plus():
-    result = adduct_furmula("C6H12O6", "[M+2Na-H]+")
+    result = adduct_formula("C6H12O6", "[M+2Na-H]+")
     expected = Formula("C6H12O6") + Formula("[Na2]+") - Formula("[H]")
     assert result.formula == expected.formula
 
 
 def test_adduct_mli_plus():
-    result = adduct_furmula("C6H12O6", "[M+Li]+")
+    result = adduct_formula("C6H12O6", "[M+Li]+")
     expected = Formula("C6H12O6") + Formula("[Li]+")
     assert result.formula == expected.formula
 
 
 def test_adduct_m2li_2plus():
-    result = adduct_furmula("C6H12O6", "[M+2Li]2+")
+    result = adduct_formula("C6H12O6", "[M+2Li]2+")
     expected = Formula("C6H12O6") + Formula("[Li2]2+")
     assert result.formula == expected.formula
 
 
 def test_adduct_mnh4_plus():
-    result = adduct_furmula("C6H12O6", "[M+NH4]+")
+    result = adduct_formula("C6H12O6", "[M+NH4]+")
     expected = Formula("C6H12O6") + Formula("[NH4]+")
     assert result.formula == expected.formula
 
 
 def test_adduct_mh_minus():
-    result = adduct_furmula("C6H12O6", "[M-H]-")
+    result = adduct_formula("C6H12O6", "[M-H]-")
     expected = Formula("C6H12O6") - Formula("[H]+")
     assert result.formula == expected.formula
 
 
 def test_adduct_m2h_2minus():
-    result = adduct_furmula("C6H12O6", "[M-2H]2-")
+    result = adduct_formula("C6H12O6", "[M-2H]2-")
     expected = Formula("C6H12O6") - Formula("[H2]2+")
     assert result.formula == expected.formula
 
 
 def test_adduct_m3h_3minus():
-    result = adduct_furmula("C6H12O6", "[M-3H]3-")
+    result = adduct_formula("C6H12O6", "[M-3H]3-")
     expected = Formula("C6H12O6") - Formula("[H3]3+")
     assert result.formula == expected.formula
 
 
 def test_adduct_m4h_4minus():
-    result = adduct_furmula("C6H12O6", "[M-4H]4-")
+    result = adduct_formula("C6H12O6", "[M-4H]4-")
     expected = Formula("C6H12O6") - Formula("[H4]4+")
     assert result.formula == expected.formula
 
 
 def test_adduct_mcl_minus():
-    result = adduct_furmula("C6H12O6", "[M+Cl]-")
+    result = adduct_formula("C6H12O6", "[M+Cl]-")
     expected = Formula("C6H12O6") + Formula("[Cl]-")
     assert result.formula == expected.formula
 
 
 def test_adduct_moac_minus():
-    result = adduct_furmula("C6H12O6", "[M+OAc]-")
+    result = adduct_formula("C6H12O6", "[M+OAc]-")
     expected = Formula("C6H12O6") + Formula("[CH3OO]-")
     assert result.formula == expected.formula
 
 
 def test_adduct_mhcoo_minus():
-    result = adduct_furmula("C6H12O6", "[M+HCOO]-")
+    result = adduct_formula("C6H12O6", "[M+HCOO]-")
     expected = Formula("C6H12O6") + Formula("[HCOO]-")
     assert result.formula == expected.formula
 
 
 def test_unsupported_adduct():
     with pytest.raises(ValueError) as exc_info:
-        adduct_furmula("C6H12O6", "[M+Unsupported]+")
+        adduct_formula("C6H12O6", "[M+Unsupported]+")
     assert str(exc_info.value) == "Unsupported adduct in database: [M+Unsupported]+"

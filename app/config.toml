@@ -8,7 +8,7 @@ gaussian_filter = true
 [processing_settings]
 ppm = 15.0
 m2_isotope_correction = true
-na_isotope_correction = false
+na_isotope_correction = true
 online_calibration = true
 pos_calibrant = 734.5694
 neg_calibrant = 798.541
