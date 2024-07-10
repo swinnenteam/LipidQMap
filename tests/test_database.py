@@ -43,13 +43,15 @@ def test_load_database_column_missing() -> None:
 
 
 def test_get_ids_non_standards(database: LipidDB) -> None:
-    species_ids = database.get_ids_non_standards()
+    species_ids = [s.id_adduct for s in database.get_ids_non_standards()]
     assert "PC 32:1 [M+Na]+" in species_ids
     assert not "PC 33:1 d7" in species_ids
 
 
 def test_get_all_species_same_class(database: LipidDB) -> None:
-    assert database.get_all_species_same_class("PC 32:1 [M+H]+") == [
+    species = database.get_all_species_same_class("PC 32:1 [M+H]+")
+    species_ids = [s.id_adduct for s in species]
+    assert species_ids == [
         "PC 33:1 d7 [M+H]+",
         "PC 32:1 [M+H]+",
         "PC 34:1 [M+H]+",
@@ -65,39 +67,51 @@ def test_get_all_species_same_class(database: LipidDB) -> None:
 
 
 def test_get_standard(database: LipidDB) -> None:
-    assert database.get_standard("PC 32:1 [M+Na]+") == ("PC 33:1 d7 [M+Na]+", 1.5)
+    species = database.species["PC 32:1 [M+Na]+"]
+    assert species.standard is not None
+    assert species.standard.id_adduct == "PC 33:1 d7 [M+Na]+"
+    assert species.standard.amount == 1.5
 
 
 def test_get_standard_not_present(neg_database: LipidDB) -> None:
-    assert neg_database.get_standard("PE 32:1 [M-H]-") == (None, None)
+    species = neg_database.species["PE 32:1 [M-H]-"]
+    assert species.standard == None
 
 
 def test_get_M2_isotope_ID(database: LipidDB) -> None:
-    assert database.get_M2_isotope_ID("PC 32:1 [M+Na]+") == "PC 32:2 [M+Na]+"
+    species = database.species["PC 32:1 [M+Na]+"]
+    assert species.m2_isotope is not None
+    assert species.m2_isotope.id_adduct == "PC 32:2 [M+Na]+"
 
 
 def test_get_M2_isotope_ID_None(database: LipidDB) -> None:
-    assert database.get_M2_isotope_ID("PC 34:2 [M+Na]+") == None
+    species = database.species["PC 34:2 [M+Na]+"]
+    assert species.m2_isotope == None
 
 
 def test_get_M2_isotope_percent(database: LipidDB) -> None:
-    assert pytest.approx(0.11457, rel=1e-3) == database.get_M2_isotope_percent("PC 32:1 [M+Na]+")
+    assert pytest.approx(0.11457, rel=1e-3) == database.species["PC 32:1 [M+Na]+"].m2_rel_abundance
 
 
 def test_get_Na_isotope_ID(database: LipidDB) -> None:
-    assert database.get_Na_isotope_ID("PC 34:4 [M+H]+") == "PC 32:1 [M+Na]+"
+    species = database.species["PC 34:4 [M+H]+"]
+    assert species.na_isotope is not None
+    assert species.na_isotope.id_adduct == "PC 32:1 [M+Na]+"
 
 
 def test_get_Na_isotope_ID_None(database: LipidDB) -> None:
-    assert database.get_Na_isotope_ID("PC 32:2 [M+H]+") == None
+    species = database.species["PC 32:2 [M+H]+"]
+    assert species.na_isotope == None
 
 
 def test_get_hydrogen_sodium_std_pairs(database: LipidDB) -> None:
     assert database.get_hydrogen_sodium_std_pairs() == [("PC 33:1 d7 [M+H]+", "PC 33:1 d7 [M+Na]+")]
 
 
-def test_get_ids_sorted_for_isotope(database: LipidDB) -> None:
-    assert [
+def test_get_species_sorted_for_isotope(database: LipidDB) -> None:
+
+    species_ids = [s.id_adduct for s in database.get_species_sorted_for_isotope()]
+    assert species_ids == [
         "PC 32:4 [M+H]+",
         "PC 32:2 [M+H]+",
         "PC 32:1 [M+H]+",
@@ -131,7 +145,7 @@ def test_get_ids_sorted_for_isotope(database: LipidDB) -> None:
         "PC 36:2 [M+Na]+",
         "PC 36:1 [M+Na]+",
         "PC 38:4 [M+Na]+",
-    ] == database.get_ids_sorted_for_isotope()
+    ]
 
 
 def test_get_all_species(database: LipidDB) -> None:

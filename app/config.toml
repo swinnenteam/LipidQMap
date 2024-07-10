@@ -6,7 +6,7 @@ quant_image_winsorizing_percentile = 99.0
 gaussian_filter = true
 
 [processing_settings]
-ppm = 15.0
+ppm = 10.0
 m2_isotope_correction = true
 na_isotope_correction = true
 online_calibration = true

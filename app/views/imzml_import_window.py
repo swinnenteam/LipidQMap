@@ -3,9 +3,9 @@ import os
 from PySide6.QtCore import QThreadPool, Signal, Slot
 from PySide6.QtWidgets import QFileDialog, QWidget
 
-from app.config import config, config_paths
+from app.config import Config, config_paths
 from app.database import IonMode, LipidDB
-from app.dataprocess import SampleImageCollection, load_database_image_collection
+from app.dataprocess import SampleCollection, load_database_image_collection
 from app.generated.MsiImportDialog_ui import Ui_Dialog
 from app.multithreading import Worker
 
@@ -17,28 +17,31 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
 
     finished_imzml_loading = Signal()
 
-    def __init__(self) -> None:
+    def __init__(self, config: Config) -> None:
         super().__init__()
+        self.config = config
         self.threadpool = QThreadPool()
         self.filepath: list[str] | None = None
         self.database: LipidDB | None = None
-        self.samples: dict[str, SampleImageCollection]
+        self.samples: SampleCollection
         self.setupUi(self)
         self.fetch_db_list()
         self.update_ion_mode()
-        self.ppm_spinbox.setValue(config.settings.processing_settings.ppm)
+        self.ppm_spinbox.setValue(self.config.settings.processing_settings.ppm)
         self.m2_iso_cor_checkbox.setChecked(
-            config.settings.processing_settings.m2_isotope_correction
+            self.config.settings.processing_settings.m2_isotope_correction
         )
         self.na_iso_cor_checkbox.setChecked(
-            config.settings.processing_settings.na_isotope_correction
+            self.config.settings.processing_settings.na_isotope_correction
         )
-        self.cal_checkbox.setChecked(config.settings.processing_settings.online_calibration)
-        self.cal_ppm_spinbox.setValue(config.settings.processing_settings.calibration_ppm)
-        self.cal_int_spinbox.setValue(config.settings.processing_settings.calibration_max_intensity)
+        self.cal_checkbox.setChecked(self.config.settings.processing_settings.online_calibration)
+        self.cal_ppm_spinbox.setValue(self.config.settings.processing_settings.calibration_ppm)
+        self.cal_int_spinbox.setValue(
+            self.config.settings.processing_settings.calibration_max_intensity
+        )
         # set last used database
         index = self.database_combo_box.findText(
-            config.settings.database_settings.last_used_database
+            self.config.settings.database_settings.last_used_database
         )
         if index >= 0:
             self.database_combo_box.setCurrentIndex(index)
@@ -88,7 +91,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
                 database_path=db_path,
                 ion_mode=ion_mode,
                 imzml_paths=self.filepath,
-                config=config,
+                config=self.config,
             )
             worker.signals.progress_file.connect(self.handle_progress_file)
             worker.signals.progress_overall.connect(self.handle_progress_overall)
@@ -106,7 +109,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.progress_bar_overall.setValue(overall_progress)
 
     @Slot()
-    def handle_finished(self, database: LipidDB, samples: dict[str, SampleImageCollection]) -> None:
+    def handle_finished(self, database: LipidDB, samples: SampleCollection) -> None:
         """Emit results to main window"""
         self.samples = samples
         self.database = database
@@ -127,9 +130,9 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
 
     def update_ion_mode(self):
         if self.pos_radio_button.isChecked():
-            self.calibrant_spinbox.setValue(config.settings.processing_settings.pos_calibrant)
+            self.calibrant_spinbox.setValue(self.config.settings.processing_settings.pos_calibrant)
         elif self.neg_radio_button.isChecked():
-            self.calibrant_spinbox.setValue(config.settings.processing_settings.neg_calibrant)
+            self.calibrant_spinbox.setValue(self.config.settings.processing_settings.neg_calibrant)
 
     def toggle_cal_checked_value(self):
         self.calibrant_spinbox.setEnabled(self.cal_checkbox.isChecked())
@@ -139,25 +142,25 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
     def update_save_setting(self):
         sender = self.sender()
         if sender == self.database_combo_box:
-            config.settings.database_settings.last_used_database = sender.currentText()
+            self.config.settings.database_settings.last_used_database = sender.currentText()
         elif sender == self.cal_int_spinbox:
-            config.settings.processing_settings.calibration_max_intensity = sender.value()
+            self.config.settings.processing_settings.calibration_max_intensity = sender.value()
         elif sender == self.cal_ppm_spinbox:
-            config.settings.processing_settings.calibration_ppm = sender.value()
+            self.config.settings.processing_settings.calibration_ppm = sender.value()
         elif sender == self.calibrant_spinbox:
             if self.pos_radio_button.isChecked():
-                config.settings.processing_settings.pos_calibrant = sender.value()
+                self.config.settings.processing_settings.pos_calibrant = sender.value()
             elif self.neg_radio_button.isChecked():
-                config.settings.processing_settings.neg_calibrant = sender.value()
+                self.config.settings.processing_settings.neg_calibrant = sender.value()
         elif sender == self.ppm_spinbox:
-            config.settings.processing_settings.ppm = sender.value()
+            self.config.settings.processing_settings.ppm = sender.value()
         elif sender == self.na_iso_cor_checkbox:
-            config.settings.processing_settings.na_isotope_correction = sender.isChecked()
+            self.config.settings.processing_settings.na_isotope_correction = sender.isChecked()
         elif sender == self.m2_iso_cor_checkbox:
-            config.settings.processing_settings.m2_isotope_correction = sender.isChecked()
+            self.config.settings.processing_settings.m2_isotope_correction = sender.isChecked()
         elif sender == self.cal_checkbox:
-            config.settings.processing_settings.online_calibration = sender.isChecked()
-        config.save()
+            self.config.settings.processing_settings.online_calibration = sender.isChecked()
+        self.config.save()
 
     def set_ui_components_status(self, active: bool) -> None:
         self.open_imzml_button.setEnabled(active)

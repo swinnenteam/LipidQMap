@@ -2,9 +2,9 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QMainWindow
 
 from app import __appname__, __version__
-from app.config import Config
+from app.config import Config, config
 from app.database import LipidDB
-from app.dataprocess import ImageType, SampleImageCollection
+from app.dataprocess import ImageType, SampleCollection
 from app.figures import BarplotCanvas, MplCanvas
 from app.generated.MsiMainWindow_ui import Ui_MainWindow
 from app.utils import BooleanDelegate, PandasModelEditable
@@ -28,23 +28,30 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         super().__init__()
         self.database: LipidDB | None = None
-        self.config: Config | None = None
-        self.samples: dict[str, SampleImageCollection] | None = None
+        self.config: Config = config
+        self.samples: SampleCollection | None = None
         self.active_sample_id: str = ""
+        self.current_tab_type: ImageType = ImageType.raw
         self.ncols: int = 2
         self.nrows: int
-        self.imzml_import_window = ImzmlImportWindow()
-        self.save_window = FileSaveWindow()
+        self.imzml_import_window = ImzmlImportWindow(config=config)
+        self.save_window = FileSaveWindow(config=config)
         self.about_window = AboutWindow(__version__)
-        self.settings_window = SettingsWindow()
+        self.settings_window = SettingsWindow(config=config)
         self.boolean_delegate = BooleanDelegate()
 
         self.setupUi(self)
-        self.image_canvas_raw = MplCanvas(parent=self, canvas_type=ImageType.raw)
+        self.image_canvas_raw = MplCanvas(
+            parent=self, canvas_type=ImageType.raw, config=self.config
+        )
         self.verticalLayout_4.addWidget(self.image_canvas_raw)
-        self.image_canvas_iso = MplCanvas(parent=self, canvas_type=ImageType.isotope)
+        self.image_canvas_iso = MplCanvas(
+            parent=self, canvas_type=ImageType.isotope, config=self.config
+        )
         self.verticalLayout_2.addWidget(self.image_canvas_iso)
-        self.image_canvas_quant = MplCanvas(parent=self, canvas_type=ImageType.quant)
+        self.image_canvas_quant = MplCanvas(
+            parent=self, canvas_type=ImageType.quant, config=self.config
+        )
         self.verticalLayout_3.addWidget(self.image_canvas_quant)
         self.barplot_canvas = BarplotCanvas(parent=self)
         self.verticalLayout_5.addWidget(self.barplot_canvas)
@@ -94,7 +101,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_open_save_dialog.triggered.connect(self.open_save_dialog)
         self.action_open_about_dialog.triggered.connect(self.open_about_dialog)
         self.action_open_settings_window.triggered.connect(self.open_settings_dialog)
-        self.action_global.triggered.connect(self.handle_species_selection_changed)
+        self.action_global.triggered.connect(self.update_plots)
         self.action_zoom_in.triggered.connect(self.zoom_in)
         self.action_zoom_out.triggered.connect(self.zoom_out)
         self.action_rotate_left.triggered.connect(self.rotate_left)
@@ -105,11 +112,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.image_canvas_raw.image_clicked.connect(self.select_image)
         self.image_canvas_iso.image_clicked.connect(self.select_image)
         self.image_canvas_quant.image_clicked.connect(self.select_image)
+        self.tab_widget.currentChanged.connect(self.tab_changed)
+        self.settings_window.settings_changed.connect(self.update_plots)
 
     def open_imzml_dialog(self) -> None:
         """Launch the imzML import dialog."""
         self.imzml_import_window.set_ui_components_status(True)
         self.imzml_import_window.show()
+        self.imzml_import_window.activateWindow()
+        self.imzml_import_window.raise_()
 
     def open_save_dialog(self) -> None:
         """Launch the save images dialog."""
@@ -121,14 +132,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.save_window.nrows = self.nrows
             self.save_window.ncols = self.ncols
             self.save_window.show()
+            self.save_window.activateWindow()
+            self.save_window.raise_()
 
     def open_about_dialog(self) -> None:
         self.about_window.show()
+        self.about_window.activateWindow()
+        self.about_window.raise_()
 
     def open_settings_dialog(self) -> None:
+        self.settings_window.samples = self.samples
         self.settings_window.show()
+        self.settings_window.activateWindow()
+        self.settings_window.raise_()
 
-    def handle_species_selection_changed(self) -> None:
+    def update_plots(self) -> None:
         """
         Handle the event when the species selection is changed.
         """
@@ -150,7 +168,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 global_scale=global_scale,
             )
             self.barplot_canvas.update_figure(
-                sample=self.samples[self.active_sample_id], species=all_class_species
+                sample=self.samples[self.active_sample_id],
+                species=all_class_species,
+                image_type=self.current_tab_type,
             )
         if self.image_canvas_iso is not None:
             self.image_canvas_iso.update_figure(
@@ -179,7 +199,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.species_table.setModel(PandasModelEditable(self.species_table_data))
         self.species_table.setItemDelegateForColumn(2, self.boolean_delegate)
         species_selection = self.species_table.selectionModel()
-        species_selection.selectionChanged.connect(self.handle_species_selection_changed)
+        species_selection.selectionChanged.connect(self.update_plots)
 
         self.species_table.verticalHeader().setVisible(False)
         self.species_table.resizeColumnsToContents()
@@ -202,7 +222,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.samples is None:
             return
         nsamples = len(self.samples)
-        dimensions = [sample.shape for sample in self.samples.values()]
+        dimensions = self.samples.dimensions()
 
         self.nrows = nsamples // self.ncols + (nsamples % self.ncols > 0)
         self.image_canvas_raw.setup(nrows=self.nrows, ncols=self.ncols, dimensions=dimensions)
@@ -229,7 +249,37 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         species_id = self.database.get_id(index)
         all_class_species = self.database.get_all_species_same_class(species_id)
 
-        self.barplot_canvas.update_figure(sample=self.samples[image_id], species=all_class_species)
+        self.barplot_canvas.update_figure(
+            sample=self.samples[image_id],
+            species=all_class_species,
+            image_type=self.current_tab_type,
+        )
+
+    def tab_changed(self) -> None:
+        """
+        Update the barplot on tab change.
+        """
+        match self.tab_widget.currentIndex():
+            case 0:
+                self.current_tab_type = ImageType.raw
+            case 1:
+                self.current_tab_type = ImageType.isotope
+            case 2:
+                self.current_tab_type = ImageType.quant
+
+        self.current_tab_type
+        if self.database is None or self.samples is None or self.species_table is None:
+            return
+        index = self.species_table.selectionModel().selectedRows()[0].row()
+
+        species_id = self.database.get_id(index)
+        all_class_species = self.database.get_all_species_same_class(species_id)
+
+        self.barplot_canvas.update_figure(
+            sample=self.samples[self.active_sample_id],
+            species=all_class_species,
+            image_type=self.current_tab_type,
+        )
 
     def reset_canvas(self) -> None:
         """
@@ -250,7 +300,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return
         self.reset_canvas()
         self.setup_plots()
-        self.handle_species_selection_changed()
+        self.update_plots()
 
     def zoom_out(self) -> None:
         """
@@ -259,24 +309,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.ncols += 1
         self.reset_canvas()
         self.setup_plots()
-        self.handle_species_selection_changed()
+        self.update_plots()
 
     def rotate_left(self) -> None:
         if self.samples is not None:
             self.samples[self.active_sample_id].transform("rotate_left")
-            self.handle_species_selection_changed()
+            self.update_plots()
 
     def rotate_right(self) -> None:
         if self.samples is not None:
             self.samples[self.active_sample_id].transform("rotate_right")
-            self.handle_species_selection_changed()
+            self.update_plots()
 
     def reflect_horizontal(self) -> None:
         if self.samples is not None:
             self.samples[self.active_sample_id].transform("reflect_horizontal")
-            self.handle_species_selection_changed()
+            self.update_plots()
 
     def reflect_vertical(self) -> None:
         if self.samples is not None:
             self.samples[self.active_sample_id].transform("reflect_vertical")
-            self.handle_species_selection_changed()
+            self.update_plots()

@@ -1,13 +1,10 @@
-import os
-
 from PySide6.QtCore import QThreadPool, Slot
 from PySide6.QtWidgets import QFileDialog, QWidget
 
-from app.config import config
-from app.dataprocess import SampleImageCollection
+from app.config import Config
+from app.dataprocess import SampleCollection
 from app.figures import save_image_collection
 from app.generated.MsiSaveDialog_ui import Ui_MsiSaveDialog
-from app.multithreading import Worker
 
 
 class FileSaveWindow(QWidget, Ui_MsiSaveDialog):
@@ -15,11 +12,12 @@ class FileSaveWindow(QWidget, Ui_MsiSaveDialog):
     Window in which the images can be saved.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, config: Config) -> None:
         super().__init__()
+        self.config = config
         self.threadpool = QThreadPool()
         self.savepath: str | None = None
-        self.samples: dict[str, SampleImageCollection] | None = None
+        self.samples: SampleCollection | None = None
         self.species_selection: list[str] | None = None
         self.nrows: int
         self.ncols: int
@@ -92,7 +90,7 @@ class FileSaveWindow(QWidget, Ui_MsiSaveDialog):
             global_scale=self.global_scale,
             nrows=self.nrows,
             ncols=self.ncols,
-            config=config,
+            config=self.config,
         )
         self.exit()
 
@@ -104,18 +102,18 @@ class FileSaveWindow(QWidget, Ui_MsiSaveDialog):
     def update_save_setting(self):
         sender = self.sender()
         if sender == self.check_box_save_raw:
-            config.settings.save_settings.save_raw_images = sender.isChecked()
+            self.config.settings.save_settings.save_raw_images = sender.isChecked()
         elif sender == self.check_box_save_iso:
-            config.settings.save_settings.save_iso_images = sender.isChecked()
+            self.config.settings.save_settings.save_iso_images = sender.isChecked()
         elif sender == self.check_box_save_quant:
-            config.settings.save_settings.save_quant_images = sender.isChecked()
+            self.config.settings.save_settings.save_quant_images = sender.isChecked()
         elif sender == self.check_box_save_individual:
-            config.settings.save_settings.save_individual_unfiltered = sender.isChecked()
+            self.config.settings.save_settings.save_individual_unfiltered = sender.isChecked()
         elif sender == self.check_box_save_filtered:
-            config.settings.save_settings.save_individual_filtered_scaled = sender.isChecked()
+            self.config.settings.save_settings.save_individual_filtered_scaled = sender.isChecked()
         elif sender == self.check_box_save_multi:
-            config.settings.save_settings.save_panel_filtered_scaled = sender.isChecked()
-        config.save()
+            self.config.settings.save_settings.save_panel_filtered_scaled = sender.isChecked()
+        self.config.save()
 
     def set_ui_components_status(self, active: bool) -> None:
         self.check_box_save_raw.setEnabled(active)

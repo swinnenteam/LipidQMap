@@ -13,7 +13,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from PySide6.QtCore import Signal
 
 from app.config import Config
-from app.dataprocess import ImageType, SampleImageCollection
+from app.database import LipidSpecies
+from app.dataprocess import ImageType, SampleCollection, SectionMsiImage
 
 matplotlib.use("Qtagg")
 
@@ -62,19 +63,22 @@ class BarplotCanvas(FigureCanvasQTAgg):
         self.ax.yaxis.label.set_color("white")
         self.ax.xaxis.label.set_color("white")
 
-    def update_figure(self, sample: SampleImageCollection, species: list[str]) -> None:
+    def update_figure(
+        self, sample: SectionMsiImage, species: list[LipidSpecies], image_type: ImageType
+    ) -> None:
         """
         Update the figure with new image data.
 
         Args:
-            sample: SampleImageCollection
-            species: list[str]
+            sample: SectionMsiImage
+            species: list[LipidSpecies]
+            image_type: ImageType
         """
-        adduct = re.findall("\s\[.+\][+-]", species[0])[0]
-        values = [sample.get_mean(image_type=ImageType.raw, species_id=id) for id in species]
-        species = [re.sub("\s\[.+\][+-]", "", s) for s in species]
+        adduct = species[0].adduct
+        values = [sample.get_mean(image_type=image_type, species_id=s.id_adduct) for s in species]
+        species_ids = [s.id for s in species]
         self.ax.cla()
-        self.ax.bar(species, values, color=[cyan])
+        self.ax.bar(species_ids, values, color=[cyan])
         self.ax.text(
             0.99,
             0.99,
@@ -106,7 +110,7 @@ class MplCanvas(FigureCanvasQTAgg):
 
     image_clicked = Signal(str)
 
-    def __init__(self, canvas_type: ImageType, parent=None):
+    def __init__(self, canvas_type: ImageType, config: Config, parent=None):
         """
         Initialize the MplCanvas.
 
@@ -114,11 +118,11 @@ class MplCanvas(FigureCanvasQTAgg):
             canvas_type (ImageType): The type of image to be displayed.
             parent: The parent widget.
         """
-
+        self.canvas_type = canvas_type
+        self.config = config
         self.ncols: int = 2
         self.ims: list = []
         self.fig: matplotlib.figure.Figure = plt.figure()
-        self.canvas_type = canvas_type
         super(MplCanvas, self).__init__(self.fig)
         self.mpl_connect("button_press_event", self.on_press)
 
@@ -141,13 +145,13 @@ class MplCanvas(FigureCanvasQTAgg):
         cmap = colormaps.get_cmap("viridis")
         fg_color = "white"
 
+        filter = "gaussian" if self.config.settings.filter_settings.gaussian_filter else "nearest"
         for sample_idx, (x, y) in enumerate(dimensions):
             ax = self.fig.add_subplot(nrows, ncols, sample_idx + 1)
-            # interpolation nearest or gaussian
             im = ax.imshow(
                 np.full([x, y], np.nan),
                 origin="lower",
-                interpolation="gaussian",
+                interpolation=filter,
                 cmap=cmap,
                 vmin=0,
                 aspect="equal",
@@ -172,7 +176,7 @@ class MplCanvas(FigureCanvasQTAgg):
 
     def update_figure(
         self,
-        samples: dict[str, SampleImageCollection],
+        samples: SampleCollection,
         species_id: str,
         active_sample_id: str,
         global_scale: bool = True,
@@ -181,7 +185,7 @@ class MplCanvas(FigureCanvasQTAgg):
         Update the figure with new image data.
 
         Args:
-            samples (dict[str, SampleImageCollection]): Dictionary of sample image collections.
+            samples SampleCollection: Container that holds all the SectionMsiImages of each sample.
             species_id (str): The species identifier.
             global_scale (bool): Whether to use a global scale for all images (default is True).
         """
@@ -193,7 +197,7 @@ class MplCanvas(FigureCanvasQTAgg):
             )
         else:
             max_value = None
-
+        filter = "gaussian" if self.config.settings.filter_settings.gaussian_filter else "nearest"
         for i, (key, image_collection) in enumerate(samples.items()):
             image = image_collection.get(self.canvas_type, species_id)
             x, y = image_collection.shape
@@ -204,6 +208,7 @@ class MplCanvas(FigureCanvasQTAgg):
             self.ims[i].set_data(image)
             self.ims[i].set_extent((0, y, 0, x))
             self.ims[i].autoscale()
+            self.ims[i].set_interpolation(filter)
             self.ims[i].set_clim(vmin=0, vmax=max_value)
             color = "white"
             if key == active_sample_id:
@@ -232,7 +237,7 @@ class MplCanvas(FigureCanvasQTAgg):
 
 
 def get_max_from_image_collection(
-    samples: dict[str, SampleImageCollection],
+    samples: SampleCollection,
     species_id: str,
     image_type: ImageType,
 ) -> int | None:
@@ -265,10 +270,8 @@ def save_individual_image(
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.1)
     ax.set_title(label=species_id, size=24)
-    # image = np.rot90(image)
     img = ax.imshow(image, interpolation="gaussian", origin="lower")
     img.set_clim(vmin=0, vmax=max_scale)
-    # ax.invert_xaxis()
     cbar = plt.colorbar(img, cax=cax)
     cbar.set_label(label="pmol / mm²", size=18)
     cbar.ax.tick_params(labelsize=18)
@@ -310,7 +313,7 @@ def save_individual_unfiltered_image(species_id: str, image: npt.NDArray, path: 
 
 
 def save_panel_image(
-    samples: dict[str, SampleImageCollection],
+    samples: SampleCollection,
     global_scale: bool,
     path: str,
     nrows: int,
@@ -378,7 +381,7 @@ def save_panel_image(
 
 def save_image_collection(
     savepath: str,
-    samples: dict[str, SampleImageCollection],
+    samples: SampleCollection,
     species_selection: list[str],
     global_scale: bool,
     nrows: int,

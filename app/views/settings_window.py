@@ -1,6 +1,8 @@
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget
 
-from app.config import config
+from app.config import Config
+from app.dataprocess import SampleCollection
 from app.generated.MsiSettingsDialog_ui import Ui_Dialog
 
 
@@ -9,9 +11,13 @@ class SettingsWindow(QWidget, Ui_Dialog):
     Settings Window
     """
 
-    def __init__(self) -> None:
+    settings_changed = Signal()
+
+    def __init__(self, config: Config) -> None:
         super().__init__()
         self.setupUi(self)
+        self.config = config
+        self.samples: SampleCollection | None
         self.button_cancel.clicked.connect(self.close_window)
         self.button_save.clicked.connect(self.save_and_apply)
         self.check_box_gaussian_filter.setChecked(config.settings.filter_settings.gaussian_filter)
@@ -28,13 +34,18 @@ class SettingsWindow(QWidget, Ui_Dialog):
         self.close()
 
     def save_and_apply(self) -> None:
-        config.settings.filter_settings.gaussian_filter = self.check_box_gaussian_filter.isChecked()
-        config.settings.filter_settings.quant_image_winsorizing_percentile = (
+        self.config.settings.filter_settings.gaussian_filter = (
+            self.check_box_gaussian_filter.isChecked()
+        )
+        self.config.settings.filter_settings.quant_image_winsorizing_percentile = (
             self.spinbox_winsor_quant.value()
         )
-        config.settings.filter_settings.raw_image_winsorizing_percentile = (
+        self.config.settings.filter_settings.raw_image_winsorizing_percentile = (
             self.spinbox_winsor_raw.value()
         )
-        config.settings.selection_settings.minimum_pixels = self.spinbox_min_pixels.value()
-        config.settings.selection_settings.minimum_intensity = self.spinbox_min_intensity.value()
-        config.save()
+        self.config.settings.selection_settings.minimum_pixels = self.spinbox_min_pixels.value()
+        self.config.settings.selection_settings.minimum_intensity = (
+            self.spinbox_min_intensity.value()
+        )
+        self.config.save()
+        self.settings_changed.emit()
