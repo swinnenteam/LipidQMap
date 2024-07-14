@@ -3,8 +3,8 @@ from PySide6.QtWidgets import QFileDialog, QWidget
 
 from app.config import Config
 from app.dataprocess import SampleCollection
-from app.figures import save_image_collection
 from app.generated.MsiSaveDialog_ui import Ui_MsiSaveDialog
+from app.matplotlib_figures import save_image_collection
 
 
 class FileSaveWindow(QWidget, Ui_MsiSaveDialog):

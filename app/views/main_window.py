@@ -6,8 +6,9 @@ from app import __appname__, __version__
 from app.config import Config, config
 from app.database import LipidDB
 from app.dataprocess import ImageType, SampleCollection
-from app.figures import BarplotCanvas, MplCanvas, SpectrumPlotView
 from app.generated.MsiMainWindow_ui import Ui_MainWindow
+from app.matplotlib_figures import BarplotCanvas, MplCanvas
+from app.qt_figures import SpectrumPlotView
 from app.utils import BooleanDelegate, PandasModelEditable
 from app.views.about_window import AboutWindow
 from app.views.file_save_window import FileSaveWindow

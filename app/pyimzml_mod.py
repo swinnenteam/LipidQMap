@@ -530,80 +530,30 @@ def _bisect_spectrum_multi(
 
 
 def get_average_spectrum(p: ImzMLParser, bin_size: float) -> npt.NDArray:
+    """
+    Calculate average mass spectrum on a subset of a 1000 random spectra
+    """
     num_spectra = min(1000, len(p.spectra))
     spectra = sample(p.spectra, num_spectra)
     return get_average_spectrum_numba(spectra=np.hstack(spectra), bin_size=bin_size)
 
 
-def get_average_spectrum_numba_v1(spectra: npt.NDArray, bin_size: float) -> npt.NDArray:
-    # 7.6s, a lot more with njit
-    # Combine all x and y values into single numpy arrays
-    all_x, all_y = np.split(spectra, [1], axis=0)
-    all_x = all_x.flatten()
-    all_y = all_y.flatten()
-
-    # Get the minimum and maximum x values to define bins
-    min_x: float = np.min(all_x)
-    max_x: float = np.max(all_x)
-
-    # Define bins
-    bins = np.arange(min_x, max_x + bin_size, bin_size, dtype=np.float64)
-
-    # Digitize the x values to find which bin each point belongs to
-    bin_indices = np.digitize(all_x, bins) - 1
-
-    # Calculate the average y value for each bin
-    bin_means = np.zeros(len(bins))
-
-    for i in range(len(bins)):
-        bin_y_values = all_y[bin_indices == i]
-        if len(bin_y_values) > 0:
-            bin_means[i] = np.mean(bin_y_values)
-
-    return np.vstack((bins, bin_means))
-
-
-def get_average_spectrum_numba_v2(spectra: npt.NDArray, bin_size: float) -> npt.NDArray:
-    #  0.40s, 0.56s with njit
-    # Combine all x and y values into single numpy arrays
-    all_x, all_y = np.split(spectra, [1], axis=0)
-    all_x = all_x.flatten()
-    all_y = all_y.flatten()
-
-    # Get the minimum and maximum x values to define bins
-    min_x: float = np.min(all_x)
-    max_x: float = np.max(all_x)
-
-    # Define bins
-    bins = np.arange(min_x, max_x + bin_size, bin_size, dtype=np.float64)
-
-    # Initialize the array for bin means
-    bin_means = np.zeros(len(bins), dtype=np.float64)
-
-    # Count the number of points in each bin
-    bin_counts = np.zeros(len(bins), dtype=np.int32)
-
-    # Accumulate the y values for each bin
-    for i in range(len(all_x)):
-        x = all_x[i]
-        y = all_y[i]
-        bin_index = int((x - min_x) // bin_size)
-        if 0 <= bin_index < len(bin_means):
-            bin_means[bin_index] += y
-            bin_counts[bin_index] += 1
-
-    # Calculate the mean for each bin
-    for i in range(len(bin_means)):
-        if bin_counts[i] > 0:
-            bin_means[i] /= bin_counts[i]
-
-    return np.vstack((bins, bin_means))
-
-
 def get_average_spectrum_numba(
     spectra: npt.NDArray, bin_size: float, threshold: int = 200
 ) -> npt.NDArray:
-    # 0.03s
+    """
+    This function processes a 2D numpy array of spectra data, where each spectrum consists of
+    x (wavelength or frequency) and y (intensity) values. The spectra are binned to compute
+    an average spectrum.
+
+    Parameters:
+    spectra (npt.NDArray): NDarray hstack containing NDarray spectra
+    bin_size (float): The size of each bin for averaging the spectrum.
+    threshold (int, optional): A threshold value below which y values are set to zero.
+
+    Returns:
+    npt.NDArray: 2D numpy array with average spectrum
+    """
     # Combine all x and y values into single numpy arrays
     all_x, all_y = np.split(spectra, [1], axis=0)
     all_x = all_x.flatten()
@@ -629,8 +579,8 @@ def get_average_spectrum_numba(
     # Avoid division by zero
     nonzero_bins = bin_counts > 0
     bin_means[nonzero_bins] /= bin_counts[nonzero_bins]
-
-    return np.vstack((bins, bin_means))
+    result = remove_extra_zeroes(np.vstack((bins, bin_means)))
+    return result
 
 
 def remove_extra_zeroes(spectra: npt.NDArray) -> npt.NDArray:

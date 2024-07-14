@@ -3,180 +3,139 @@
 ################################################################################
 ## Form generated from reading UI file 'MsiMainWindow.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.6.2
+## Created by: Qt User Interface Compiler version 6.7.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
-from PySide6.QtCore import (
-    QCoreApplication,
-    QDate,
-    QDateTime,
-    QLocale,
-    QMetaObject,
-    QObject,
-    QPoint,
-    QRect,
-    QSize,
-    Qt,
-    QTime,
-    QUrl,
-)
-from PySide6.QtGui import (
-    QAction,
-    QBrush,
-    QColor,
-    QConicalGradient,
-    QCursor,
-    QFont,
-    QFontDatabase,
-    QGradient,
-    QIcon,
-    QImage,
-    QKeySequence,
-    QLinearGradient,
-    QPainter,
-    QPalette,
-    QPixmap,
-    QRadialGradient,
-    QTransform,
-)
-from PySide6.QtWidgets import (
-    QAbstractItemView,
-    QApplication,
-    QFrame,
-    QGridLayout,
-    QHeaderView,
-    QMainWindow,
-    QMenu,
-    QMenuBar,
-    QScrollArea,
-    QSizePolicy,
-    QSplitter,
-    QStatusBar,
-    QTableView,
-    QTabWidget,
-    QToolBar,
-    QVBoxLayout,
-    QWidget,
-)
-
+from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
+    QMetaObject, QObject, QPoint, QRect,
+    QSize, QTime, QUrl, Qt)
+from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
+    QCursor, QFont, QFontDatabase, QGradient,
+    QIcon, QImage, QKeySequence, QLinearGradient,
+    QPainter, QPalette, QPixmap, QRadialGradient,
+    QTransform)
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QFrame, QGridLayout,
+    QHeaderView, QMainWindow, QMenu, QMenuBar,
+    QScrollArea, QSizePolicy, QSplitter, QStatusBar,
+    QTabWidget, QTableView, QToolBar, QVBoxLayout,
+    QWidget)
 from . import resources_rc
-
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
-            MainWindow.setObjectName("MainWindow")
+            MainWindow.setObjectName(u"MainWindow")
         MainWindow.resize(800, 600)
         self.action_open_imzml_dialog = QAction(MainWindow)
-        self.action_open_imzml_dialog.setObjectName("action_open_imzml_dialog")
+        self.action_open_imzml_dialog.setObjectName(u"action_open_imzml_dialog")
         icon = QIcon()
-        icon.addFile(":/images/icons/open_file.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon.addFile(u":/images/icons/open_file.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.action_open_imzml_dialog.setIcon(icon)
         self.action_open_save_dialog = QAction(MainWindow)
-        self.action_open_save_dialog.setObjectName("action_open_save_dialog")
+        self.action_open_save_dialog.setObjectName(u"action_open_save_dialog")
         icon1 = QIcon()
-        icon1.addFile(":/images/icons/save.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon1.addFile(u":/images/icons/save.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.action_open_save_dialog.setIcon(icon1)
         self.action_zoom_in = QAction(MainWindow)
-        self.action_zoom_in.setObjectName("action_zoom_in")
+        self.action_zoom_in.setObjectName(u"action_zoom_in")
         icon2 = QIcon()
-        icon2.addFile(":/images/icons/zoom_in.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon2.addFile(u":/images/icons/zoom_in.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.action_zoom_in.setIcon(icon2)
         self.action_zoom_in.setMenuRole(QAction.NoRole)
         self.action_zoom_out = QAction(MainWindow)
-        self.action_zoom_out.setObjectName("action_zoom_out")
+        self.action_zoom_out.setObjectName(u"action_zoom_out")
         icon3 = QIcon()
-        icon3.addFile(":/images/icons/zoom_out.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon3.addFile(u":/images/icons/zoom_out.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.action_zoom_out.setIcon(icon3)
         self.action_zoom_out.setMenuRole(QAction.NoRole)
         self.action_global = QAction(MainWindow)
-        self.action_global.setObjectName("action_global")
+        self.action_global.setObjectName(u"action_global")
         self.action_global.setCheckable(True)
         icon4 = QIcon()
-        icon4.addFile(":/images/icons/global.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon4.addFile(u":/images/icons/global.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.action_global.setIcon(icon4)
         self.action_global.setMenuRole(QAction.NoRole)
         self.action_rotate_left = QAction(MainWindow)
-        self.action_rotate_left.setObjectName("action_rotate_left")
+        self.action_rotate_left.setObjectName(u"action_rotate_left")
         icon5 = QIcon()
-        icon5.addFile(":/images/icons/rotate_left.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon5.addFile(u":/images/icons/rotate_left.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.action_rotate_left.setIcon(icon5)
         self.action_rotate_left.setMenuRole(QAction.NoRole)
         self.action_rotate_right = QAction(MainWindow)
-        self.action_rotate_right.setObjectName("action_rotate_right")
+        self.action_rotate_right.setObjectName(u"action_rotate_right")
         icon6 = QIcon()
-        icon6.addFile(":/images/icons/rotate_right.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon6.addFile(u":/images/icons/rotate_right.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.action_rotate_right.setIcon(icon6)
         self.action_rotate_right.setMenuRole(QAction.NoRole)
         self.action_reflect_horizontal = QAction(MainWindow)
-        self.action_reflect_horizontal.setObjectName("action_reflect_horizontal")
+        self.action_reflect_horizontal.setObjectName(u"action_reflect_horizontal")
         icon7 = QIcon()
-        icon7.addFile(":/images/icons/reflect_horizontal.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon7.addFile(u":/images/icons/reflect_horizontal.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.action_reflect_horizontal.setIcon(icon7)
         self.action_reflect_horizontal.setMenuRole(QAction.NoRole)
         self.action_reflect_vertical = QAction(MainWindow)
-        self.action_reflect_vertical.setObjectName("action_reflect_vertical")
+        self.action_reflect_vertical.setObjectName(u"action_reflect_vertical")
         icon8 = QIcon()
-        icon8.addFile(":/images/icons/reflect_vertical.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon8.addFile(u":/images/icons/reflect_vertical.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.action_reflect_vertical.setIcon(icon8)
         self.action_reflect_vertical.setMenuRole(QAction.NoRole)
         self.action_open_about_dialog = QAction(MainWindow)
-        self.action_open_about_dialog.setObjectName("action_open_about_dialog")
+        self.action_open_about_dialog.setObjectName(u"action_open_about_dialog")
         icon9 = QIcon()
-        icon9.addFile(":/images/icons/help.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon9.addFile(u":/images/icons/help.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.action_open_about_dialog.setIcon(icon9)
         self.action_open_about_dialog.setMenuRole(QAction.NoRole)
         self.action_open_settings_window = QAction(MainWindow)
-        self.action_open_settings_window.setObjectName("action_open_settings_window")
+        self.action_open_settings_window.setObjectName(u"action_open_settings_window")
         icon10 = QIcon()
-        icon10.addFile(":/images/icons/settings.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon10.addFile(u":/images/icons/settings.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.action_open_settings_window.setIcon(icon10)
         self.action_open_settings_window.setMenuRole(QAction.NoRole)
         self.centralwidget = QWidget(MainWindow)
-        self.centralwidget.setObjectName("centralwidget")
+        self.centralwidget.setObjectName(u"centralwidget")
         self.verticalLayout_7 = QVBoxLayout(self.centralwidget)
-        self.verticalLayout_7.setObjectName("verticalLayout_7")
+        self.verticalLayout_7.setObjectName(u"verticalLayout_7")
         self.splitter_charts = QSplitter(self.centralwidget)
-        self.splitter_charts.setObjectName("splitter_charts")
-        self.splitter_charts.setOrientation(Qt.Orientation.Vertical)
+        self.splitter_charts.setObjectName(u"splitter_charts")
+        self.splitter_charts.setOrientation(Qt.Vertical)
         self.splitter = QSplitter(self.splitter_charts)
-        self.splitter.setObjectName("splitter")
-        self.splitter.setOrientation(Qt.Orientation.Horizontal)
+        self.splitter.setObjectName(u"splitter")
+        self.splitter.setOrientation(Qt.Horizontal)
         self.frame_1 = QFrame(self.splitter)
-        self.frame_1.setObjectName("frame_1")
+        self.frame_1.setObjectName(u"frame_1")
         self.frame_1.setMinimumSize(QSize(0, 0))
         self.frame_1.setFrameShape(QFrame.StyledPanel)
         self.frame_1.setFrameShadow(QFrame.Raised)
         self.gridLayout = QGridLayout(self.frame_1)
-        self.gridLayout.setObjectName("gridLayout")
+        self.gridLayout.setObjectName(u"gridLayout")
         self.gridLayout.setContentsMargins(0, -1, 0, 0)
         self.tab_widget = QTabWidget(self.frame_1)
-        self.tab_widget.setObjectName("tab_widget")
+        self.tab_widget.setObjectName(u"tab_widget")
         self.tab_raw = QWidget()
-        self.tab_raw.setObjectName("tab_raw")
+        self.tab_raw.setObjectName(u"tab_raw")
         self.gridLayout_5 = QGridLayout(self.tab_raw)
-        self.gridLayout_5.setObjectName("gridLayout_5")
+        self.gridLayout_5.setObjectName(u"gridLayout_5")
         self.scroll_area_raw = QScrollArea(self.tab_raw)
-        self.scroll_area_raw.setObjectName("scroll_area_raw")
+        self.scroll_area_raw.setObjectName(u"scroll_area_raw")
         self.scroll_area_raw.setWidgetResizable(True)
         self.scroll_area_raw_contents = QWidget()
-        self.scroll_area_raw_contents.setObjectName("scroll_area_raw_contents")
+        self.scroll_area_raw_contents.setObjectName(u"scroll_area_raw_contents")
         self.scroll_area_raw_contents.setGeometry(QRect(0, 0, 337, 319))
         self.verticalLayout_4 = QVBoxLayout(self.scroll_area_raw_contents)
-        self.verticalLayout_4.setObjectName("verticalLayout_4")
+        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
         self.scroll_area_raw.setWidget(self.scroll_area_raw_contents)
 
         self.gridLayout_5.addWidget(self.scroll_area_raw, 0, 0, 1, 1)
 
         self.tab_widget.addTab(self.tab_raw, "")
         self.tab_iso = QWidget()
-        self.tab_iso.setObjectName("tab_iso")
+        self.tab_iso.setObjectName(u"tab_iso")
         self.gridLayout_3 = QGridLayout(self.tab_iso)
-        self.gridLayout_3.setObjectName("gridLayout_3")
+        self.gridLayout_3.setObjectName(u"gridLayout_3")
         self.scroll_area_iso = QScrollArea(self.tab_iso)
-        self.scroll_area_iso.setObjectName("scroll_area_iso")
+        self.scroll_area_iso.setObjectName(u"scroll_area_iso")
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -185,27 +144,27 @@ class Ui_MainWindow(object):
         self.scroll_area_iso.setMinimumSize(QSize(0, 0))
         self.scroll_area_iso.setWidgetResizable(True)
         self.scroll_area_iso_contents = QWidget()
-        self.scroll_area_iso_contents.setObjectName("scroll_area_iso_contents")
+        self.scroll_area_iso_contents.setObjectName(u"scroll_area_iso_contents")
         self.scroll_area_iso_contents.setGeometry(QRect(0, 0, 337, 319))
         self.verticalLayout_2 = QVBoxLayout(self.scroll_area_iso_contents)
-        self.verticalLayout_2.setObjectName("verticalLayout_2")
+        self.verticalLayout_2.setObjectName(u"verticalLayout_2")
         self.scroll_area_iso.setWidget(self.scroll_area_iso_contents)
 
         self.gridLayout_3.addWidget(self.scroll_area_iso, 0, 0, 1, 1)
 
         self.tab_widget.addTab(self.tab_iso, "")
         self.tab_quant = QWidget()
-        self.tab_quant.setObjectName("tab_quant")
+        self.tab_quant.setObjectName(u"tab_quant")
         self.gridLayout_4 = QGridLayout(self.tab_quant)
-        self.gridLayout_4.setObjectName("gridLayout_4")
+        self.gridLayout_4.setObjectName(u"gridLayout_4")
         self.scroll_area_quant = QScrollArea(self.tab_quant)
-        self.scroll_area_quant.setObjectName("scroll_area_quant")
+        self.scroll_area_quant.setObjectName(u"scroll_area_quant")
         self.scroll_area_quant.setWidgetResizable(True)
         self.scroll_area_quant_contents = QWidget()
-        self.scroll_area_quant_contents.setObjectName("scroll_area_quant_contents")
+        self.scroll_area_quant_contents.setObjectName(u"scroll_area_quant_contents")
         self.scroll_area_quant_contents.setGeometry(QRect(0, 0, 337, 319))
         self.verticalLayout_3 = QVBoxLayout(self.scroll_area_quant_contents)
-        self.verticalLayout_3.setObjectName("verticalLayout_3")
+        self.verticalLayout_3.setObjectName(u"verticalLayout_3")
         self.scroll_area_quant.setWidget(self.scroll_area_quant_contents)
 
         self.gridLayout_4.addWidget(self.scroll_area_quant, 0, 0, 1, 1)
@@ -216,7 +175,7 @@ class Ui_MainWindow(object):
 
         self.splitter.addWidget(self.frame_1)
         self.frame_2 = QFrame(self.splitter)
-        self.frame_2.setObjectName("frame_2")
+        self.frame_2.setObjectName(u"frame_2")
         sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         sizePolicy1.setHorizontalStretch(0)
         sizePolicy1.setVerticalStretch(0)
@@ -227,9 +186,9 @@ class Ui_MainWindow(object):
         self.frame_2.setFrameShape(QFrame.StyledPanel)
         self.frame_2.setFrameShadow(QFrame.Raised)
         self.verticalLayout = QVBoxLayout(self.frame_2)
-        self.verticalLayout.setObjectName("verticalLayout")
+        self.verticalLayout.setObjectName(u"verticalLayout")
         self.species_table = QTableView(self.frame_2)
-        self.species_table.setObjectName("species_table")
+        self.species_table.setObjectName(u"species_table")
         self.species_table.setBaseSize(QSize(0, 0))
         self.species_table.setEditTriggers(QAbstractItemView.DoubleClicked)
         self.species_table.setTabKeyNavigation(False)
@@ -241,22 +200,22 @@ class Ui_MainWindow(object):
         self.splitter.addWidget(self.frame_2)
         self.splitter_charts.addWidget(self.splitter)
         self.barplot_frame = QFrame(self.splitter_charts)
-        self.barplot_frame.setObjectName("barplot_frame")
+        self.barplot_frame.setObjectName(u"barplot_frame")
         self.barplot_frame.setFrameShape(QFrame.StyledPanel)
         self.barplot_frame.setFrameShadow(QFrame.Raised)
         self.verticalLayout_5 = QVBoxLayout(self.barplot_frame)
-        self.verticalLayout_5.setObjectName("verticalLayout_5")
+        self.verticalLayout_5.setObjectName(u"verticalLayout_5")
         self.tab_widget_charts = QTabWidget(self.barplot_frame)
-        self.tab_widget_charts.setObjectName("tab_widget_charts")
+        self.tab_widget_charts.setObjectName(u"tab_widget_charts")
         self.tab_species_plot = QWidget()
-        self.tab_species_plot.setObjectName("tab_species_plot")
+        self.tab_species_plot.setObjectName(u"tab_species_plot")
         self.verticalLayout_6 = QVBoxLayout(self.tab_species_plot)
-        self.verticalLayout_6.setObjectName("verticalLayout_6")
+        self.verticalLayout_6.setObjectName(u"verticalLayout_6")
         self.tab_widget_charts.addTab(self.tab_species_plot, "")
         self.tab_mz_spectrum = QWidget()
-        self.tab_mz_spectrum.setObjectName("tab_mz_spectrum")
+        self.tab_mz_spectrum.setObjectName(u"tab_mz_spectrum")
         self.verticalLayout_8 = QVBoxLayout(self.tab_mz_spectrum)
-        self.verticalLayout_8.setObjectName("verticalLayout_8")
+        self.verticalLayout_8.setObjectName(u"verticalLayout_8")
         self.tab_widget_charts.addTab(self.tab_mz_spectrum, "")
 
         self.verticalLayout_5.addWidget(self.tab_widget_charts)
@@ -267,25 +226,25 @@ class Ui_MainWindow(object):
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
-        self.menubar.setObjectName("menubar")
+        self.menubar.setObjectName(u"menubar")
         self.menubar.setGeometry(QRect(0, 0, 800, 37))
         self.menu_file = QMenu(self.menubar)
-        self.menu_file.setObjectName("menu_file")
+        self.menu_file.setObjectName(u"menu_file")
         self.menuEdit = QMenu(self.menubar)
-        self.menuEdit.setObjectName("menuEdit")
+        self.menuEdit.setObjectName(u"menuEdit")
         self.menuHelp = QMenu(self.menubar)
-        self.menuHelp.setObjectName("menuHelp")
+        self.menuHelp.setObjectName(u"menuHelp")
         self.menuSettings = QMenu(self.menubar)
-        self.menuSettings.setObjectName("menuSettings")
+        self.menuSettings.setObjectName(u"menuSettings")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QStatusBar(MainWindow)
-        self.statusbar.setObjectName("statusbar")
+        self.statusbar.setObjectName(u"statusbar")
         MainWindow.setStatusBar(self.statusbar)
         self.toolBar = QToolBar(MainWindow)
-        self.toolBar.setObjectName("toolBar")
+        self.toolBar.setObjectName(u"toolBar")
         self.toolBar.setMovable(False)
         self.toolBar.setIconSize(QSize(20, 20))
-        MainWindow.addToolBar(Qt.TopToolBarArea, self.toolBar)
+        MainWindow.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
 
         self.menubar.addAction(self.menu_file.menuAction())
         self.menubar.addAction(self.menuEdit.menuAction())
@@ -317,99 +276,53 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tab_widget.setCurrentIndex(1)
+        self.tab_widget.setCurrentIndex(0)
         self.tab_widget_charts.setCurrentIndex(0)
 
-        QMetaObject.connectSlotsByName(MainWindow)
 
+        QMetaObject.connectSlotsByName(MainWindow)
     # setupUi
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", "MainWindow", None))
-        self.action_open_imzml_dialog.setText(
-            QCoreApplication.translate("MainWindow", "Open imzML files...", None)
-        )
-        self.action_open_save_dialog.setText(
-            QCoreApplication.translate("MainWindow", "Save images...", None)
-        )
-        self.action_zoom_in.setText(
-            QCoreApplication.translate("MainWindow", "action_zoom_in", None)
-        )
-        # if QT_CONFIG(tooltip)
-        self.action_zoom_in.setToolTip(QCoreApplication.translate("MainWindow", "Zoom in", None))
-        # endif // QT_CONFIG(tooltip)
-        self.action_zoom_out.setText(
-            QCoreApplication.translate("MainWindow", "action_zoom_out", None)
-        )
-        # if QT_CONFIG(tooltip)
-        self.action_zoom_out.setToolTip(QCoreApplication.translate("MainWindow", "Zoom out", None))
-        # endif // QT_CONFIG(tooltip)
-        self.action_global.setText(QCoreApplication.translate("MainWindow", "global", None))
-        # if QT_CONFIG(tooltip)
-        self.action_global.setToolTip(
-            QCoreApplication.translate("MainWindow", "Global scale", None)
-        )
-        # endif // QT_CONFIG(tooltip)
-        self.action_rotate_left.setText(
-            QCoreApplication.translate("MainWindow", "Rotate Left", None)
-        )
-        self.action_rotate_right.setText(
-            QCoreApplication.translate("MainWindow", "Rotate Right", None)
-        )
-        self.action_reflect_horizontal.setText(
-            QCoreApplication.translate("MainWindow", "Reflect Horizontal", None)
-        )
-        self.action_reflect_vertical.setText(
-            QCoreApplication.translate("MainWindow", "Reflect Vertical", None)
-        )
-        self.action_open_about_dialog.setText(
-            QCoreApplication.translate("MainWindow", "About", None)
-        )
-        self.action_open_settings_window.setText(
-            QCoreApplication.translate("MainWindow", "Settings", None)
-        )
-        self.tab_widget.setTabText(
-            self.tab_widget.indexOf(self.tab_raw),
-            QCoreApplication.translate("MainWindow", "Raw", None),
-        )
-        # if QT_CONFIG(tooltip)
-        self.tab_widget.setTabToolTip(
-            self.tab_widget.indexOf(self.tab_raw),
-            QCoreApplication.translate("MainWindow", "Raw images", None),
-        )
-        # endif // QT_CONFIG(tooltip)
-        self.tab_widget.setTabText(
-            self.tab_widget.indexOf(self.tab_iso),
-            QCoreApplication.translate("MainWindow", "Isotope corrected", None),
-        )
-        # if QT_CONFIG(tooltip)
-        self.tab_widget.setTabToolTip(
-            self.tab_widget.indexOf(self.tab_iso),
-            QCoreApplication.translate("MainWindow", "Isotope corrected images", None),
-        )
-        # endif // QT_CONFIG(tooltip)
-        self.tab_widget.setTabText(
-            self.tab_widget.indexOf(self.tab_quant),
-            QCoreApplication.translate("MainWindow", "Quantitative", None),
-        )
-        # if QT_CONFIG(tooltip)
-        self.tab_widget.setTabToolTip(
-            self.tab_widget.indexOf(self.tab_quant),
-            QCoreApplication.translate("MainWindow", "Quantified images", None),
-        )
-        # endif // QT_CONFIG(tooltip)
-        self.tab_widget_charts.setTabText(
-            self.tab_widget_charts.indexOf(self.tab_species_plot),
-            QCoreApplication.translate("MainWindow", "Species plot", None),
-        )
-        self.tab_widget_charts.setTabText(
-            self.tab_widget_charts.indexOf(self.tab_mz_spectrum),
-            QCoreApplication.translate("MainWindow", "Mass spectrum", None),
-        )
-        self.menu_file.setTitle(QCoreApplication.translate("MainWindow", "&File", None))
-        self.menuEdit.setTitle(QCoreApplication.translate("MainWindow", "Edit", None))
-        self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", "Help", None))
-        self.menuSettings.setTitle(QCoreApplication.translate("MainWindow", "Settings", None))
-        self.toolBar.setWindowTitle(QCoreApplication.translate("MainWindow", "toolBar", None))
-
+        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
+        self.action_open_imzml_dialog.setText(QCoreApplication.translate("MainWindow", u"Open imzML files...", None))
+        self.action_open_save_dialog.setText(QCoreApplication.translate("MainWindow", u"Save images...", None))
+        self.action_zoom_in.setText(QCoreApplication.translate("MainWindow", u"action_zoom_in", None))
+#if QT_CONFIG(tooltip)
+        self.action_zoom_in.setToolTip(QCoreApplication.translate("MainWindow", u"Zoom in", None))
+#endif // QT_CONFIG(tooltip)
+        self.action_zoom_out.setText(QCoreApplication.translate("MainWindow", u"action_zoom_out", None))
+#if QT_CONFIG(tooltip)
+        self.action_zoom_out.setToolTip(QCoreApplication.translate("MainWindow", u"Zoom out", None))
+#endif // QT_CONFIG(tooltip)
+        self.action_global.setText(QCoreApplication.translate("MainWindow", u"global", None))
+#if QT_CONFIG(tooltip)
+        self.action_global.setToolTip(QCoreApplication.translate("MainWindow", u"Global scale", None))
+#endif // QT_CONFIG(tooltip)
+        self.action_rotate_left.setText(QCoreApplication.translate("MainWindow", u"Rotate Left", None))
+        self.action_rotate_right.setText(QCoreApplication.translate("MainWindow", u"Rotate Right", None))
+        self.action_reflect_horizontal.setText(QCoreApplication.translate("MainWindow", u"Reflect Horizontal", None))
+        self.action_reflect_vertical.setText(QCoreApplication.translate("MainWindow", u"Reflect Vertical", None))
+        self.action_open_about_dialog.setText(QCoreApplication.translate("MainWindow", u"About", None))
+        self.action_open_settings_window.setText(QCoreApplication.translate("MainWindow", u"Settings", None))
+        self.tab_widget.setTabText(self.tab_widget.indexOf(self.tab_raw), QCoreApplication.translate("MainWindow", u"Raw", None))
+#if QT_CONFIG(tooltip)
+        self.tab_widget.setTabToolTip(self.tab_widget.indexOf(self.tab_raw), QCoreApplication.translate("MainWindow", u"Raw images", None))
+#endif // QT_CONFIG(tooltip)
+        self.tab_widget.setTabText(self.tab_widget.indexOf(self.tab_iso), QCoreApplication.translate("MainWindow", u"Isotope corrected", None))
+#if QT_CONFIG(tooltip)
+        self.tab_widget.setTabToolTip(self.tab_widget.indexOf(self.tab_iso), QCoreApplication.translate("MainWindow", u"Isotope corrected images", None))
+#endif // QT_CONFIG(tooltip)
+        self.tab_widget.setTabText(self.tab_widget.indexOf(self.tab_quant), QCoreApplication.translate("MainWindow", u"Quantitative", None))
+#if QT_CONFIG(tooltip)
+        self.tab_widget.setTabToolTip(self.tab_widget.indexOf(self.tab_quant), QCoreApplication.translate("MainWindow", u"Quantified images", None))
+#endif // QT_CONFIG(tooltip)
+        self.tab_widget_charts.setTabText(self.tab_widget_charts.indexOf(self.tab_species_plot), QCoreApplication.translate("MainWindow", u"Species plot", None))
+        self.tab_widget_charts.setTabText(self.tab_widget_charts.indexOf(self.tab_mz_spectrum), QCoreApplication.translate("MainWindow", u"Mass spectrum", None))
+        self.menu_file.setTitle(QCoreApplication.translate("MainWindow", u"&File", None))
+        self.menuEdit.setTitle(QCoreApplication.translate("MainWindow", u"Edit", None))
+        self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", u"Help", None))
+        self.menuSettings.setTitle(QCoreApplication.translate("MainWindow", u"Settings", None))
+        self.toolBar.setWindowTitle(QCoreApplication.translate("MainWindow", u"toolBar", None))
     # retranslateUi
+

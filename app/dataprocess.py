@@ -11,7 +11,7 @@ from numba import njit
 
 from app.config import Config
 from app.database import DatabaseFactory, IonMode, LipidDB
-from app.pyimzml_mod import ImzMLParser, get_average_spectrum, get_ion_images, remove_extra_zeroes
+from app.pyimzml_mod import ImzMLParser, get_average_spectrum, get_ion_images
 
 # start_time = timeit.default_timer()
 # print(timeit.default_timer() - start_time)
@@ -96,13 +96,7 @@ class SectionMsiImage:
             ion_mode=self.ion_mode,
             config=self.config,
         )
-        start_time = timeit.default_timer()
         self.average_spectrum = get_average_spectrum(p=imzml_parser, bin_size=0.003)
-        print(self.average_spectrum.shape)
-        print(np.count_nonzero(self.average_spectrum[1, :]))
-        self.average_spectrum = remove_extra_zeroes(self.average_spectrum)
-        print(self.average_spectrum.shape)
-        print(timeit.default_timer() - start_time)
 
         self.isotope = dict()
         if self.config.settings.processing_settings.na_isotope_correction:
@@ -233,6 +227,9 @@ class SectionMsiImage:
         }
 
     def criteria_check(self) -> list[bool]:
+        """
+        Check if the ion images meet the criteria to be selected for export.
+        """
         min_intensity = self.config.settings.selection_settings.minimum_intensity
         min_pixels = self.config.settings.selection_settings.minimum_pixels
         winsor = self.config.settings.filter_settings.raw_image_winsorizing_percentile
