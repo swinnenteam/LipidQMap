@@ -73,7 +73,7 @@ class ProcessingSettings(BaseModel):
     pos_calibrant: float = Field(default=798.5410)
     neg_calibrant: float = Field(default=798.5410)
     calibration_ppm: float = Field(default=30.0)
-    calibration_max_intensity: int = Field(default=10000)
+    calibration_min_intensity: int = Field(default=10000)
 
 
 class Configuration(BaseModel):

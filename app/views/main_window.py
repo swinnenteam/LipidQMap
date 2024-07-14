@@ -1,3 +1,4 @@
+import numpy as np
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QMainWindow
 
@@ -5,7 +6,7 @@ from app import __appname__, __version__
 from app.config import Config, config
 from app.database import LipidDB
 from app.dataprocess import ImageType, SampleCollection
-from app.figures import BarplotCanvas, MplCanvas
+from app.figures import BarplotCanvas, MplCanvas, SpectrumPlotView
 from app.generated.MsiMainWindow_ui import Ui_MainWindow
 from app.utils import BooleanDelegate, PandasModelEditable
 from app.views.about_window import AboutWindow
@@ -53,9 +54,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             parent=self, canvas_type=ImageType.quant, config=self.config
         )
         self.verticalLayout_3.addWidget(self.image_canvas_quant)
+        self.spectrum_view = SpectrumPlotView(config=self.config)
+        self.verticalLayout_8.addWidget(self.spectrum_view)
         self.barplot_canvas = BarplotCanvas(parent=self)
-        self.verticalLayout_5.addWidget(self.barplot_canvas)
-        self.splitter_barplot.setSizes([100, 0])
+        self.verticalLayout_6.addWidget(self.barplot_canvas)
+        self.splitter_charts.setSizes([100, 0])
         self.connect_signals_slots()
 
     def closeEvent(self, event):
@@ -70,18 +73,51 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         event (QKeyEvent): The key event to handle.
         """
         if event.key() == Qt.Key.Key_Down:
+            # random = np.vstack((np.arange(100, 1700, 0.01), np.random.randint(0, 10000, 160000)))
+            # self.spectrum_view.update_figure(random)
+            if self.species_table.selectionModel() is None:
+                return
             index = self.species_table.selectionModel().selectedRows()[0].row()
             self.species_table.selectRow(index + 1)
 
         if event.key() == Qt.Key.Key_Up:
+            # self.spectrum_view.update_target(np.random.uniform(100, 1700), 0.05)
+            if self.species_table.selectionModel() is None:
+                return
             index = self.species_table.selectionModel().selectedRows()[0].row()
             self.species_table.selectRow(index - 1)
 
-        if event.key() == Qt.Key.Key_Space:
-            index = self.species_table.selectionModel().selectedRows()[0]
+        if event.key() == Qt.Key.Key_Right:
+            if self.species_table.selectionModel() is None:
+                return
+            index = self.species_table.selectionModel().selectedRows()[0].row()
             model = self.species_table.model()
-            value = model.get_is_checked(index.row())
-            model.setData(model.index(index.row(), 2), not value)
+            num_rows = model.rowCount()
+            for i in range(index + 1, num_rows):
+                if model.get_is_checked(i):
+                    index = i
+                    break
+            self.species_table.selectRow(index)
+
+        if event.key() == Qt.Key.Key_Left:
+            if self.species_table.selectionModel() is None:
+                return
+            index = self.species_table.selectionModel().selectedRows()[0].row()
+            model = self.species_table.model()
+            num_rows = model.rowCount()
+            for i in range(index - 1, -1, -1):
+                if model.get_is_checked(i):
+                    index = i
+                    break
+            self.species_table.selectRow(index)
+
+        if event.key() == Qt.Key.Key_Space:
+            if self.species_table.selectionModel() is None:
+                return
+            index = self.species_table.selectionModel().selectedRows()[0].row()
+            model = self.species_table.model()
+            value = model.get_is_checked(index)
+            model.setData(model.index(index, 2), not value)
 
         if event.key() == Qt.Key.Key_R:
             self.tab_widget.setCurrentIndex(0)
@@ -114,6 +150,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.image_canvas_quant.image_clicked.connect(self.select_image)
         self.tab_widget.currentChanged.connect(self.tab_changed)
         self.settings_window.settings_changed.connect(self.update_plots)
+        self.settings_window.settings_changed.connect(self.update_table_selection)
 
     def open_imzml_dialog(self) -> None:
         """Launch the imzML import dialog."""
@@ -146,16 +183,64 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.settings_window.activateWindow()
         self.settings_window.raise_()
 
+    def init_data(self) -> None:
+        """
+        Initialize data after loading imzML files.
+        """
+        self.samples = self.imzml_import_window.samples
+        self.database = self.imzml_import_window.database
+        assert self.database is not None
+
+        self.species_table_data = self.database.get_table()
+        self.species_table.setModel(PandasModelEditable(self.species_table_data))
+        self.species_table.setItemDelegateForColumn(2, self.boolean_delegate)
+        species_selection = self.species_table.selectionModel()
+        species_selection.selectionChanged.connect(self.update_plots)
+
+        self.species_table.verticalHeader().setVisible(False)
+        self.species_table.resizeColumnsToContents()
+        self.species_table.keyPressEvent = self.keyPressEvent
+
+        self.active_sample_id = next(iter(self.samples))
+
+        self.reset_canvas()
+        self.setup_plots()
+        self.update_table_selection()
+        self.species_table.selectRow(0)
+
+    def setup_plots(self) -> None:
+        """
+        Set up the plots for displaying sample images.
+        """
+        if self.samples is None:
+            return
+        nsamples = len(self.samples)
+        dimensions = self.samples.dimensions()
+
+        self.nrows = nsamples // self.ncols + (nsamples % self.ncols > 0)
+        self.image_canvas_raw.setup(nrows=self.nrows, ncols=self.ncols, dimensions=dimensions)
+        self.image_canvas_iso.setup(nrows=self.nrows, ncols=self.ncols, dimensions=dimensions)
+        self.image_canvas_quant.setup(nrows=self.nrows, ncols=self.ncols, dimensions=dimensions)
+        self.barplot_canvas.setup()
+        self.spectrum_view.update_figure(self.samples[self.active_sample_id].average_spectrum)
+        # set height according to heuristic (multiply nrows by a factor that decreases by number of columns)
+        self.scroll_area_raw_contents.setMinimumHeight((1 / self.ncols) * 800 * self.nrows)
+        self.scroll_area_iso_contents.setMinimumHeight((1 / self.ncols) * 800 * self.nrows)
+        self.scroll_area_quant_contents.setMinimumHeight((1 / self.ncols) * 800 * self.nrows)
+
     def update_plots(self) -> None:
         """
         Handle the event when the species selection is changed.
         """
         global_scale = self.action_global.isChecked()
         species_id = None
-        if self.database is not None:
-            index = self.species_table.selectionModel().selectedRows()[0].row()
-            species_id = self.database.get_id(index)
-            all_class_species = self.database.get_all_species_same_class(species_id)
+        if self.database is None:
+            return
+
+        index = self.species_table.selectionModel().selectedRows()[0].row()
+        species_id = self.database.get_id(index)
+        species = self.database.get(index)
+        all_class_species = self.database.get_all_species_same_class(species_id)
 
         if species_id is None or self.samples is None:
             return
@@ -187,52 +272,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 global_scale=global_scale,
             )
 
-    def init_data(self) -> None:
+        self.spectrum_view.update_target(target_mz=species.mz)
+
+    def update_table_selection(self) -> None:
         """
-        Initialize data after loading imzML files.
+        Sets the Export checkboxes in the species table based on the criteria
+        in the settings
         """
-        self.samples = self.imzml_import_window.samples
-        self.database = self.imzml_import_window.database
-        assert self.database is not None
-
-        self.species_table_data = self.database.get_table()
-        self.species_table.setModel(PandasModelEditable(self.species_table_data))
-        self.species_table.setItemDelegateForColumn(2, self.boolean_delegate)
-        species_selection = self.species_table.selectionModel()
-        species_selection.selectionChanged.connect(self.update_plots)
-
-        self.species_table.verticalHeader().setVisible(False)
-        self.species_table.resizeColumnsToContents()
-        self.species_table.keyPressEvent = self.keyPressEvent
-
-        # hint = self.species_table.sizeHint()
-        # self.frame_2.setMaximumWidth(hint.width() * 1.3)
-        # self.frame_2.adjustSize()
-
-        self.active_sample_id = next(iter(self.samples))
-
-        self.reset_canvas()
-        self.setup_plots()
-        self.species_table.selectRow(0)
-
-    def setup_plots(self) -> None:
-        """
-        Set up the plots for displaying sample images.
-        """
-        if self.samples is None:
-            return
-        nsamples = len(self.samples)
-        dimensions = self.samples.dimensions()
-
-        self.nrows = nsamples // self.ncols + (nsamples % self.ncols > 0)
-        self.image_canvas_raw.setup(nrows=self.nrows, ncols=self.ncols, dimensions=dimensions)
-        self.image_canvas_iso.setup(nrows=self.nrows, ncols=self.ncols, dimensions=dimensions)
-        self.image_canvas_quant.setup(nrows=self.nrows, ncols=self.ncols, dimensions=dimensions)
-        self.barplot_canvas.setup()
-        # set height according to heuristic (multiply nrows by a factor that decreases by number of columns)
-        self.scroll_area_raw_contents.setMinimumHeight((1 / self.ncols) * 800 * self.nrows)
-        self.scroll_area_iso_contents.setMinimumHeight((1 / self.ncols) * 800 * self.nrows)
-        self.scroll_area_quant_contents.setMinimumHeight((1 / self.ncols) * 800 * self.nrows)
+        if self.samples:
+            model = self.species_table.model()
+            for i, species_check in enumerate(self.samples.criteria_check()):
+                model.setData(model.index(i, 2), species_check)
 
     def select_image(self, image_id: str) -> None:
         """
@@ -254,6 +304,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             species=all_class_species,
             image_type=self.current_tab_type,
         )
+
+        self.spectrum_view.update_figure(self.samples[image_id].average_spectrum)
 
     def tab_changed(self) -> None:
         """

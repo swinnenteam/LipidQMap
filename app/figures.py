@@ -1,5 +1,5 @@
 import os
-import re
+import timeit
 from pathlib import Path
 
 import matplotlib
@@ -10,11 +10,13 @@ import numpy.typing as npt
 from matplotlib import colormaps
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from PySide6.QtCore import Signal
+from PySide6 import QtCharts, QtGui
+from PySide6.QtCore import QPointF, Qt, Signal
+from PySide6.QtWidgets import QToolTip
 
 from app.config import Config
 from app.database import LipidSpecies
-from app.dataprocess import ImageType, SampleCollection, SectionMsiImage
+from app.dataprocess import ImageType, SampleCollection, SectionMsiImage, ppm_to_tolerance
 
 matplotlib.use("Qtagg")
 
@@ -192,8 +194,8 @@ class MplCanvas(FigureCanvasQTAgg):
 
         max_value: int | None
         if global_scale:
-            max_value = get_max_from_image_collection(
-                samples=samples, species_id=species_id, image_type=self.canvas_type
+            max_value = samples.get_max_intensity(
+                species_id=species_id, image_type=self.canvas_type
             )
         else:
             max_value = None
@@ -234,20 +236,6 @@ class MplCanvas(FigureCanvasQTAgg):
         for ax in self.fig.get_axes():
             ax.cla()
             ax.remove()
-
-
-def get_max_from_image_collection(
-    samples: SampleCollection,
-    species_id: str,
-    image_type: ImageType,
-) -> int | None:
-    max_value: int | None = 0
-    for i, (key, image_collection) in enumerate(samples.items()):
-        image = image_collection.get(image_type, species_id)
-        image_max = np.nanmax(image) if image is not None else 0
-        max_value = image_max if image_max > max_value else max_value
-    max_value = None if max_value == 0 else max_value
-    return max_value
 
 
 def save_individual_image(
@@ -335,9 +323,7 @@ def save_panel_image(
         fig: matplotlib.figure.Figure = plt.figure(figsize=(6 * ncols, 4 * nrows))
         max_value: int | None
         if global_scale:
-            max_value = get_max_from_image_collection(
-                samples=samples, species_id=species_id, image_type=image_type
-            )
+            max_value = samples.get_max_intensity(species_id=species_id, image_type=image_type)
         else:
             max_value = None
         for sample_idx, (sample_id, image_collection) in enumerate(samples.items()):
@@ -405,7 +391,7 @@ def save_image_collection(
         for sample_name, sample in samples.items():
             path = os.path.join(savepath, image_type, sample_name)
             for species in species_selection:
-                max_scale = get_max_from_image_collection(samples, species, image_type)
+                max_scale = samples.get_max_intensity(species, image_type)
                 image = sample.get(image_type, species)
                 if image is None:
                     continue
@@ -427,3 +413,273 @@ def save_image_collection(
                 image_type=image_type,
                 species_selection=species_selection,
             )
+
+
+class SpectrumPlot(QtCharts.QChart):
+    def __init__(self) -> None:
+        super().__init__()
+        self.plot_data: npt.NDArray | None = None
+        self.line_series = QtCharts.QLineSeries()
+        self.target_series = QtCharts.QLineSeries()
+        self.low_limit_series = QtCharts.QLineSeries()
+        self.high_limit_series = QtCharts.QLineSeries()
+        self.area_series_top = QtCharts.QLineSeries()
+        self.area_series = QtCharts.QAreaSeries(self.area_series_top)
+
+        self.addSeries(self.line_series)
+        self.addSeries(self.low_limit_series)
+        self.addSeries(self.target_series)
+        self.addSeries(self.high_limit_series)
+        self.addSeries(self.area_series_top)
+        self.addSeries(self.area_series)
+        self.line_series.hovered.connect(self.display_plot_value)
+        self.createDefaultAxes()
+        self.setup_layout()
+
+    def setup_layout(self) -> None:
+        # Create a QValueAxis for the x-axis and set the tick count
+        # axis_x = QtCharts.QValueAxis()
+        # axis_x.setTickCount(10)  # Set the tick count to 10
+        # self.addAxis(axis_x, Qt.AlignmentFlag.AlignBottom)
+        # self.line_series.attachAxis(axis_x)
+        # self.target_series.attachAxis(axis_x)
+        # self.low_limit_series.attachAxis(axis_x)
+        # self.high_limit_series.attachAxis(axis_x)
+        # self.area_series_top.attachAxis(axis_x)
+        # self.area_series.attachAxis(axis_x)
+
+        # Create a QValueAxis for the y-axis
+        # axis_y = QtCharts.QValueAxis()
+        # self.addAxis(axis_y, Qt.AlignmentFlag.AlignLeft)
+        # self.line_series.attachAxis(axis_y)
+        # self.target_series.attachAxis(axis_y)
+        # self.low_limit_series.attachAxis(axis_y)
+        # self.high_limit_series.attachAxis(axis_y)
+        # self.area_series_top.attachAxis(axis_y)
+        # self.area_series.attachAxis(axis_y)
+
+        white = QtGui.QColor("white")
+        orange = QtGui.QColor(255, 165, 0, 150)
+        orange_transparant = QtGui.QColor(255, 165, 0, 12)
+        transparent = QtGui.QColor("transparent")
+
+        self.setBackgroundBrush(transparent)
+
+        pen1 = self.line_series.pen()
+        pen1.setWidth(1)
+        pen1.setColor(QtGui.QColor(cyan))
+        self.line_series.setPen(pen1)
+        pen2 = self.target_series.pen()
+        pen2.setWidth(1)
+        pen2.setColor(orange)
+        self.target_series.setPen(pen2)
+        pen3 = self.low_limit_series.pen()
+        pen3.setWidth(1)
+        pen3.setDashPattern([4, 8])
+        pen3.setColor(orange)
+        self.low_limit_series.setPen(pen3)
+        self.high_limit_series.setPen(pen3)
+
+        pen4 = self.area_series_top.pen()
+        pen4.setColor(transparent)
+        self.area_series_top.setPen(pen4)
+
+        self.area_series.setBorderColor(transparent)
+        self.area_series.setColor(orange_transparant)
+
+        x_axis = self.axes(Qt.Orientation.Horizontal)[0]
+        x_axis.setGridLineVisible(False)
+        x_axis.setLabelsColor(white)
+        x_axis.setLinePenColor(white)
+        y_axis = self.axes(Qt.Orientation.Vertical)[0]
+        y_axis.setGridLineVisible(False)
+        y_axis.setLabelsColor(white)
+        y_axis.setLinePenColor(white)
+
+        self.legend().setVisible(False)
+        self.layout().setContentsMargins(0, 0, 0, 0)
+
+    @staticmethod
+    def display_plot_value(point, state) -> None:
+        pos = QtGui.QCursor.pos()
+        if state:
+            tooltip_text = f"m/z: {round(point.x(), 4)}, Intensity: {round(point.y(), 0)}"
+            QToolTip.showText(pos, tooltip_text, msecShowTime=99999)
+
+    def update_figure(self, data: npt.NDArray, x_max: float, y_max: float) -> None:
+        self.plot_data = data
+        self.line_series.clear()
+        self.line_series.replaceNp(data[0, :], data[1, :])
+        self.axes(Qt.Orientation.Horizontal)[0].setRange(0, x_max)
+        self.axes(Qt.Orientation.Vertical)[0].setRange(0, y_max)
+
+    def update_target(self, target: float, width: float) -> None:
+        if self.plot_data is None:
+            return
+        x_axis_min = target - 0.2
+        x_axis_max = target + 0.2
+        y_axis_max = self.get_y_max(x_axis_min, x_axis_max)
+        max_y_value = np.max(self.plot_data[1, :])
+        if y_axis_max is None:
+            return
+
+        self.target_series.clear()
+        self.low_limit_series.clear()
+        self.high_limit_series.clear()
+        self.area_series_top.clear()
+        self.low_limit_series.replaceNp(
+            np.array([target - width / 2, target - width / 2]), np.array([0, max_y_value])
+        )
+        self.target_series.replaceNp(np.array([target, target]), np.array([0, max_y_value]))
+        self.high_limit_series.replaceNp(
+            np.array([target + width / 2, target + width / 2]), np.array([0, max_y_value])
+        )
+        self.area_series_top.replaceNp(
+            np.array([target - width / 2, target + width / 2]), np.array([max_y_value, max_y_value])
+        )
+
+        self.axes(Qt.Orientation.Horizontal)[0].setRange(x_axis_min, x_axis_max)
+        self.axes(Qt.Orientation.Vertical)[0].setRange(0, y_axis_max)
+
+    def autoscale_y_axis(self) -> None:
+        x_min = self.axes(Qt.Orientation.Horizontal)[0].min()
+        x_max = self.axes(Qt.Orientation.Horizontal)[0].max()
+        if self.plot_data is None:
+            return
+        y_max = self.get_y_max(x_min, x_max)
+        if y_max is None:
+            return
+        self.axes(Qt.Orientation.Vertical)[0].setRange(0, y_max)
+
+    def get_y_max(self, x_min: float, x_max: float) -> float | None:
+        if self.plot_data is None:
+            return None
+        min_index, max_index = np.searchsorted(self.plot_data[0, :], [x_min, x_max])
+        y_values = self.plot_data[1, min_index:max_index]
+        if y_values.size == 0:
+            return None
+        return np.max(y_values)
+
+    def wheelEvent(self, event) -> None:
+        if self.plot_data is None:
+            return
+        """
+        if event.delta() > 0:
+            # zoom in
+            print("zoom in")
+            scale = 0.6
+        else:
+            # zoom out
+            print("zoom out")
+            scale = 1.8
+        min = self.axes(Qt.Orientation.Horizontal)[0].min()
+        max = self.axes(Qt.Orientation.Horizontal)[0].max()
+        max_data = self.plot_data[0, -1]
+        min_data = self.plot_data[0, 0]
+        position_value = self.mapToValue(event.pos()).x()
+        new_max = np.min([position_value + (max - position_value) * scale, max_data])
+        new_min = np.max([position_value - (position_value - min) * scale, min_data])
+        self.axes(Qt.Orientation.Horizontal)[0].setRange(new_min, new_max)
+        """
+
+
+class SpectrumPlotView(QtCharts.QChartView):
+    def __init__(self, config: Config):
+        super().__init__()
+        self.config = config
+        self.plot = SpectrumPlot()
+        self.plot_data: npt.NDArray | None = None
+        self.setChart(self.plot)
+        self._start_pos = None
+        self._dragging = False
+        QtGui.QPainter.RenderHint.Antialiasing
+        self.setBackgroundBrush(QtGui.QColor(0, 0, 0, 0))
+        self.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        self.setRubberBand(QtCharts.QChartView.HorizontalRubberBand)
+
+    def update_figure(self, data: npt.NDArray) -> None:
+        self.plot_data = data
+        self.x_max = data[0, -1]
+        self.x_min = data[0, 0]
+        self.y_max = np.max(data[1, :])
+        self.plot.update_figure(data, self.x_max, self.y_max)
+        self.update()
+
+    def update_target(self, target_mz: float) -> None:
+        ppm = self.config.settings.processing_settings.ppm
+        width = ppm_to_tolerance(ppm, target_mz) * 2
+        self.plot.update_target(target_mz, width)
+        self.update()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._start_pos = event.pos()
+            self._dragging = False
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._start_pos:
+            self._dragging = True
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+        if event.button() == Qt.MouseButton.LeftButton and self._start_pos:
+            if self._dragging:
+                # A drag event has taken place
+                self.plot.autoscale_y_axis()
+            self._start_pos = None
+            self._dragging = False
+
+    def mouseDoubleClickEvent(self, event):
+        mouse_pos = event.pos()
+
+        # Map the mouse position to scene coordinates
+        scene_pos = self.mapToScene(mouse_pos)
+
+        # Get the chart's plot area
+        plot_area = self.chart().plotArea()
+
+        # Get axis bounding rects in scene coordinates
+        x_axis = self.chart().axes(Qt.Orientation.Horizontal)[0]
+        y_axis = self.chart().axes(Qt.Orientation.Vertical)[0]
+
+        x_axis_labels = x_axis.labelsVisible()
+        y_axis_labels = y_axis.labelsVisible()
+
+        # Check if the click is on the x-axis labels
+        if x_axis_labels and plot_area.contains(scene_pos.x(), plot_area.bottom()):
+            self.plot.axes(Qt.Orientation.Horizontal)[0].setRange(self.x_min, self.x_max)
+            self.plot.axes(Qt.Orientation.Vertical)[0].setRange(0, self.y_max)
+            print("x-axis clicked")
+        # Check if the click is on the y-axis labels
+        elif y_axis_labels and plot_area.contains(plot_area.left(), scene_pos.y()):
+            self.plot.axes(Qt.Orientation.Vertical)[0].setRange(0, self.y_max)
+            print("y-axis clicked")
+        super().mouseDoubleClickEvent(event)
+
+    def wheelEvent(self, event) -> None:
+        if self.plot_data is None:
+            return
+
+        # Define zoom factor
+        zoom_in_factor = 0.6
+        zoom_out_factor = 1.8
+
+        # Determine zoom direction
+        scale = zoom_in_factor if event.angleDelta().y() > 0 else zoom_out_factor
+
+        # Get horizontal axis
+        x_axis = self.plot.axes(Qt.Orientation.Horizontal)[0]
+        min = x_axis.min()
+        max = x_axis.max()
+        max_data = self.plot_data[0, -1]
+        min_data = self.plot_data[0, 0]
+
+        # Calculate new range
+        position_value = self.plot.mapToValue(event.position()).x()
+        new_max = np.min([position_value + (max - position_value) * scale, max_data])
+        new_min = np.max([position_value - (position_value - min) * scale, min_data])
+
+        x_axis.setRange(new_min, new_max)
+        event.accept()

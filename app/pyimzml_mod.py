@@ -1,6 +1,7 @@
 import re
 import sys
 from pathlib import Path
+from random import sample
 from typing import Any, BinaryIO, Callable, Iterator
 from warnings import warn
 
@@ -98,7 +99,7 @@ class ImzMLParser:
         self.imzmldict: dict[str, str | int | float] = self.__readimzmlmeta()
         self.imzmldict["max count of pixels z"] = np.asarray(self.coordinates)[:, 2].max()
         # load the spectra and close the .ibd file
-        self.spectra: list[tuple[npt.NDArray, npt.NDArray]] = self._loadspectra()
+        self.spectra: list[npt.NDArray] = self._loadspectra()
         self.m.close()
         self.root = None
 
@@ -332,16 +333,17 @@ class ImzMLParser:
         image_x, image_y = self.coordinates[i][:2]
         return image_x * pixel_size_x, image_y * pixel_size_y
 
-    def _loadspectra(self) -> list[tuple[npt.NDArray, npt.NDArray]]:
+    def _loadspectra(self) -> list[npt.NDArray]:
         """
         Reads all the spectra from the .ibd file into memory.
 
         Output:
-        list of tuples (mz_array, ntensity_array)
-        mz_array: numpy.ndarray
+        list[numpy.ndarray[x,y,z]]
+        x: spectrum index
+        y: mz_array: numpy.ndarray
             Sequence of m/z values representing the horizontal axis of the desired mass
             spectrum
-        intensity_array: numpy.ndarray
+        z: intensity_array: numpy.ndarray
             Sequence of intensity values corresponding to mz_array
         """
         spectra = []
@@ -349,10 +351,10 @@ class ImzMLParser:
             mz_bytes, intensity_bytes = self.get_spectrum_as_string(index)
             mz_array = np.frombuffer(mz_bytes, dtype=self.mzPrecision)
             intensity_array = np.frombuffer(intensity_bytes, dtype=self.intensityPrecision)
-            spectra.append((mz_array, intensity_array))
+            spectra.append(np.vstack((mz_array, intensity_array)))
         return spectra
 
-    def getspectrum(self, index: int) -> tuple[npt.NDArray, npt.NDArray]:
+    def getspectrum(self, index: int) -> npt.NDArray:
         """get spectrum at index"""
         return self.spectra[index]
 
@@ -385,12 +387,46 @@ class ImzMLParser:
         intensity_string = self.m.read(lengths[1])
         return mz_string, intensity_string
 
+    def recallibrate(
+        self,
+        mz: float,
+        tol: float = 0.1,
+        min_intensity: int = 10000,
+    ) -> None:
+        """
+        Recallibrates the spectra. This is done by offsetting per image row the average difference
+        between the given mz: float and the closest matching measured mz.
+        """
+        tol = abs(tol)
+        im = np.full(
+            [
+                int(self.imzmldict["max count of pixels y"]),
+                int(self.imzmldict["max count of pixels x"]),
+            ],
+            np.nan,
+        )
+        for i, (x, y, z_) in enumerate(self.coordinates):
+            mzs, ints = map(lambda x: np.asarray(x), self.getspectrum(i))
+            min_i, max_i = _bisect_spectrum(mzs, mz, tol)
+            intensity_values = ints[min_i : max_i + 1]
+            mz_values = mzs[min_i : max_i + 1]
+            threshold = intensity_values > min_intensity
+            intensity_values = intensity_values[threshold]
+            mz_values = mz_values[threshold]
+            im[y - 1, x - 1] = (
+                mz_values[np.argmax(intensity_values)] if mz_values.size != 0 else np.nan
+            )
+        offsets = mz - np.nanmean(im, axis=1)
+        offsets[np.isnan(offsets)] = 0
+        for i, (x, y, z_) in enumerate(self.coordinates):
+            self.spectra[i][0] = self.spectra[i][0] + offsets[y - 1]
+        return None
+
 
 def get_ion_images(
     p: ImzMLParser,
     mzs: list[float],
     tolerances: list[float],
-    offsets: npt.NDArray | None = None,
 ) -> npt.NDArray:
     """
     Helper function for get_ion_images_numba, which uses the Numba library which isn't compatible
@@ -403,8 +439,6 @@ def get_ion_images(
     :param tolerances:
         Absolute tolerance for the m/z value, such that all ions with values
         mz-|tol| <= x <= mz+|tol| are included.
-    :param offsets:
-        recalibrate the mz by these offsets, each row (y coordinate) has a different offset
 
     :return:
         numpy matrix with each element representing the ion intensity in this
@@ -420,18 +454,16 @@ def get_ion_images(
         img_shape=img_shape,
         mzs=mzs,
         tolerances=tolerances,
-        offsets=offsets,
     )
 
 
 @njit(parallel=True)
 def get_ion_images_numba(
     coordinates: list[tuple[int, int, int]],
-    spectra: list[tuple[npt.NDArray, npt.NDArray]],
+    spectra: list[npt.NDArray],
     img_shape: tuple[int, int],
     mzs: list[float],
     tolerances: list[float],
-    offsets: npt.NDArray | None = None,
 ) -> npt.NDArray:
     """
     Get an image representation of the intensity distribution
@@ -443,7 +475,7 @@ def get_ion_images_numba(
     :param coordinates:
         list of (x,y,z) pixel coordinates for each spectrum
     :param spectra:
-        list of tuples, each tuple containing the mz array and intensity array of a spectrum
+        list of NDarrays each containing the mz array and intensity array of a spectrum
     :param img_shape:
         tuple of number of pixels in the x and y dimension of the image
     :param mzs:
@@ -451,8 +483,6 @@ def get_ion_images_numba(
     :param tolerances:
         Absolute tolerance for the m/z value, such that all ions with values
         mz-|tol| <= x <= mz+|tol| are included.
-    :param offsets:
-        recalibrate the mz by these offsets, each row (y coordinate) has a different offset
 
     :return:
         numpy matrix with each element representing the ion intensity in this
@@ -463,7 +493,6 @@ def get_ion_images_numba(
     for i in prange(len(coordinates)):
         (x, y, z_) = coordinates[i]
         spec_mzs, spec_ints = spectra[i]
-        spec_mzs = spec_mzs + offsets[y - 1] if offsets is not None else spec_mzs
         indices = _bisect_spectrum_multi(spec_mzs, mzs_array, np.array(tolerances))
         values = np.zeros(len(indices))
         for j, index in enumerate(indices):
@@ -471,35 +500,6 @@ def get_ion_images_numba(
                 values[j] = np.max(spec_ints[index])
         ims[:, y - 1, x - 1] = values
     return ims
-
-
-def get_calibration_offsets(
-    p: ImzMLParser,
-    mz: float,
-    tol: float = 0.1,
-    min_intensity: int = 10000,
-) -> npt.NDArray:
-    """
-    Returns the mass offsets per row. This is calculated as the difference between mz
-    and the closest matching measured mz, averaged for each row of pixels
-    """
-    tol = abs(tol)
-    im = np.full(
-        [int(p.imzmldict["max count of pixels y"]), int(p.imzmldict["max count of pixels x"])],
-        np.nan,
-    )
-    for i, (x, y, z_) in enumerate(p.coordinates):
-        mzs, ints = map(lambda x: np.asarray(x), p.getspectrum(i))
-        min_i, max_i = _bisect_spectrum(mzs, mz, tol)
-        intensity_values = ints[min_i : max_i + 1]
-        mz_values = mzs[min_i : max_i + 1]
-        threshold = intensity_values > min_intensity
-        intensity_values = intensity_values[threshold]
-        mz_values = mz_values[threshold]
-        im[y - 1, x - 1] = mz_values[np.argmax(intensity_values)] if mz_values.size != 0 else np.nan
-    offsets = mz - np.nanmean(im, axis=1)
-    offsets[np.isnan(offsets)] = 0
-    return offsets
 
 
 @njit
@@ -527,3 +527,135 @@ def _bisect_spectrum_multi(
     index = [np.arange(s, e) for s, e in zip(ix_l, ix_u)]
 
     return index
+
+
+def get_average_spectrum(p: ImzMLParser, bin_size: float) -> npt.NDArray:
+    num_spectra = min(1000, len(p.spectra))
+    spectra = sample(p.spectra, num_spectra)
+    return get_average_spectrum_numba(spectra=np.hstack(spectra), bin_size=bin_size)
+
+
+def get_average_spectrum_numba_v1(spectra: npt.NDArray, bin_size: float) -> npt.NDArray:
+    # 7.6s, a lot more with njit
+    # Combine all x and y values into single numpy arrays
+    all_x, all_y = np.split(spectra, [1], axis=0)
+    all_x = all_x.flatten()
+    all_y = all_y.flatten()
+
+    # Get the minimum and maximum x values to define bins
+    min_x: float = np.min(all_x)
+    max_x: float = np.max(all_x)
+
+    # Define bins
+    bins = np.arange(min_x, max_x + bin_size, bin_size, dtype=np.float64)
+
+    # Digitize the x values to find which bin each point belongs to
+    bin_indices = np.digitize(all_x, bins) - 1
+
+    # Calculate the average y value for each bin
+    bin_means = np.zeros(len(bins))
+
+    for i in range(len(bins)):
+        bin_y_values = all_y[bin_indices == i]
+        if len(bin_y_values) > 0:
+            bin_means[i] = np.mean(bin_y_values)
+
+    return np.vstack((bins, bin_means))
+
+
+def get_average_spectrum_numba_v2(spectra: npt.NDArray, bin_size: float) -> npt.NDArray:
+    #  0.40s, 0.56s with njit
+    # Combine all x and y values into single numpy arrays
+    all_x, all_y = np.split(spectra, [1], axis=0)
+    all_x = all_x.flatten()
+    all_y = all_y.flatten()
+
+    # Get the minimum and maximum x values to define bins
+    min_x: float = np.min(all_x)
+    max_x: float = np.max(all_x)
+
+    # Define bins
+    bins = np.arange(min_x, max_x + bin_size, bin_size, dtype=np.float64)
+
+    # Initialize the array for bin means
+    bin_means = np.zeros(len(bins), dtype=np.float64)
+
+    # Count the number of points in each bin
+    bin_counts = np.zeros(len(bins), dtype=np.int32)
+
+    # Accumulate the y values for each bin
+    for i in range(len(all_x)):
+        x = all_x[i]
+        y = all_y[i]
+        bin_index = int((x - min_x) // bin_size)
+        if 0 <= bin_index < len(bin_means):
+            bin_means[bin_index] += y
+            bin_counts[bin_index] += 1
+
+    # Calculate the mean for each bin
+    for i in range(len(bin_means)):
+        if bin_counts[i] > 0:
+            bin_means[i] /= bin_counts[i]
+
+    return np.vstack((bins, bin_means))
+
+
+def get_average_spectrum_numba(
+    spectra: npt.NDArray, bin_size: float, threshold: int = 200
+) -> npt.NDArray:
+    # 0.03s
+    # Combine all x and y values into single numpy arrays
+    all_x, all_y = np.split(spectra, [1], axis=0)
+    all_x = all_x.flatten()
+    all_y = all_y.flatten()
+    all_y[all_y < threshold] = 0
+
+    # Get the minimum and maximum x values to define bins
+    min_x: float = np.min(all_x)
+    max_x: float = np.max(all_x)
+
+    # Define bins
+    bins = np.arange(min_x, max_x + bin_size, bin_size, dtype=np.float64)
+    bin_indices = np.digitize(all_x, bins) - 1
+
+    # Initialize the array for bin means and counts
+    bin_means = np.zeros(len(bins), dtype=np.float64)
+    bin_counts = np.zeros(len(bins), dtype=np.int32)
+
+    # Use np.add.at for accumulating y values and counts
+    np.add.at(bin_means, bin_indices, all_y)
+    np.add.at(bin_counts, bin_indices, 1)
+
+    # Avoid division by zero
+    nonzero_bins = bin_counts > 0
+    bin_means[nonzero_bins] /= bin_counts[nonzero_bins]
+
+    return np.vstack((bins, bin_means))
+
+
+def remove_extra_zeroes(spectra: npt.NDArray) -> npt.NDArray:
+    """
+    Remove datapoints where the intensty is zero but only if there is
+    a non zero datapoint before or after the point.
+    """
+    size = spectra.shape[1]
+    # Identify positions of non-zero elements
+    non_zero_positions = np.nonzero(spectra[1, :])[0]
+
+    # Create a mask for zeroes that are adjacent to non-zero elements
+    mask = np.zeros_like(spectra[1, :], dtype=bool)
+
+    # Mark non-zero positions
+    mask[non_zero_positions] = True
+
+    # Mark zeroes adjacent to non-zero elements
+    for pos in non_zero_positions:
+        if pos > 0:
+            mask[pos - 1] = True
+        if pos < size - 1:
+            mask[pos + 1] = True
+
+    # Apply the mask to the array
+    mz = spectra[0, mask]
+    intensity = spectra[1, mask]
+    return np.array([mz, intensity])

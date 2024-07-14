@@ -11,7 +11,7 @@ from numba import njit
 
 from app.config import Config
 from app.database import DatabaseFactory, IonMode, LipidDB
-from app.pyimzml_mod import ImzMLParser, get_calibration_offsets, get_ion_images
+from app.pyimzml_mod import ImzMLParser, get_average_spectrum, get_ion_images, remove_extra_zeroes
 
 # start_time = timeit.default_timer()
 # print(timeit.default_timer() - start_time)
@@ -36,6 +36,7 @@ class SectionMsiImage:
         raw (dict[str, npt.NDArray]): Dictionary of raw images.
         isotope (dict[str, npt.NDArray]): Dictionary of isotope corrected images.
         quant (dict[str, npt.NDArray]): Dictionary of quantitated images.
+        average_spectrum (npt.NDArray): [0,:] the mz array and [1,:] intensity array of the spectrum
         shape (tuple[int, int]): Shape of the images.
     """
 
@@ -62,6 +63,7 @@ class SectionMsiImage:
         self.raw: dict[str, npt.NDArray]
         self.isotope: dict[str, npt.NDArray]
         self.quant: dict[str, npt.NDArray | None]
+        self.average_spectrum: npt.NDArray
         self.load_data(progress_file_callback, database=database, imzml_path=imzml_path)
         self.filter_data(progress_file_callback)
 
@@ -77,12 +79,30 @@ class SectionMsiImage:
         imzml_parser = ImzMLParser(imzml_path)
         progress_file_callback.emit(20)
 
+        cal_ppm = self.config.settings.processing_settings.calibration_ppm
+        calibrant_mz = (
+            self.config.settings.processing_settings.pos_calibrant
+            if self.ion_mode.value == IonMode.positive
+            else self.config.settings.processing_settings.neg_calibrant
+        )
+        tolerance = ppm_to_tolerance(ppm=cal_ppm, mz=calibrant_mz)
+        min_intensity = self.config.settings.processing_settings.calibration_min_intensity
+
+        imzml_parser.recallibrate(mz=calibrant_mz, tol=tolerance, min_intensity=min_intensity)
+
         self.raw = load_ion_images(
             database=database,
             imzml=imzml_parser,
             ion_mode=self.ion_mode,
             config=self.config,
         )
+        start_time = timeit.default_timer()
+        self.average_spectrum = get_average_spectrum(p=imzml_parser, bin_size=0.003)
+        print(self.average_spectrum.shape)
+        print(np.count_nonzero(self.average_spectrum[1, :]))
+        self.average_spectrum = remove_extra_zeroes(self.average_spectrum)
+        print(self.average_spectrum.shape)
+        print(timeit.default_timer() - start_time)
 
         self.isotope = dict()
         if self.config.settings.processing_settings.na_isotope_correction:
@@ -212,10 +232,26 @@ class SectionMsiImage:
             for (key, value) in self.quant.items()
         }
 
+    def criteria_check(self) -> list[bool]:
+        min_intensity = self.config.settings.selection_settings.minimum_intensity
+        min_pixels = self.config.settings.selection_settings.minimum_pixels
+        winsor = self.config.settings.filter_settings.raw_image_winsorizing_percentile
+        result = []
+        for id, image in self.raw.items():
+            result.append(
+                threshold_check(winsorize_image(image, winsor), min_intensity, min_pixels)
+            )
+        return result
+
     @property
     def shape(self) -> tuple[int, int]:
         x, y = self.raw[next(iter(self.raw))].shape
         return (x, y)
+
+
+@njit
+def threshold_check(image: npt.NDArray, min_intensity: int, min_pixels: int) -> bool:
+    return (image > min_intensity).sum() > min_pixels
 
 
 class SampleCollection:
@@ -232,6 +268,25 @@ class SampleCollection:
 
     def dimensions(self):
         return [sample.shape for sample in self.samples.values()]
+
+    def criteria_check(self) -> list[bool]:
+        checks = []
+        for sample_id, image in self.samples.items():
+            checks.append(image.criteria_check())
+        checks = list(map(list, zip(*checks)))
+        return [any(check) for check in checks]
+
+    def get_spectrum(self, sample_id: str) -> npt.NDArray:
+        return self.samples[sample_id].average_spectrum
+
+    def get_max_intensity(self, image_type: ImageType, species_id: str) -> int | None:
+        max_value: int | None = 0
+        for i, (key, image_collection) in enumerate(self.samples.items()):
+            image = image_collection.get(image_type, species_id)
+            image_max = np.nanmax(image) if image is not None else 0
+            max_value = image_max if image_max > max_value else max_value
+        max_value = None if max_value == 0 else max_value
+        return max_value
 
     def __iter__(self):
         return iter(self.samples)
@@ -292,22 +347,9 @@ def load_ion_images(
     images: dict[str, npt.NDArray] = dict()
     species_ids, species_mzs = database.get_all_species()
 
-    cal_ppm = config.settings.processing_settings.calibration_ppm
-    calibrant_mz = (
-        config.settings.processing_settings.pos_calibrant
-        if ion_mode.value == IonMode.positive
-        else config.settings.processing_settings.neg_calibrant
-    )
-    tolerance = ppm_to_tolerance(ppm=cal_ppm, mz=calibrant_mz)
-    offsets = (
-        get_calibration_offsets(imzml, mz=calibrant_mz, tol=tolerance)
-        if config.settings.processing_settings.online_calibration
-        else None
-    )
-
     ppm = config.settings.processing_settings.ppm
     tolerances = [ppm_to_tolerance(ppm=ppm, mz=mz) for mz in species_mzs]
-    image_stack = get_ion_images(p=imzml, mzs=species_mzs, tolerances=tolerances, offsets=offsets)
+    image_stack = get_ion_images(p=imzml, mzs=species_mzs, tolerances=tolerances)
     images = dict(zip(species_ids, list(image_stack)))
 
     return images

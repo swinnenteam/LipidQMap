@@ -37,7 +37,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.cal_checkbox.setChecked(self.config.settings.processing_settings.online_calibration)
         self.cal_ppm_spinbox.setValue(self.config.settings.processing_settings.calibration_ppm)
         self.cal_int_spinbox.setValue(
-            self.config.settings.processing_settings.calibration_max_intensity
+            self.config.settings.processing_settings.calibration_min_intensity
         )
         # set last used database
         index = self.database_combo_box.findText(
@@ -144,7 +144,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         if sender == self.database_combo_box:
             self.config.settings.database_settings.last_used_database = sender.currentText()
         elif sender == self.cal_int_spinbox:
-            self.config.settings.processing_settings.calibration_max_intensity = sender.value()
+            self.config.settings.processing_settings.calibration_min_intensity = sender.value()
         elif sender == self.cal_ppm_spinbox:
             self.config.settings.processing_settings.calibration_ppm = sender.value()
         elif sender == self.calibrant_spinbox:

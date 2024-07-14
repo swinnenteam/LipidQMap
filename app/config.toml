@@ -10,14 +10,14 @@ ppm = 10.0
 m2_isotope_correction = true
 na_isotope_correction = true
 online_calibration = true
-pos_calibrant = 734.5694
+pos_calibrant = 798.541
 neg_calibrant = 798.541
 calibration_ppm = 30.0
-calibration_max_intensity = 10000
+calibration_min_intensity = 10000
 
 [selection_settings]
-minimum_pixels = 100
-minimum_intensity = 1000
+minimum_pixels = 300
+minimum_intensity = 500
 
 [database_settings]
 last_used_database = "MSI_database_V1.0"

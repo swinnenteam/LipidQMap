@@ -32,7 +32,7 @@ def test_default_config_values(temp_config_dir):
     assert config.settings.processing_settings.pos_calibrant == 798.5410
     assert config.settings.processing_settings.neg_calibrant == 798.5410
     assert config.settings.processing_settings.calibration_ppm == 30.0
-    assert config.settings.processing_settings.calibration_max_intensity == 10000
+    assert config.settings.processing_settings.calibration_min_intensity == 10000
 
     assert config.settings.database_settings.last_used_database == ""
 

@@ -1,4 +1,4 @@
-PySide6==6.6.2
+PySide6==6.7.2
 qt-material==2.14
 toml==0.10.2
 pydantic==2.6.4

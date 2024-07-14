@@ -76,9 +76,9 @@ class PandasModelEditable(QAbstractTableModel):
         return False
 
     def headerData(self, section, orientation, role):
-        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+        if orientation == Qt.Orientation.Horizontal and role == Qt.DisplayRole:
             return self._data.columns[section]
-        if orientation == Qt.Vertical and role == Qt.DisplayRole:
+        if orientation == Qt.Orientation.Vertical and role == Qt.DisplayRole:
             return self._data.index[section]
         return None
 

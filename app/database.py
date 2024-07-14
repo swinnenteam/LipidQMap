@@ -80,6 +80,12 @@ class LipidDB:
         self.species = species
         self.index: list[str] = list(species.keys())
 
+    def get(self, index: int) -> LipidSpecies:
+        """
+        Returns the LipidSpecies at the requested index
+        """
+        return self.species[self.index[index]]
+
     def get_id(self, index: int) -> str:
         """
         Returns the Lipid_id at the requested index
