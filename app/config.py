@@ -18,6 +18,7 @@ config_paths = {
     "DATABASE_DIR": os.path.join(bundle_dir, "database"),
     "USER_CONFIG_FILE": os.path.join(bundle_dir, "config.toml"),
     "STYLE_FILE": os.path.join(bundle_dir, "style.css"),
+    "LOG_FILE": os.path.join(bundle_dir, "log.txt"),
 }
 
 

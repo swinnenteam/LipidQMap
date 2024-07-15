@@ -34,7 +34,7 @@ run: ## Runs the application
 
 build: ## Builds the application
 	make clean
-	./venv/bin/pyinstaller msi-quant.spec
+	./venv/bin/pyinstaller msi-quant-mac.spec
 
 installer-spec:
 	pyi-makespec --onedir --additional-hooks-dir="pyinstaller/" --name="Msi-Quant" --windowed app/__main__.py

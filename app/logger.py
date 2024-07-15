@@ -6,7 +6,7 @@ from types import TracebackType
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QApplication, QMessageBox
 
-from app.config import config
+from app.config import config, config_paths
 
 if config.settings.debug:
     level = logging.DEBUG
@@ -18,7 +18,7 @@ logging.basicConfig(
     level=level,
     format="%(asctime)s %(levelname)s %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
-    handlers=[logging.FileHandler("debug.log"), logging.StreamHandler()],
+    handlers=[logging.FileHandler(config_paths["LOG_FILE"]), logging.StreamHandler()],
 )
 
 
