@@ -7,7 +7,7 @@ a = Analysis(
     binaries=[],
     datas=[('app/database/MSI_database_V1.0.xlsx', 'database'),
         ('app/style.css', '.')],
-    hiddenimports=[pkg_resources.extern],
+    hiddenimports=['pkg_resources.extern'],
     hookspath=['pyinstaller/'],
     hooksconfig={},
     runtime_hooks=[],
