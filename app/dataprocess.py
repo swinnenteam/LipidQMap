@@ -65,7 +65,6 @@ class SectionMsiImage:
         self.quant: dict[str, npt.NDArray | None]
         self.average_spectrum: npt.NDArray
         self.load_data(progress_file_callback, database=database, imzml_path=imzml_path)
-        self.filter_data(progress_file_callback)
 
     def load_data(self, progress_file_callback, database: LipidDB, imzml_path: str):
         """
@@ -76,28 +75,39 @@ class SectionMsiImage:
             database (LipidDB): Database object containing lipid information.
             imzml_path (str): Path to the imzML file.
         """
+        # create imzml parser
         imzml_parser = ImzMLParser(imzml_path)
         progress_file_callback.emit(20)
 
+        # internal calibration
         cal_ppm = self.config.settings.processing_settings.calibration_ppm
         calibrant_mz = (
             self.config.settings.processing_settings.pos_calibrant
             if self.ion_mode.value == IonMode.positive
             else self.config.settings.processing_settings.neg_calibrant
         )
-        tolerance = ppm_to_tolerance(ppm=cal_ppm, mz=calibrant_mz)
         min_intensity = self.config.settings.processing_settings.calibration_min_intensity
+        tolerance = ppm_to_tolerance(ppm=cal_ppm, mz=calibrant_mz)
+        if self.config.settings.processing_settings.online_calibration:
+            imzml_parser.recallibrate(mz=calibrant_mz, tol=tolerance, min_intensity=min_intensity)
+        progress_file_callback.emit(25)
 
-        imzml_parser.recallibrate(mz=calibrant_mz, tol=tolerance, min_intensity=min_intensity)
+        # load raw ion images from parser
+        self.raw = dict()
+        species_ids, species_mzs = database.get_all_species()
+        ppm = self.config.settings.processing_settings.ppm
+        tolerances = [ppm_to_tolerance(ppm=ppm, mz=mz) for mz in species_mzs]
+        image_stack = get_ion_images(p=imzml_parser, mzs=species_mzs, tolerances=tolerances)
+        self.raw = dict(zip(species_ids, list(image_stack)))
+        progress_file_callback.emit(70)
 
-        self.raw = load_ion_images(
-            database=database,
-            imzml=imzml_parser,
-            ion_mode=self.ion_mode,
-            config=self.config,
+        # calculate average spectrum
+        bin_size = self.config.settings.processing_settings.bin_size
+        self.average_spectrum = get_average_spectrum(
+            p=imzml_parser, bin_size=bin_size, n_pixels=1000
         )
-        self.average_spectrum = get_average_spectrum(p=imzml_parser, bin_size=0.003)
 
+        # perform isotope correction
         self.isotope = dict()
         if self.config.settings.processing_settings.na_isotope_correction:
             self.isotope = na_isotope_correction(database=database, images=self.raw)
@@ -106,22 +116,16 @@ class SectionMsiImage:
                 self.isotope = m2_isotope_correction(database=database, images=self.isotope)
             else:
                 self.isotope = m2_isotope_correction(database=database, images=self.raw)
-        progress_file_callback.emit(65)
+        progress_file_callback.emit(75)
+
+        # perform quantitation
         if self.isotope:
             self.quant = quantitaton(database=database, images=self.isotope)
         else:
             self.quant = quantitaton(database=database, images=self.raw)
-        progress_file_callback.emit(70)
+        progress_file_callback.emit(80)
 
-    def filter_data(self, progress_file_callback):
-        """
-        Apply winsorize filtering to raw, isotope, and quant images and replace nan
-        values in the quant images.
-
-        Args:
-            progress_file_callback: Callback for updating progress.
-        """
-
+        # replace nan with median of surrounding pixels in quant images
         self.quant = {k: replace_nan_with_median(v) for (k, v) in self.quant.items()}
         progress_file_callback.emit(100)
 
@@ -310,7 +314,7 @@ def load_database_image_collection(
     database = DatabaseFactory(database_path, ion_mode).create_database()
     for idx, path in enumerate(imzml_paths):
         progress_overall_callback.emit(int(idx / len(imzml_paths) * 100))
-        progress_file_callback.emit(5)
+        progress_file_callback.emit(15)
         image_collection = SectionMsiImage(
             progress_file_callback,
             database=database,
@@ -321,35 +325,6 @@ def load_database_image_collection(
         samples[Path(path).stem] = image_collection
     progress_overall_callback.emit(100)
     return database, SampleCollection(samples)
-
-
-def load_ion_images(
-    database: LipidDB,
-    imzml: ImzMLParser,
-    ion_mode: IonMode,
-    config: Config,
-) -> dict[str, npt.NDArray]:
-    """
-    Load ion images from the imzML file based on the species in the database.
-
-    Args:
-        database (LipidDB): Database object containing lipid information.
-        imzml (ImzMLParser): Parser for the imzML file.
-        ion_mode (IonMode): Ionization mode for the sample images.
-        config (Config): Configuration settings.
-
-    Returns:
-        dict[str, npt.NDArray]: Dictionary of loaded ion images.
-    """
-    images: dict[str, npt.NDArray] = dict()
-    species_ids, species_mzs = database.get_all_species()
-
-    ppm = config.settings.processing_settings.ppm
-    tolerances = [ppm_to_tolerance(ppm=ppm, mz=mz) for mz in species_mzs]
-    image_stack = get_ion_images(p=imzml, mzs=species_mzs, tolerances=tolerances)
-    images = dict(zip(species_ids, list(image_stack)))
-
-    return images
 
 
 def ppm_to_tolerance(ppm: float, mz: float) -> float:

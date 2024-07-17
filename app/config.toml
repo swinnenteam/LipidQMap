@@ -7,6 +7,7 @@ gaussian_filter = true
 
 [processing_settings]
 ppm = 10.0
+bin_size = 5.0
 m2_isotope_correction = true
 na_isotope_correction = true
 online_calibration = true

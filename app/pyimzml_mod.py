@@ -529,13 +529,34 @@ def _bisect_spectrum_multi(
     return index
 
 
-def get_average_spectrum(p: ImzMLParser, bin_size: float) -> npt.NDArray:
+def get_average_spectrum(p: ImzMLParser, bin_size: float, n_pixels: int = 1000) -> npt.NDArray:
     """
-    Calculate average mass spectrum on a subset of a 1000 random spectra
+    Calculate average mass spectrum on a subset of a n random spectra
     """
-    num_spectra = min(1000, len(p.spectra))
+    num_spectra = min(n_pixels, len(p.spectra))
     spectra = sample(p.spectra, num_spectra)
     return get_average_spectrum_numba(spectra=np.hstack(spectra), bin_size=bin_size)
+
+
+def get_mz_bins(start: float, end: float, bin_size: float) -> list[float]:
+    """
+    Calculates bins for given mz interval, bin_size needs to be provided in miliDalton for mz 1000.
+    This bin_size is converted to ppm, and the bin widths are calculated based on this ppm.
+
+    Parameters:
+    start (float): The starting m/z value.
+    end (float): The ending m/z value.
+    bin_size (float): The bin size in miliDalton (mDa) at mz 1000.
+
+    Returns:
+    list[float]: A list of m/z bin values starting from 'start' and incremented according to
+    the ppm bin size up to 'end'.
+    """
+    ppm = (bin_size / 1000) / 1000 * 1e6
+    result = [start]
+    while result[-1] <= end:
+        result.append(result[-1] + (ppm * result[-1]) / 1e6)
+    return result
 
 
 def get_average_spectrum_numba(
@@ -548,12 +569,13 @@ def get_average_spectrum_numba(
 
     Parameters:
     spectra (npt.NDArray): NDarray hstack containing NDarray spectra
-    bin_size (float): The size of each bin for averaging the spectrum.
+    bin_size (float): The size of the bin in mDa at mz 1000.
     threshold (int, optional): A threshold value below which y values are set to zero.
 
     Returns:
     npt.NDArray: 2D numpy array with average spectrum
     """
+
     # Combine all x and y values into single numpy arrays
     all_x, all_y = np.split(spectra, [1], axis=0)
     all_x = all_x.flatten()
@@ -565,7 +587,8 @@ def get_average_spectrum_numba(
     max_x: float = np.max(all_x)
 
     # Define bins
-    bins = np.arange(min_x, max_x + bin_size, bin_size, dtype=np.float64)
+    bins = get_mz_bins(min_x, max_x, bin_size)
+    # bins = np.arange(min_x, max_x + bin_size, bin_size, dtype=np.float64)
     bin_indices = np.digitize(all_x, bins) - 1
 
     # Initialize the array for bin means and counts

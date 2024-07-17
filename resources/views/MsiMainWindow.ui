@@ -18,11 +18,11 @@
     <item>
      <widget class="QSplitter" name="splitter_charts">
       <property name="orientation">
-       <enum>Qt::Vertical</enum>
+       <enum>Qt::Orientation::Vertical</enum>
       </property>
       <widget class="QSplitter" name="splitter">
        <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Orientation::Horizontal</enum>
        </property>
        <widget class="QFrame" name="frame_1">
         <property name="minimumSize">
@@ -32,10 +32,10 @@
          </size>
         </property>
         <property name="frameShape">
-         <enum>QFrame::StyledPanel</enum>
+         <enum>QFrame::Shape::StyledPanel</enum>
         </property>
         <property name="frameShadow">
-         <enum>QFrame::Raised</enum>
+         <enum>QFrame::Shadow::Raised</enum>
         </property>
         <layout class="QGridLayout" name="gridLayout">
          <property name="leftMargin">
@@ -62,6 +62,9 @@
             <layout class="QGridLayout" name="gridLayout_5">
              <item row="0" column="0">
               <widget class="QScrollArea" name="scroll_area_raw">
+               <property name="frameShape">
+                <enum>QFrame::Shape::VLine</enum>
+               </property>
                <property name="widgetResizable">
                 <bool>true</bool>
                </property>
@@ -71,7 +74,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>337</width>
-                  <height>319</height>
+                  <height>279</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_4"/>
@@ -111,7 +114,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>337</width>
-                  <height>319</height>
+                  <height>281</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_2"/>
@@ -139,7 +142,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>337</width>
-                  <height>319</height>
+                  <height>281</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_3"/>
@@ -172,10 +175,10 @@
          </size>
         </property>
         <property name="frameShape">
-         <enum>QFrame::StyledPanel</enum>
+         <enum>QFrame::Shape::StyledPanel</enum>
         </property>
         <property name="frameShadow">
-         <enum>QFrame::Raised</enum>
+         <enum>QFrame::Shadow::Raised</enum>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout">
          <item>
@@ -187,16 +190,16 @@
             </size>
            </property>
            <property name="editTriggers">
-            <set>QAbstractItemView::DoubleClicked</set>
+            <set>QAbstractItemView::EditTrigger::DoubleClicked</set>
            </property>
            <property name="tabKeyNavigation">
             <bool>false</bool>
            </property>
            <property name="selectionMode">
-            <enum>QAbstractItemView::ExtendedSelection</enum>
+            <enum>QAbstractItemView::SelectionMode::ExtendedSelection</enum>
            </property>
            <property name="selectionBehavior">
-            <enum>QAbstractItemView::SelectRows</enum>
+            <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
            </property>
           </widget>
          </item>
@@ -205,10 +208,10 @@
       </widget>
       <widget class="QFrame" name="barplot_frame">
        <property name="frameShape">
-        <enum>QFrame::StyledPanel</enum>
+        <enum>QFrame::Shape::StyledPanel</enum>
        </property>
        <property name="frameShadow">
-        <enum>QFrame::Raised</enum>
+        <enum>QFrame::Shadow::Raised</enum>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_5">
         <item>
@@ -220,7 +223,11 @@
            <attribute name="title">
             <string>Species plot</string>
            </attribute>
-           <layout class="QVBoxLayout" name="verticalLayout_6"/>
+           <layout class="QVBoxLayout" name="verticalLayout_6">
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+           </layout>
           </widget>
           <widget class="QWidget" name="tab_mz_spectrum">
            <attribute name="title">
@@ -242,7 +249,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>37</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_file">
@@ -344,7 +351,7 @@
     <string>Zoom in</string>
    </property>
    <property name="menuRole">
-    <enum>QAction::NoRole</enum>
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
   <action name="action_zoom_out">
@@ -359,7 +366,7 @@
     <string>Zoom out</string>
    </property>
    <property name="menuRole">
-    <enum>QAction::NoRole</enum>
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
   <action name="action_global">
@@ -377,7 +384,7 @@
     <string>Global scale</string>
    </property>
    <property name="menuRole">
-    <enum>QAction::NoRole</enum>
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
   <action name="action_rotate_left">
@@ -389,7 +396,7 @@
     <string>Rotate Left</string>
    </property>
    <property name="menuRole">
-    <enum>QAction::NoRole</enum>
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
   <action name="action_rotate_right">
@@ -401,7 +408,7 @@
     <string>Rotate Right</string>
    </property>
    <property name="menuRole">
-    <enum>QAction::NoRole</enum>
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
   <action name="action_reflect_horizontal">
@@ -413,7 +420,7 @@
     <string>Reflect Horizontal</string>
    </property>
    <property name="menuRole">
-    <enum>QAction::NoRole</enum>
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
   <action name="action_reflect_vertical">
@@ -425,7 +432,7 @@
     <string>Reflect Vertical</string>
    </property>
    <property name="menuRole">
-    <enum>QAction::NoRole</enum>
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
   <action name="action_open_about_dialog">
@@ -437,7 +444,7 @@
     <string>About</string>
    </property>
    <property name="menuRole">
-    <enum>QAction::NoRole</enum>
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
   <action name="action_open_settings_window">
@@ -449,7 +456,7 @@
     <string>Settings</string>
    </property>
    <property name="menuRole">
-    <enum>QAction::NoRole</enum>
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
  </widget>

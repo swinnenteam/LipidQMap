@@ -28,6 +28,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.fetch_db_list()
         self.update_ion_mode()
         self.ppm_spinbox.setValue(self.config.settings.processing_settings.ppm)
+        self.bin_size_spinbox.setValue(self.config.settings.processing_settings.bin_size)
         self.m2_iso_cor_checkbox.setChecked(
             self.config.settings.processing_settings.m2_isotope_correction
         )
@@ -53,6 +54,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.cal_checkbox.clicked.connect(self.toggle_cal_checked_value)
         self.cal_checkbox.clicked.connect(self.update_save_setting)
         self.ppm_spinbox.valueChanged.connect(self.update_save_setting)
+        self.bin_size_spinbox.valueChanged.connect(self.update_save_setting)
         self.m2_iso_cor_checkbox.clicked.connect(self.update_save_setting)
         self.na_iso_cor_checkbox.clicked.connect(self.update_save_setting)
         self.calibrant_spinbox.valueChanged.connect(self.update_save_setting)
@@ -145,6 +147,8 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
             self.config.settings.database_settings.last_used_database = sender.currentText()
         elif sender == self.cal_int_spinbox:
             self.config.settings.processing_settings.calibration_min_intensity = sender.value()
+        elif sender == self.bin_size_spinbox:
+            self.config.settings.processing_settings.bin_size = sender.value()
         elif sender == self.cal_ppm_spinbox:
             self.config.settings.processing_settings.calibration_ppm = sender.value()
         elif sender == self.calibrant_spinbox:
@@ -168,6 +172,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.neg_radio_button.setEnabled(active)
         self.pos_radio_button.setEnabled(active)
         self.ppm_spinbox.setEnabled(active)
+        self.bin_size_spinbox.setEnabled(active)
         self.database_combo_box.setEnabled(active)
         self.import_data_button.setEnabled(active)
         self.m2_iso_cor_checkbox.setEnabled(active)

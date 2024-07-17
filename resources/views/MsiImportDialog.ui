@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>460</width>
-    <height>840</height>
+    <width>459</width>
+    <height>834</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -33,7 +33,7 @@
      <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Orientation::Horizontal</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
@@ -48,16 +48,16 @@
    <item>
     <widget class="QListWidget" name="imzml_list_view">
      <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
+      <enum>Qt::FocusPolicy::NoFocus</enum>
      </property>
      <property name="editTriggers">
-      <set>QAbstractItemView::NoEditTriggers</set>
+      <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
      </property>
      <property name="showDropIndicator" stdset="0">
       <bool>false</bool>
      </property>
      <property name="selectionMode">
-      <enum>QAbstractItemView::NoSelection</enum>
+      <enum>QAbstractItemView::SelectionMode::NoSelection</enum>
      </property>
     </widget>
    </item>
@@ -66,36 +66,6 @@
      <property name="topMargin">
       <number>0</number>
      </property>
-     <item row="0" column="3">
-      <spacer name="horizontalSpacer_2">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item row="0" column="2">
-      <widget class="QRadioButton" name="neg_radio_button">
-       <property name="text">
-        <string>Negative</string>
-       </property>
-       <attribute name="buttonGroup">
-        <string notr="true">button_group</string>
-       </attribute>
-      </widget>
-     </item>
-     <item row="1" column="2">
-      <widget class="QLabel" name="label_4">
-       <property name="text">
-        <string>ppm</string>
-       </property>
-      </widget>
-     </item>
      <item row="0" column="1">
       <widget class="QRadioButton" name="pos_radio_button">
        <property name="text">
@@ -109,20 +79,20 @@
        </attribute>
       </widget>
      </item>
-     <item row="2" column="1" colspan="3">
+     <item row="2" column="1" colspan="4">
       <widget class="QComboBox" name="database_combo_box"/>
+     </item>
+     <item row="1" column="3">
+      <widget class="QLabel" name="label_9">
+       <property name="text">
+        <string>Bin size:</string>
+       </property>
+      </widget>
      </item>
      <item row="0" column="0">
       <widget class="QLabel" name="label_2">
        <property name="text">
         <string>Ion mode:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_5">
-       <property name="text">
-        <string>Database:</string>
        </property>
       </widget>
      </item>
@@ -133,13 +103,68 @@
        </property>
       </widget>
      </item>
+     <item row="0" column="4">
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>Database:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QRadioButton" name="neg_radio_button">
+       <property name="text">
+        <string>Negative</string>
+       </property>
+       <attribute name="buttonGroup">
+        <string notr="true">button_group</string>
+       </attribute>
+      </widget>
+     </item>
      <item row="1" column="1">
       <widget class="QDoubleSpinBox" name="ppm_spinbox">
+       <property name="suffix">
+        <string> ppm</string>
+       </property>
        <property name="minimum">
         <double>0.050000000000000</double>
        </property>
        <property name="value">
         <double>10.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="4">
+      <widget class="QDoubleSpinBox" name="bin_size_spinbox">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;Width of the bin of the average mz spectrum at mz 1000, in miliDalton. For calculating the average mz spectrum of an image section, a binning algorithm is used. This spectrum averaging algoritm assigns peaks accross the spectra of different pixels to mz bins and then calculates the average intensity for each bin.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;The width of the bins is automatically adjusted depending on the mz, by keeping a constant ppm. For example if a bin size of 5 mDa is provided (at mz 1000) this corresponds to a ppm of 5. At for example mz 700, a ppm of 5 corresponds to a bin size of 3.5 mDa, at mz 400 the bin size will be 2 mDa , etc...&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;This setting only affects the average spectrum that is shown in the spectrum viewer, it has no consequence on the extracted ion images.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="suffix">
+        <string comment="miliDalton"> mDa</string>
+       </property>
+       <property name="minimum">
+        <double>0.010000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>100.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
+       </property>
+       <property name="value">
+        <double>5.000000000000000</double>
        </property>
       </widget>
      </item>
