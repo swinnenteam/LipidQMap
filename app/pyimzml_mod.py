@@ -143,7 +143,8 @@ class ImzMLParser:
                     self.__read_polarity(elem)
                     self.__read_spectrum_mode(elem)
                     is_first_spectrum = False
-                slist.remove(elem)
+                if slist is not None:
+                    slist.remove(elem)
         self.__fix_offsets()
 
     def __fix_offsets(self) -> None:
@@ -406,6 +407,8 @@ class ImzMLParser:
             np.nan,
         )
         for i, (x, y, z_) in enumerate(self.coordinates):
+            if x > im.shape[1] or y > im.shape[0]:
+                continue
             mzs, ints = map(lambda x: np.asarray(x), self.getspectrum(i))
             min_i, max_i = _bisect_spectrum(mzs, mz, tol)
             intensity_values = ints[min_i : max_i + 1]
@@ -419,6 +422,8 @@ class ImzMLParser:
         offsets = mz - np.nanmean(im, axis=1)
         offsets[np.isnan(offsets)] = 0
         for i, (x, y, z_) in enumerate(self.coordinates):
+            if x > im.shape[1] or y > im.shape[0]:
+                continue
             self.spectra[i][0] = self.spectra[i][0] + offsets[y - 1]
         return None
 
