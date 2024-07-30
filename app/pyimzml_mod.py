@@ -124,7 +124,9 @@ class ImzMLParser:
         """
         mz_group = int_group = None
         slist = None
-        elem_iterator: Iterator = self.iterparse(self.filename, events=("start", "end"))
+        elem_iterator: Iterator = self.iterparse(
+            self.filename, events=("start", "end"), recover=True
+        )
 
         if sys.version_info > (3,):
             _, self.root = next(elem_iterator)
