@@ -66,7 +66,7 @@ class PandasModelEditable(QAbstractTableModel):
 
     def setData(self, index, value, role=Qt.EditRole):
         if role == Qt.CheckStateRole and index.column() in self.checkableColumns:
-            self._data.iloc[index.row(), index.column()] = bool(value)
+            self._data.iloc[index.row(), index.column()] = value == Qt.Checked
             self.dataChanged.emit(index, index)
             return True
         if value is not None and role == Qt.EditRole:
@@ -104,7 +104,7 @@ class BooleanDelegate(QItemDelegate):
 
     def editorEvent(self, event, model, option, index):
         if event.type() == QEvent.MouseButtonRelease:
-            value = bool(model.data(index, Qt.CheckStateRole))
-            model.setData(index, not value)
+            is_checked = model.data(index, Qt.CheckStateRole) == Qt.Checked
+            model.setData(index, not is_checked)
             event.accept()
         return super(BooleanDelegate, self).editorEvent(event, model, option, index)
