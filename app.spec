@@ -21,7 +21,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='Msi-Quant',
+    name='LipidQuantMSI',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -40,11 +40,11 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='Msi-Quant',
+    name='LipidQuantMSI',
 )
 app = BUNDLE(
     coll,
-    name='Msi-Quant.app',
+    name='LipidQuantMSI.app',
     icon=None,
     bundle_identifier=None,
 )

@@ -34,10 +34,10 @@ run: ## Runs the application
 
 build: ## Builds the application
 	make clean
-	./venv/bin/pyinstaller msi-quant.spec
+	./venv/bin/pyinstaller app.spec
 
 installer-spec:
-	pyi-makespec --onedir --additional-hooks-dir="pyinstaller/" --name="Msi-Quant" --windowed app/__main__.py
+	pyi-makespec --onedir --additional-hooks-dir="pyinstaller/" --name="LipidQuantMSI" --windowed app/__main__.py
 
 coverage: ## Coverage report of the unit testing
 	coverage run -m pytest

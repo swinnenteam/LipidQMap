@@ -180,7 +180,7 @@ class Ui_Dialog(object):
 
     def retranslateUi(self, Dialog):
         Dialog.setWindowTitle(QCoreApplication.translate("Dialog", u"About", None))
-        self.label.setText(QCoreApplication.translate("Dialog", u"MSI-Quant", None))
+        self.label.setText(QCoreApplication.translate("Dialog", u"LipidQuantMSI", None))
         self.label_version.setText(QCoreApplication.translate("Dialog", u"Version: 1.0.0", None))
         self.label_3.setText(QCoreApplication.translate("Dialog", u"Keyboard shortcuts:", None))
         self.label_15.setText(QCoreApplication.translate("Dialog", u"Select/unselect species for export", None))
