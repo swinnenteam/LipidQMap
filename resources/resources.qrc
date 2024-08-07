@@ -1,6 +1,7 @@
 <RCC>
   <qresource prefix="images">
     <file>icons/settings.png</file>
+    <file>images/LipidQMap_logo_small.png</file>
     <file>icons/rotate_left.png</file>
     <file>icons/rotate_right.png</file>
     <file>icons/reflect_horizontal.png</file>

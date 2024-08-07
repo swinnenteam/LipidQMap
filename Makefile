@@ -25,7 +25,6 @@ ui: ## Converts ui files in resources/views to python
 	./venv/bin/pyside6-uic --from-imports resources/views/MsiAboutDialog.ui -o app/generated/MsiAboutDialog_ui.py
 	./venv/bin/pyside6-uic --from-imports resources/views/MsiSettingsDialog.ui -o app/generated/MsiSettingsDialog_ui.py
 	
-	
 res: ## Generates and compresses resource listed in resources/resources.qrc
 	./venv/bin/pyside6-rcc -compress 9 -o app/generated/resources_rc.py resources/resources.qrc
 
@@ -35,9 +34,6 @@ run: ## Runs the application
 build: ## Builds the application
 	make clean
 	./venv/bin/pyinstaller app.spec
-
-installer-spec:
-	pyi-makespec --onedir --additional-hooks-dir="pyinstaller/" --name="LipidQuantMSI" --windowed app/__main__.py
 
 coverage: ## Coverage report of the unit testing
 	coverage run -m pytest

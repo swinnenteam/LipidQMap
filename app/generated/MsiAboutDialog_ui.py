@@ -18,12 +18,13 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QDialog, QFrame, QGridLayout,
     QHBoxLayout, QLabel, QPushButton, QSizePolicy,
     QSpacerItem, QVBoxLayout, QWidget)
+from . import resources_rc
 
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         if not Dialog.objectName():
             Dialog.setObjectName(u"Dialog")
-        Dialog.resize(567, 302)
+        Dialog.resize(567, 476)
         self.verticalLayout = QVBoxLayout(Dialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.verticalLayout_2 = QVBoxLayout()
@@ -34,11 +35,14 @@ class Ui_Dialog(object):
         font.setPointSize(26)
         font.setBold(False)
         self.label.setFont(font)
+        self.label.setPixmap(QPixmap(u":/images/images/LipidQMap_logo_small.png"))
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.verticalLayout_2.addWidget(self.label)
 
         self.label_version = QLabel(Dialog)
         self.label_version.setObjectName(u"label_version")
+        self.label_version.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.verticalLayout_2.addWidget(self.label_version)
 
@@ -76,14 +80,14 @@ class Ui_Dialog(object):
         font2 = QFont()
         font2.setBold(True)
         self.label_7.setFont(font2)
-        self.label_7.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
+        self.label_7.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.gridLayout_3.addWidget(self.label_7, 4, 0, 1, 1)
 
         self.label_8 = QLabel(Dialog)
         self.label_8.setObjectName(u"label_8")
         self.label_8.setFont(font2)
-        self.label_8.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
+        self.label_8.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.gridLayout_3.addWidget(self.label_8, 1, 3, 1, 1)
 
@@ -100,7 +104,7 @@ class Ui_Dialog(object):
         self.label_6 = QLabel(Dialog)
         self.label_6.setObjectName(u"label_6")
         self.label_6.setFont(font2)
-        self.label_6.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
+        self.label_6.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.gridLayout_3.addWidget(self.label_6, 3, 0, 1, 1)
 
@@ -112,7 +116,7 @@ class Ui_Dialog(object):
         self.label_4 = QLabel(Dialog)
         self.label_4.setObjectName(u"label_4")
         self.label_4.setFont(font2)
-        self.label_4.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
+        self.label_4.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.gridLayout_3.addWidget(self.label_4, 1, 0, 1, 1)
 
@@ -124,7 +128,7 @@ class Ui_Dialog(object):
         self.label_9 = QLabel(Dialog)
         self.label_9.setObjectName(u"label_9")
         self.label_9.setFont(font2)
-        self.label_9.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
+        self.label_9.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.gridLayout_3.addWidget(self.label_9, 3, 3, 1, 1)
 
@@ -137,7 +141,7 @@ class Ui_Dialog(object):
         self.label_5 = QLabel(Dialog)
         self.label_5.setObjectName(u"label_5")
         self.label_5.setFont(font2)
-        self.label_5.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
+        self.label_5.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.gridLayout_3.addWidget(self.label_5, 2, 0, 1, 1)
 
@@ -180,7 +184,7 @@ class Ui_Dialog(object):
 
     def retranslateUi(self, Dialog):
         Dialog.setWindowTitle(QCoreApplication.translate("Dialog", u"About", None))
-        self.label.setText(QCoreApplication.translate("Dialog", u"LipidQuantMSI", None))
+        self.label.setText("")
         self.label_version.setText(QCoreApplication.translate("Dialog", u"Version: 1.0.0", None))
         self.label_3.setText(QCoreApplication.translate("Dialog", u"Keyboard shortcuts:", None))
         self.label_15.setText(QCoreApplication.translate("Dialog", u"Select/unselect species for export", None))

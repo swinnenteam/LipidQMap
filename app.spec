@@ -21,7 +21,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='LipidQuantMSI',
+    name='LipidQMap',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -40,11 +40,11 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='LipidQuantMSI',
+    name='LipidQMap',
 )
 app = BUNDLE(
     coll,
-    name='LipidQuantMSI.app',
+    name='LipidQMap.app',
     icon=None,
     bundle_identifier=None,
 )
