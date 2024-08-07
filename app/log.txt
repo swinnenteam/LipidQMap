@@ -251,3 +251,14 @@ Traceback (most recent call last):
     index = self.species_table.selectionModel().selectedRows()[0].row()
             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
 IndexError: list index out of range
+2024-08-07 19:50:42 CRITICAL Uncaught exception:
+   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/views/imzml_import_window.py", line 152, in update_save_setting
+    self.config.settings.processing_settings.pos_mode = not sender.value()
+                                                            ^^^^^^^^^^^^
+
+AttributeError: 'PySide6.QtWidgets.QRadioButton' object has no attribute 'value'
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/views/imzml_import_window.py", line 152, in update_save_setting
+    self.config.settings.processing_settings.pos_mode = not sender.value()
+                                                            ^^^^^^^^^^^^
+AttributeError: 'PySide6.QtWidgets.QRadioButton' object has no attribute 'value'

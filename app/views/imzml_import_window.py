@@ -27,6 +27,8 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.setupUi(self)
         self.fetch_db_list()
         self.update_ion_mode()
+        self.pos_radio_button.setChecked(self.config.settings.processing_settings.pos_mode)
+        self.neg_radio_button.setChecked(not self.config.settings.processing_settings.pos_mode)
         self.ppm_spinbox.setValue(self.config.settings.processing_settings.ppm)
         self.bin_size_spinbox.setValue(self.config.settings.processing_settings.bin_size)
         self.m2_iso_cor_checkbox.setChecked(
@@ -52,6 +54,8 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.import_data_button.clicked.connect(self.process_imzml_files)
         self.open_imzml_button.clicked.connect(self.open_imzml_files)
         self.cal_checkbox.clicked.connect(self.toggle_cal_checked_value)
+        self.pos_radio_button.clicked.connect(self.update_save_setting)
+        self.neg_radio_button.clicked.connect(self.update_save_setting)
         self.cal_checkbox.clicked.connect(self.update_save_setting)
         self.ppm_spinbox.valueChanged.connect(self.update_save_setting)
         self.bin_size_spinbox.valueChanged.connect(self.update_save_setting)
@@ -143,7 +147,11 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
 
     def update_save_setting(self):
         sender = self.sender()
-        if sender == self.database_combo_box:
+        if sender == self.pos_radio_button:
+            self.config.settings.processing_settings.pos_mode = sender.isChecked()
+        elif sender == self.neg_radio_button:
+            self.config.settings.processing_settings.pos_mode = not sender.isChecked()
+        elif sender == self.database_combo_box:
             self.config.settings.database_settings.last_used_database = sender.currentText()
         elif sender == self.cal_int_spinbox:
             self.config.settings.processing_settings.calibration_min_intensity = sender.value()

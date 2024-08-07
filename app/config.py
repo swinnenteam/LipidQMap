@@ -67,6 +67,7 @@ class ProcessingSettings(BaseModel):
     Class for validation of the configuration file
     """
 
+    pos_mode: bool = Field(default=True)
     ppm: float = Field(default=15.0)
     bin_size: float = Field(default=5.0)
     m2_isotope_correction: bool = Field(default=True)
