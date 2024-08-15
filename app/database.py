@@ -367,7 +367,7 @@ class DatabaseFactory:
 
             na_isotope_id = self.none_if_nan(getattr(row, "Na_Isotope"))
             na_isotope = (
-                species.get(na_isotope_id + " " + "[M+Na]+") if na_isotope_id is not None else None
+                species.get(na_isotope_id + " " + "[M+H]+") if na_isotope_id is not None else None
             )
             specie.na_isotope = na_isotope
 

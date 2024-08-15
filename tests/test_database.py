@@ -53,6 +53,7 @@ def test_get_all_species_same_class(database: LipidDB) -> None:
     species_ids = [s.id_adduct for s in species]
     assert species_ids == [
         "PC 33:1 d7 [M+H]+",
+        "PC 32:0 [M+H]+",
         "PC 32:1 [M+H]+",
         "PC 34:1 [M+H]+",
         "PC 36:1 [M+H]+",
@@ -96,7 +97,7 @@ def test_get_M2_isotope_percent(database: LipidDB) -> None:
 def test_get_Na_isotope_ID(database: LipidDB) -> None:
     species = database.species["PC 34:4 [M+H]+"]
     assert species.na_isotope is not None
-    assert species.na_isotope.id_adduct == "PC 32:1 [M+Na]+"
+    assert species.na_isotope.id_adduct == "PC 32:1 [M+H]+"
 
 
 def test_get_Na_isotope_ID_None(database: LipidDB) -> None:
@@ -115,6 +116,7 @@ def test_get_species_sorted_for_isotope(database: LipidDB) -> None:
         "PC 32:4 [M+H]+",
         "PC 32:2 [M+H]+",
         "PC 32:1 [M+H]+",
+        "PC 32:0 [M+H]+",
         "PC 33:1 d7 [M+H]+",
         "PC 34:4 [M+H]+",
         "PC 34:2 [M+H]+",
@@ -126,6 +128,7 @@ def test_get_species_sorted_for_isotope(database: LipidDB) -> None:
         "PC 32:4 [M+K]+",
         "PC 32:2 [M+K]+",
         "PC 32:1 [M+K]+",
+        "PC 32:0 [M+K]+",
         "PC 33:1 d7 [M+K]+",
         "PC 34:4 [M+K]+",
         "PC 34:2 [M+K]+",
@@ -137,6 +140,7 @@ def test_get_species_sorted_for_isotope(database: LipidDB) -> None:
         "PC 32:4 [M+Na]+",
         "PC 32:2 [M+Na]+",
         "PC 32:1 [M+Na]+",
+        "PC 32:0 [M+Na]+",
         "PC 33:1 d7 [M+Na]+",
         "PC 34:4 [M+Na]+",
         "PC 34:2 [M+Na]+",
@@ -150,7 +154,7 @@ def test_get_species_sorted_for_isotope(database: LipidDB) -> None:
 
 def test_get_all_species(database: LipidDB) -> None:
     species_id, species_mz = database.get_all_species()
-    assert 33 == len(species_id)
+    assert 36 == len(species_id)
     assert species_id[0] == ("PC 33:1 d7 [M+H]+")
     assert species_mz[0] == pytest.approx(753.613368, rel=1e-3)
 

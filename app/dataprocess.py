@@ -341,6 +341,8 @@ def m2_isotope_correction(
     """
     corrected_images: dict[str, npt.NDArray] = copy.deepcopy(images)
     for s in database.get_species_sorted_for_isotope():
+        if s.id_adduct not in images.keys():
+            continue
         if s.m2_isotope:
             corrected_images[s.id_adduct] = (
                 images[s.id_adduct]
