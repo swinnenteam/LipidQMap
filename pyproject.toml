@@ -8,6 +8,11 @@ testpaths = "tests"
 [tool.black]
 line-length = 100
 required-version = "24.3.0"
+extend-exclude = '''
+/(
+  | generated
+)/
+'''
 
 [tool.isort]
 profile = "black"
