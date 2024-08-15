@@ -93,9 +93,8 @@ LipidQMap's Excel database(s) of lipid species are located inside the `_internal
 ## Support
 
 If you encountered a bug in LipidQMap, let us know by opening an Issue:
-1.  On the left sidebar, select  **Plan > Issues**, and then, in the upper-right corner, select  **New issue**.
-2.  Complete the  [fields](https://docs.gitlab.com/ee/user/project/issues/create_issues.html#fields-in-the-new-issue-form).
-3.  Select  **Create issue**.
+1.  On the top menu of this github page, click on  **Issues**, and then click on **create an issue.**.
+2.  Fill in the form and click on **Submit new issue**.
 
 ## For Developers
 
