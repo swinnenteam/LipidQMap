@@ -370,6 +370,7 @@ def na_isotope_correction(
         ratio_image[ratio_image == np.inf] = np.nan
         h_na_ratio_ims[h_id] = replace_nan_with_median(ratio_image)
 
+    # correct the [M+H]+
     for s in database.get_species_sorted_for_isotope():
         if "[M+H]+" != s.adduct:
             continue
@@ -380,6 +381,18 @@ def na_isotope_correction(
             ).clip(min=0)
         else:
             corrected_images[s.id_adduct] = np.copy(images[s.id_adduct])
+
+    # correct the [M+Na]+
+    # e.g. PC 34:1[M+Na]+  = (PC 34:1[M+Na]+) - (PC 36:4[M+H]+)
+    for s in database.get_species_sorted_for_isotope():
+        if "[M+Na]+" != s.adduct:
+            continue
+        if s.na_isotope is not None:
+            h_species_id_adduct = s.id + " [M+H]+"
+            na_species_id_adduct = s.na_isotope.id + " [M+Na]+"
+            corrected_images[na_species_id_adduct] = (
+                corrected_images[na_species_id_adduct] - corrected_images[h_species_id_adduct]
+            ).clip(min=0)
 
     return corrected_images
 

@@ -62,7 +62,7 @@ def fixture_images() -> dict[str, npt.NDArray]:
 
 
 def test_winsorize_image(image: npt.NDArray) -> None:
-    win_image = winsorize_image(image, upper_percentile=99)
+    win_image = winsorize_image.py_func(image, upper_percentile=99)
     nptest.assert_array_equal(
         win_image,
         np.array([[10.0, 12.0, 14.92], [14.0, 12.0, 12.0], [11.0, 6.0, 8.0]]),
@@ -71,7 +71,7 @@ def test_winsorize_image(image: npt.NDArray) -> None:
 
 
 def test_winsorize_image_nan(nan_image: npt.NDArray) -> None:
-    win_image = winsorize_image(nan_image, upper_percentile=99)
+    win_image = winsorize_image.py_func(nan_image, upper_percentile=99)
     nptest.assert_allclose(
         win_image,
         np.array([[10.0, 12.0, np.nan], [13.88, np.nan, 12.0], [11.0, 6.0, 8.0]]),
@@ -79,7 +79,7 @@ def test_winsorize_image_nan(nan_image: npt.NDArray) -> None:
 
 
 def test_replace_nan_with_median(nan_image: npt.NDArray) -> None:
-    median_filled_image = replace_nan_with_median(nan_image)
+    median_filled_image = replace_nan_with_median.py_func(nan_image)
     nptest.assert_allclose(
         median_filled_image,
         np.array([[10.0, 12.0, 12.0], [14.0, 11.0, 12.0], [11.0, 6.0, 8.0]]),
@@ -142,9 +142,9 @@ def test_na_isotope_correction(database: LipidDB, images: dict[str, npt.NDArray]
         "PC 38:4 [M+H]+": np.array([[20], [300]]),
         "PC 33:1 d7 [M+Na]+": np.array([[40], [600]]),
         "PC 32:0 [M+Na]+": np.array([[35], [525]]),
-        "PC 32:1 [M+Na]+": np.array([[30], [450]]),
-        "PC 34:1 [M+Na]+": np.array([[55], [825]]),
-        "PC 36:1 [M+Na]+": np.array([[70], [1050]]),
+        "PC 32:1 [M+Na]+": np.array([[0], [0]]),
+        "PC 34:1 [M+Na]+": np.array([[27.5], [412.5]]),
+        "PC 36:1 [M+Na]+": np.array([[50], [750]]),
         "PC 32:2 [M+Na]+": np.array([[25], [375]]),
         "PC 34:2 [M+Na]+": np.array([[50], [750]]),
         "PC 36:2 [M+Na]+": np.array([[65], [975]]),
