@@ -31,7 +31,6 @@ jobs:
     - name: Lint with black
       uses: psf/black@stable
       with:
-        version: "24.3.0"
         use_pyproject: true
     - name: Test with pytest
       run: |
