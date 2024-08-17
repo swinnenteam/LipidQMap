@@ -1,5 +1,5 @@
 import os
-import timeit
+import re
 from pathlib import Path
 
 import matplotlib
@@ -250,7 +250,7 @@ def save_individual_image(
     """
 
     # image with colorbar
-    full_path = os.path.join(path, species_id.replace(":", "_"))
+    full_path = os.path.join(path, re.sub(r"[\/\\?%*:|\"<>]", "_", species_id))
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_axes(rect=(0.0, 0.0, 1.0, 1.0), frameon=False, xticks=[], yticks=[])
     divider = make_axes_locatable(ax)
@@ -293,7 +293,7 @@ def save_individual_unfiltered_image(species_id: str, image: npt.NDArray, path: 
     result = np.dstack([result, mask])
     # matplotlib bug workaround, equivalent to setting origin to upper in imsave
     result = np.ascontiguousarray(result[::-1])
-    full_path = os.path.join(path, species_id.replace(":", "_"))
+    full_path = os.path.join(path, re.sub(r"[\/\\?%*:|\"<>]", "_", species_id))
     plt.imsave(fname=f"{full_path}_1to1_pixel.png", arr=result, format="png", origin="upper")
     plt.close()
 
@@ -319,17 +319,20 @@ def save_panel_image(
     Path(base_path).mkdir(parents=True, exist_ok=True)
     for species_id in species_selection:
         fig: matplotlib.figure.Figure = plt.figure(figsize=(6 * ncols, 4 * nrows))
+        is_none = []
         max_value: int | None
         if global_scale:
             max_value = samples.get_max_intensity(species_id=species_id, image_type=image_type)
         else:
             max_value = None
         for sample_idx, (sample_id, image_collection) in enumerate(samples.items()):
-            ax = fig.add_subplot(nrows, ncols, sample_idx + 1)
             image = image_collection.get(image_type=image_type, species_id=species_id)
-            if image is None:
-                x, y = image_collection.shape
-                image = np.full([x, y], np.nan)
+            if image is not None:
+                is_none.append(False)
+            else:
+                is_none.append(True)
+                continue
+            ax = fig.add_subplot(nrows, ncols, sample_idx + 1)
             im = ax.imshow(
                 image,
                 origin="lower",
@@ -345,15 +348,15 @@ def save_panel_image(
             ax.set_title(sample_id)
             cb = plt.colorbar(im, ax=ax, cax=cax)
             ax.set_axis_off()
-            # ax.set_aspect("auto")
             ax.set(adjustable="datalim")
             ax.apply_aspect()
 
             if image_type == ImageType.quant:
                 cb.set_label("pmol / mm2")
-
+        if all(is_none):
+            continue
         fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.2, hspace=0.2)
-        full_path = os.path.join(base_path, species_id.replace(":", "_"))
+        full_path = os.path.join(base_path, re.sub(r"[\/\\?%*:|\"<>]", "_", species_id))
         plt.draw()
         fig.tight_layout()
 

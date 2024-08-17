@@ -9,16 +9,19 @@ import sys
 import toml
 from pydantic import BaseModel, Field
 
-if getattr(sys, "frozen", False):
-    bundle_dir = sys._MEIPASS  # type: ignore # pylint: disable=W0212
-else:
-    bundle_dir = str(os.path.dirname(__file__))
+
+def get_bundle_dir() -> str:
+    if getattr(sys, "frozen", False):
+        return sys._MEIPASS  # type: ignore # pylint: disable=W0212
+    else:
+        return str(os.path.dirname(__file__))
+
 
 config_paths = {
-    "DATABASE_DIR": os.path.join(bundle_dir, "database"),
-    "USER_CONFIG_FILE": os.path.join(bundle_dir, "config.toml"),
-    "STYLE_FILE": os.path.join(bundle_dir, "style.css"),
-    "LOG_FILE": os.path.join(bundle_dir, "log.txt"),
+    "DATABASE_DIR": os.path.join(get_bundle_dir(), "database"),
+    "USER_CONFIG_FILE": os.path.join(get_bundle_dir(), "config.toml"),
+    "STYLE_FILE": os.path.join(get_bundle_dir(), "style.css"),
+    "LOG_FILE": os.path.join(get_bundle_dir(), "log.txt"),
 }
 
 

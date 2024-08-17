@@ -149,8 +149,6 @@ class SectionMsiImage:
                 return winsorize_image(self.isotope.get(species_id), n1)
             case ImageType.quant:
                 return winsorize_image(self.quant.get(species_id), n2)
-            case _:
-                return None
 
     @cache
     def get_mean(self, image_type: ImageType, species_id: str) -> int:
@@ -180,8 +178,6 @@ class SectionMsiImage:
                 if image is None:
                     return 0
                 return np.nanmean(image, axis=(0, 1))
-            case _:
-                return 0
 
     def transform(self, transformation: str) -> None:
         """
@@ -272,7 +268,7 @@ class SampleCollection:
 
     def criteria_check(self) -> list[bool]:
         checks = []
-        for sample_id, image in self.samples.items():
+        for _, image in self.samples.items():
             checks.append(image.criteria_check())
         checks = list(map(list, zip(*checks)))
         return [any(check) for check in checks]
@@ -282,7 +278,7 @@ class SampleCollection:
 
     def get_max_intensity(self, image_type: ImageType, species_id: str) -> int | None:
         max_value: int | None = 0
-        for i, (key, image_collection) in enumerate(self.samples.items()):
+        for _, (_, image_collection) in enumerate(self.samples.items()):
             image = image_collection.get(image_type, species_id)
             image_max = np.nanmax(image) if image is not None else 0
             max_value = image_max if image_max > max_value else max_value
@@ -379,8 +375,6 @@ def na_isotope_correction(
                 images[s.id_adduct]
                 - h_na_ratio_ims[s.standard.id_adduct] * corrected_images[s.na_isotope.id_adduct]
             ).clip(min=0)
-        else:
-            corrected_images[s.id_adduct] = np.copy(images[s.id_adduct])
 
     # correct the [M+Na]+
     # e.g. PC 34:1[M+Na]+  = (PC 34:1[M+Na]+) - (PC 36:4[M+H]+)

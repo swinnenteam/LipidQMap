@@ -216,6 +216,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.samples is None:
             return
         nsamples = len(self.samples)
+        if nsamples == 1:
+            self.ncols = 1
         dimensions = self.samples.dimensions()
 
         self.nrows = nsamples // self.ncols + (nsamples % self.ncols > 0)

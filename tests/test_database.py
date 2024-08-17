@@ -42,6 +42,35 @@ def test_load_database_column_missing() -> None:
         )
 
 
+def test_load_database_std_undefined() -> None:
+    with pytest.raises(ValueError):
+        DatabaseFactory(
+            "tests/database/test_database_std_undefined.xlsx", ion_mode=IonMode.positive
+        ).create_database()
+
+
+def test_load_database_no_std_amount() -> None:
+    with pytest.raises(ValueError):
+        DatabaseFactory(
+            "tests/database/test_database_no_std_amount.xlsx", ion_mode=IonMode.positive
+        ).create_database()
+
+
+def test_load_database_invalid_isotope_id() -> None:
+    with pytest.raises(ValueError):
+        DatabaseFactory(
+            "tests/database/test_database_invalid_isotope_id.xlsx", ion_mode=IonMode.positive
+        ).create_database()
+
+
+def test_get(database: LipidDB) -> None:
+    assert "PC 33:1 d7" == database.get(0).id
+
+
+def test_get_id(database: LipidDB) -> None:
+    assert "PC 33:1 d7 [M+H]+" == database.get_id(0)
+
+
 def test_get_ids_non_standards(database: LipidDB) -> None:
     species_ids = [s.id_adduct for s in database.get_ids_non_standards()]
     assert "PC 32:1 [M+Na]+" in species_ids
@@ -113,6 +142,7 @@ def test_get_species_sorted_for_isotope(database: LipidDB) -> None:
 
     species_ids = [s.id_adduct for s in database.get_species_sorted_for_isotope()]
     assert species_ids == [
+        "SM 34:1 [M+H]+",
         "PC 32:4 [M+H]+",
         "PC 32:2 [M+H]+",
         "PC 32:1 [M+H]+",
@@ -154,7 +184,7 @@ def test_get_species_sorted_for_isotope(database: LipidDB) -> None:
 
 def test_get_all_species(database: LipidDB) -> None:
     species_id, species_mz = database.get_all_species()
-    assert 36 == len(species_id)
+    assert 37 == len(species_id)
     assert species_id[0] == ("PC 33:1 d7 [M+H]+")
     assert species_mz[0] == pytest.approx(753.613368, rel=1e-3)
 
@@ -293,6 +323,30 @@ def test_adduct_moac_minus():
 def test_adduct_mhcoo_minus():
     result = adduct_formula("C6H12O6", "[M+HCOO]-")
     expected = Formula("C6H12O6") + Formula("[HCOO]-")
+    assert result.formula == expected.formula
+
+
+def test_adduct_m2hna_minus():
+    result = adduct_formula("C6H12O6", "[M-2H+Na]-")
+    expected = Formula("C6H12O6") + Formula("[Na]") - Formula("[H2]+")
+    assert result.formula == expected.formula
+
+
+def test_adduct_m3h2na_minus():
+    result = adduct_formula("C6H12O6", "[M-3H+2Na]-")
+    expected = Formula("C6H12O6") + Formula("[Na2]") - Formula("[H3]+")
+    assert result.formula == expected.formula
+
+
+def test_adduct_m2hk_minus():
+    result = adduct_formula("C6H12O6", "[M-2H+K]-")
+    expected = Formula("C6H12O6") + Formula("[K]") - Formula("[H2]+")
+    assert result.formula == expected.formula
+
+
+def test_adduct_m3h2k_minus():
+    result = adduct_formula("C6H12O6", "[M-3H+2K]-")
+    expected = Formula("C6H12O6") + Formula("[K2]") - Formula("[H3]+")
     assert result.formula == expected.formula
 
 

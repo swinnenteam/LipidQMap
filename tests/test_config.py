@@ -1,13 +1,11 @@
 import os
-import sys
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 import toml
 from pydantic import ValidationError
 
-from app.config import Config, Configuration, config_paths
+from app.config import Config, Configuration
 
 
 # Define a temporary directory for the test configurations
