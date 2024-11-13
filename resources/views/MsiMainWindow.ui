@@ -267,6 +267,8 @@
     <addaction name="action_rotate_right"/>
     <addaction name="action_reflect_horizontal"/>
     <addaction name="action_reflect_vertical"/>
+    <addaction name="separator"/>
+    <addaction name="action_copy_species_plot"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -457,6 +459,11 @@
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="action_copy_species_plot">
+   <property name="text">
+    <string>Copy Species plot...</string>
    </property>
   </action>
  </widget>

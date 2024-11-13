@@ -145,6 +145,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_rotate_right.triggered.connect(self.rotate_right)
         self.action_reflect_horizontal.triggered.connect(self.reflect_horizontal)
         self.action_reflect_vertical.triggered.connect(self.reflect_vertical)
+        self.action_copy_species_plot.triggered.connect(self.copy_species_plot)
         self.imzml_import_window.finished_imzml_loading.connect(self.init_data)
         self.image_canvas_raw.image_clicked.connect(self.select_image)
         self.image_canvas_iso.image_clicked.connect(self.select_image)
@@ -309,6 +310,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         )
 
         self.spectrum_view.update_figure(self.samples[image_id].average_spectrum)
+
+    def copy_species_plot(self) -> None:
+        self.barplot_canvas.copy_to_clipboard()
 
     def tab_changed(self) -> None:
         """

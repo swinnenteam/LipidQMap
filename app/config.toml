@@ -22,12 +22,12 @@ minimum_pixels = 300
 minimum_intensity = 500
 
 [database_settings]
-last_used_database = "MSI_database_V1.0"
+last_used_database = "MSI_database_V1.0_small"
 
 [save_settings]
-save_raw_images = false
-save_iso_images = false
+save_raw_images = true
+save_iso_images = true
 save_quant_images = true
-save_individual_unfiltered = true
-save_individual_filtered_scaled = false
+save_individual_unfiltered = false
+save_individual_filtered_scaled = true
 save_panel_filtered_scaled = false

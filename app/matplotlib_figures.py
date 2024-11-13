@@ -7,6 +7,7 @@ import matplotlib.figure
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 from matplotlib import colormaps
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -38,13 +39,14 @@ class BarplotCanvas(FigureCanvasQTAgg):
         fig (matplotlib.figure.Figure): The figure object.
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         """
         Initialize the MplCanvas.
         """
-        self.fig = matplotlib.figure.Figure = plt.figure()
-        self.fig.set_tight_layout(True)
+        self.fig: matplotlib.figure.Figure = plt.figure(layout="constrained")
         self.ax = self.fig.add_subplot(111)
+        self.species_ids: list[str]
+        self.values: list[float]
         super(BarplotCanvas, self).__init__(self.fig)
 
     def setup(self) -> None:
@@ -75,10 +77,12 @@ class BarplotCanvas(FigureCanvasQTAgg):
             image_type: ImageType
         """
         adduct = species[0].adduct
-        values = [sample.get_mean(image_type=image_type, species_id=s.id_adduct) for s in species]
-        species_ids = [s.id for s in species]
+        self.values = [
+            sample.get_mean(image_type=image_type, species_id=s.id_adduct) for s in species
+        ]
+        self.species_ids = [s.id for s in species]
         self.ax.cla()
-        self.ax.bar(species_ids, values, color=[cyan])
+        self.ax.bar(self.species_ids, self.values, color=[cyan])
         self.ax.text(
             0.99,
             0.99,
@@ -95,6 +99,9 @@ class BarplotCanvas(FigureCanvasQTAgg):
         Reset the canvas by clearing and removing all axes.
         """
         self.ax.cla()
+
+    def copy_to_clipboard(self) -> None:
+        pd.DataFrame(data=self.values, index=self.species_ids).to_clipboard()
 
 
 class MplCanvas(FigureCanvasQTAgg):
@@ -237,7 +244,7 @@ class MplCanvas(FigureCanvasQTAgg):
 
 
 def save_individual_image(
-    species_id: str, image: npt.NDArray, max_scale: int | None, path: str
+    species_id: str, image: npt.NDArray, max_scale: int | None, path: str, image_type: ImageType
 ) -> None:
     """
     Save an interpolated image with color scalebar to a PNG file.
@@ -247,6 +254,7 @@ def save_individual_image(
         image (npt.NDArray): The image data array.
         max_scale: (int | None): the maximum value for the color scale
         path (str): The directory path to save the image.
+        image_type (ImageType): Raw, Iso or Quant image
     """
 
     # image with colorbar
@@ -259,7 +267,10 @@ def save_individual_image(
     img = ax.imshow(image, interpolation="gaussian", origin="lower")
     img.set_clim(vmin=0, vmax=max_scale)
     cbar = plt.colorbar(img, cax=cax)
-    cbar.set_label(label="pmol / mm²", size=18)
+    if image_type == ImageType.quant:
+        cbar.set_label(label="pmol / mm²", size=18)
+    else:
+        cbar.set_label(label="Intensity", size=18)
     cbar.ax.tick_params(labelsize=18)
     plt.savefig(full_path, bbox_inches="tight", pad_inches=0)
     plt.close()
@@ -399,7 +410,11 @@ def save_image_collection(
                 if config.settings.save_settings.save_individual_filtered_scaled:
                     Path(path).mkdir(parents=True, exist_ok=True)
                     save_individual_image(
-                        species_id=species, image=image, max_scale=max_scale, path=path
+                        species_id=species,
+                        image=image,
+                        max_scale=max_scale,
+                        path=path,
+                        image_type=image_type,
                     )
                 if config.settings.save_settings.save_individual_unfiltered:
                     Path(path).mkdir(parents=True, exist_ok=True)
