@@ -432,7 +432,7 @@ def sum_adducts(
         elif len(adduct_images) == 1:
             image = adduct_images[0]
         else:
-            image = np.sum(adduct_images, axis=0)
+            image = np.nansum(adduct_images, axis=0)
 
         images[specie.id_adduct] = image
 
