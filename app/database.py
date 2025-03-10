@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from enum import Enum
 from functools import cached_property
 from typing import Any
@@ -16,6 +17,7 @@ class IonMode(str, Enum):
 
     positive = "+"
     negative = "-"
+    neutral = ""
 
 
 class LipidSpecies(BaseModel):
@@ -56,11 +58,22 @@ class LipidSpecies(BaseModel):
         """Determines the ion mode based on the adduct."""
         if self.adduct.endswith("+"):
             return IonMode.positive
-        else:
+        elif self.adduct.endswith("-"):
             return IonMode.negative
+        else:
+            return IonMode.neutral
 
-    def __lt__(self, other):
+    def __repr__(self):
+        return self.id_adduct
+
+    def __lt__(self, other) -> bool:
         return (self.adduct, self.mz) < (other.adduct, other.mz)
+
+    def __eq__(self, other) -> bool:
+        return self.id == other.id and self.adduct == other.adduct
+
+    def __hash__(self):
+        return hash((self.id, self.adduct))
 
 
 class LipidStandard(LipidSpecies):
@@ -106,7 +119,11 @@ class LipidDB:
         Returns:
             list[LipidSpecies]: A list of non-standard species IDs.
         """
-        return [s for s in self.species.values() if not s.is_standard]
+        return [
+            s
+            for s in self.species.values()
+            if (not s.is_standard) and s.ion_mode != IonMode.neutral
+        ]
 
     def get_species_sorted_for_isotope(self) -> list[LipidSpecies]:
         """
@@ -114,7 +131,7 @@ class LipidDB:
         Returns:
             list[LipidSpecies]: A list of species IDs sorted by Class_Adduct and m/z.
         """
-        species = list(self.species.values())
+        species = [s for s in self.species.values() if s.ion_mode != IonMode.neutral]
         species.sort()
         return species
 
@@ -139,14 +156,34 @@ class LipidDB:
                 standard_pairs.append((h_standard.id_adduct, h_standard.id + " [M+Na]+"))
         return standard_pairs
 
-    def get_all_species(self) -> tuple[list[str], list[float]]:
+    def get_neutral_species(self) -> list[LipidSpecies]:
+        """
+        Returns a list of neutral LipidSpecies
+        """
+        return [s for s in self.species.values() if s.ion_mode == IonMode.neutral]
+
+    def get_adduct_species_for_neutral(self, species: LipidSpecies) -> list[LipidSpecies]:
+        """
+        Given a species, returns the list of all adduct forms of this species
+        """
+        return [s for s in list(self.species.values()) if s.id == species.id and s.adduct != ""]
+
+    def get_all_species(self, neutral=False) -> tuple[list[str], list[float]]:
         """
         Get all species IDs and their m/z values.
         Returns:
             tuple[list[str], list[float]]: A tuple containing a list of species IDs and a list of their m/z values.
         """
-        mzs = [specie.mz for specie in self.species.values()]
-        return (self.index, mzs)
+        if neutral:
+            l = [(specie.id_adduct, specie.mz) for specie in self.species.values()]
+        else:
+            l = [
+                (specie.id_adduct, specie.mz)
+                for specie in self.species.values()
+                if specie.ion_mode != IonMode.neutral
+            ]
+        ids, mzs = zip(*l)
+        return list(ids), list(mzs)
 
     def get_table(self) -> pd.DataFrame:
         """
@@ -171,7 +208,10 @@ class LipidDB:
         Returns:
             bool: True if the database contains only the specified ion mode, False otherwise.
         """
-        return all(specie.ion_mode == ion_mode for specie in self.species.values())
+        return all(
+            (specie.ion_mode == ion_mode or specie.ion_mode == IonMode.neutral)
+            for specie in self.species.values()
+        )
 
 
 def adduct_formula(formula: str, adduct: str) -> Formula:
@@ -237,6 +277,8 @@ def adduct_formula(formula: str, adduct: str) -> Formula:
             return Formula(formula) + Formula("[K]") - Formula("[H2]+")
         case "[M-3H+2K]-":
             return Formula(formula) + Formula("[K2]") - Formula("[H3]+")
+        case "":
+            return Formula(formula)
         case _:
             raise ValueError(f"Unsupported adduct in database: {adduct}")
 
@@ -284,13 +326,23 @@ class DatabaseFactory:
         self.df.rename(columns={"Na+ Isotope": "Na Isotope"}, inplace=True)
         self.df.columns = [c.replace(" ", "_") for c in self.df.columns]
 
-        # Add species with multiple adduct forms as individual rows for each adduct.
+        # add species with multiple adduct forms as individual rows for each adduct
         self.df["Adducts"] = self.df["Adducts"].str.replace(" ", "")
         self.df["Adducts"] = self.df["Adducts"].str.split(",")
+        # add empty string adduct for neutral form
+        self.df["Adducts"].apply(
+            lambda lst: (
+                lst.insert(0, "")
+                if any([e for e in lst if e.endswith(self.ion_mode.value)])
+                else lst
+            )
+        )
         self.df = self.df.explode("Adducts")
 
         # filter by ion mode
-        self.df = self.df[self.df["Adducts"].str.endswith(self.ion_mode.value)]
+        ion_mode_filer = self.df["Adducts"].str.endswith(self.ion_mode.value)
+        neutral_species_filter = self.df["Adducts"] == ""
+        self.df = self.df[ion_mode_filer | neutral_species_filter]
 
     @staticmethod
     def none_if_nan(value) -> Any | None:
@@ -323,10 +375,11 @@ class DatabaseFactory:
                 standard=None,
             )
 
+            adduct_id = id + " " + adduct
             if attributes.get("amount") is None:
-                species[id + " " + adduct] = LipidSpecies(**attributes)
+                species[adduct_id] = LipidSpecies(**attributes)
             else:
-                species[id + " " + adduct] = LipidStandard(**attributes)
+                species[adduct_id] = LipidStandard(**attributes)
 
         for i, row in enumerate(self.df.itertuples()):
             adduct = getattr(row, "Adducts")
@@ -372,3 +425,45 @@ class DatabaseFactory:
             specie.na_isotope = na_isotope
 
         return LipidDB(species=species)
+
+
+class DatabaseEditor:
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.data = pd.read_excel(file_path, dtype={"IS amount (pmol / mm2)": float})
+        self.updated_IS_amounts = {}
+
+        # Check for duplicate IDs
+        duplicated_rows = self.data[self.data.duplicated(subset=["ID", "Adducts"])]
+        if not duplicated_rows.empty:
+            duplicates = duplicated_rows[["ID", "Adducts"]].values.tolist()
+            raise ValueError(
+                f"Database is invalid: Duplicate ID + Adducts combination(s) found - {duplicates}"
+            )
+
+    def get_standard_ids(self):
+        """Return a list of IDs where IS amount has a numeric value."""
+        return self.data[self.data["IS amount (pmol / mm2)"].notna()]["ID"].tolist()
+
+    def get_IS_amount(self, id: str):
+        """Return the IS amount (as a float) for a given ID."""
+        row = self.data[self.data["ID"] == id]
+        if not row.empty:
+            return float(row["IS amount (pmol / mm2)"].iloc[0])
+        else:
+            raise ValueError(f"ID {id} not found in database")
+
+    def set_IS_amount(self, id: str, new_IS_amount: str):
+        """Set the new IS amount for a given ID."""
+        if id in self.data["ID"].values:
+            self.updated_IS_amounts[id] = float(new_IS_amount)
+        else:
+            raise ValueError(f"ID {id} not found in database")
+
+    def save(self):
+        """Save updated IS amounts to the Excel file."""
+        for ID, new_IS_amount in self.updated_IS_amounts.items():
+            self.data.loc[self.data["ID"] == ID, "IS amount (pmol / mm2)"] = new_IS_amount
+
+        # Save to the original file
+        self.data.to_excel(self.file_path, index=False)

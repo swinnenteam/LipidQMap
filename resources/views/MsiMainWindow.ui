@@ -280,6 +280,7 @@
     <property name="title">
      <string>Settings</string>
     </property>
+    <addaction name="action_open_calculator_dialog"/>
     <addaction name="action_open_settings_window"/>
    </widget>
    <addaction name="menu_file"/>
@@ -320,6 +321,7 @@
    <addaction name="separator"/>
    <addaction name="action_global"/>
    <addaction name="separator"/>
+   <addaction name="action_open_calculator_dialog"/>
    <addaction name="action_open_settings_window"/>
    <addaction name="action_open_about_dialog"/>
   </widget>
@@ -464,6 +466,18 @@
   <action name="action_copy_species_plot">
    <property name="text">
     <string>Copy Species plot...</string>
+   </property>
+  </action>
+  <action name="action_open_calculator_dialog">
+   <property name="icon">
+    <iconset resource="../resources.qrc">
+     <normaloff>:/images/icons/calculator.png</normaloff>:/images/icons/calculator.png</iconset>
+   </property>
+   <property name="text">
+    <string>Standard calculator</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
  </widget>

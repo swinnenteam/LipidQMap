@@ -10,6 +10,12 @@ from app.generated.MsiImportDialog_ui import Ui_Dialog
 from app.multithreading import Worker
 
 
+def fetch_db_list() -> list[str]:
+    dbs = os.listdir(config_paths["DATABASE_DIR"])
+    dbs = list(filter(lambda f: f.endswith(".xlsx"), dbs))
+    return [os.path.splitext(s)[0] for s in dbs]
+
+
 class ImzmlImportWindow(QWidget, Ui_Dialog):
     """
     Window in which imzML import setting are configured.
@@ -25,7 +31,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.database: LipidDB | None = None
         self.samples: SampleCollection
         self.setupUi(self)
-        self.fetch_db_list()
+        self.database_combo_box.addItems(fetch_db_list())
         self.update_ion_mode()
         self.pos_radio_button.setChecked(self.config.settings.processing_settings.pos_mode)
         self.neg_radio_button.setChecked(not self.config.settings.processing_settings.pos_mode)
@@ -66,12 +72,6 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.cal_int_spinbox.valueChanged.connect(self.update_save_setting)
         self.pos_radio_button.clicked.connect(self.update_ion_mode)
         self.database_combo_box.currentTextChanged.connect(self.update_save_setting)
-
-    def fetch_db_list(self):
-        dbs = os.listdir(config_paths["DATABASE_DIR"])
-        dbs = list(filter(lambda f: f.endswith(".xlsx"), dbs))
-        dbs = [os.path.splitext(s)[0] for s in dbs]
-        self.database_combo_box.addItems(dbs)
 
     def process_imzml_files(self) -> None:
 

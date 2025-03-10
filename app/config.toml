@@ -10,7 +10,7 @@ pos_mode = true
 ppm = 10.0
 bin_size = 5.0
 m2_isotope_correction = true
-na_isotope_correction = false
+na_isotope_correction = true
 online_calibration = true
 pos_calibrant = 798.541
 neg_calibrant = 798.541
@@ -22,7 +22,7 @@ minimum_pixels = 300
 minimum_intensity = 500
 
 [database_settings]
-last_used_database = "MSI_database_V1.0_small"
+last_used_database = "MSI_database_V1.0"
 
 [save_settings]
 save_raw_images = true

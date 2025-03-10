@@ -68,13 +68,14 @@ def test_get(database: LipidDB) -> None:
 
 
 def test_get_id(database: LipidDB) -> None:
-    assert "PC 33:1 d7 [M+H]+" == database.get_id(0)
+    assert "PC 33:1 d7 [M+H]+" == database.get_id(1)
 
 
 def test_get_ids_non_standards(database: LipidDB) -> None:
     species_ids = [s.id_adduct for s in database.get_ids_non_standards()]
     assert "PC 32:1 [M+Na]+" in species_ids
     assert not "PC 33:1 d7" in species_ids
+    assert not "PC 28:0 " in species_ids
 
 
 def test_get_all_species_same_class(database: LipidDB) -> None:
@@ -94,6 +95,11 @@ def test_get_all_species_same_class(database: LipidDB) -> None:
         "PC 36:4 [M+H]+",
         "PC 38:4 [M+H]+",
     ]
+
+
+def test_neutral_species(database: LipidDB) -> None:
+    species = database.get_neutral_species()
+    assert 13 == len(species)
 
 
 def test_get_standard(database: LipidDB) -> None:

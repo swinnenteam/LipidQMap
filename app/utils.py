@@ -56,10 +56,17 @@ class PandasModelEditable(QAbstractTableModel):
                 Qt.EditRole,
             ):
                 value = self._data.iloc[index.row(), index.column()]
-                if isinstance(value, float):
-                    value = "{:.5f}".format(value)
+                # if isinstance(value, float):
+                if index.column() == 1:
+                    id = self._data.iloc[index.row(), 0]
+                    if not ("]+" in id or "]+" in id):
+                        value = ""
+                    else:
+                        value = "{:.5f}".format(value)
                 else:
                     value = str(value)
+                    if "]+" in value or "]+" in value:
+                        value = "     " + value
                 return value
 
         return None

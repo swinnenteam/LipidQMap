@@ -11,6 +11,7 @@ from app.matplotlib_figures import BarplotCanvas, MplCanvas
 from app.qt_figures import SpectrumPlotView
 from app.utils import BooleanDelegate, PandasModelEditable
 from app.views.about_window import AboutWindow
+from app.views.calculator_window import CalculatorWindow
 from app.views.file_save_window import FileSaveWindow
 from app.views.imzml_import_window import ImzmlImportWindow
 from app.views.settings_window import SettingsWindow
@@ -40,6 +41,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.save_window = FileSaveWindow(config=config)
         self.about_window = AboutWindow(__version__)
         self.settings_window = SettingsWindow(config=config)
+        self.calculator_window = CalculatorWindow(config=config)
         self.boolean_delegate = BooleanDelegate()
 
         self.setupUi(self)
@@ -138,6 +140,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_open_save_dialog.triggered.connect(self.open_save_dialog)
         self.action_open_about_dialog.triggered.connect(self.open_about_dialog)
         self.action_open_settings_window.triggered.connect(self.open_settings_dialog)
+        self.action_open_calculator_dialog.triggered.connect(self.open_calculator_dialog)
         self.action_global.triggered.connect(self.update_plots)
         self.action_zoom_in.triggered.connect(self.zoom_in)
         self.action_zoom_out.triggered.connect(self.zoom_out)
@@ -184,6 +187,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.settings_window.show()
         self.settings_window.activateWindow()
         self.settings_window.raise_()
+
+    def open_calculator_dialog(self) -> None:
+        self.calculator_window.show()
+        self.calculator_window.activateWindow()
+        self.calculator_window.raise_()
 
     def init_data(self) -> None:
         """

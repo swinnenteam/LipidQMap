@@ -129,6 +129,11 @@ class SectionMsiImage:
         self.quant = {k: replace_nan_with_median(v) for (k, v) in self.quant.items()}
         progress_file_callback.emit(100)
 
+        # sum the different adduct forms of the same species
+        self.raw = sum_adducts(database=database, images=self.raw)  # type: ignore
+        self.isotope = sum_adducts(database=database, images=self.isotope)  # type: ignore
+        self.quant = sum_adducts(database=database, images=self.quant)
+
     def get(self, image_type: ImageType, species_id: str) -> npt.NDArray | None:
         """
         Get a specific image by type and species ID.
@@ -407,6 +412,32 @@ def quantitaton(database: LipidDB, images: dict[str, npt.NDArray]) -> dict[str, 
             quant_images[specie.id_adduct] = None
 
     return quant_images
+
+
+def sum_adducts(
+    database: LipidDB, images: dict[str, npt.NDArray | None]
+) -> dict[str, npt.NDArray | None]:
+    """
+    Sum together the different adduct forms of the species
+    """
+    all_species_ids, _ = database.get_all_species(neutral=True)
+    summed_species = database.get_neutral_species()
+    for specie in summed_species:
+        adduct_forms = database.get_adduct_species_for_neutral(specie)
+        adduct_images: list[npt.NDArray] = [
+            images[s.id_adduct] for s in adduct_forms if s.id_adduct in images and images[s.id_adduct] is not None  # type: ignore
+        ]
+        if len(adduct_images) == 0:
+            image = None
+        elif len(adduct_images) == 1:
+            image = adduct_images[0]
+        else:
+            image = np.sum(adduct_images, axis=0)
+
+        images[specie.id_adduct] = image
+
+    # return in original order
+    return {key: images[key] for key in all_species_ids if key in images}
 
 
 @njit
