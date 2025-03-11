@@ -420,6 +420,7 @@ def sum_adducts(
     """
     Sum together the different adduct forms of the species
     """
+    image: npt.NDArray | None = None
     all_species_ids, _ = database.get_all_species(neutral=True)
     summed_species = database.get_neutral_species()
     for specie in summed_species:
@@ -432,7 +433,14 @@ def sum_adducts(
         elif len(adduct_images) == 1:
             image = adduct_images[0]
         else:
-            image = np.nansum(adduct_images, axis=0)
+            stacked = np.stack(adduct_images, axis=0)
+            # Sum the images ignoring NaNs.
+            image = np.nansum(stacked, axis=0)
+            # Create a mask for pixels where every image is NaN.
+            all_nan_mask = np.all(np.isnan(stacked), axis=0)
+            # Set those pixels to NaN in the summed image.
+            if image is not None:
+                image[all_nan_mask] = np.nan
 
         images[specie.id_adduct] = image
 

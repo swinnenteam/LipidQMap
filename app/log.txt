@@ -3216,3 +3216,44 @@ Traceback (most recent call last):
   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 461, in set_IS_amount
     raise ValueError(f"ID {id} not found in database")
 ValueError: ID <PySide6.QtWidgets.QListWidgetItem object at 0x31996f2c0> not found in database
+2025-03-11 17:12:10 CRITICAL Uncaught exception:
+   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 319, in load_database_image_collection
+    image_collection = SectionMsiImage(
+                       ^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 67, in __init__
+    self.load_data(progress_file_callback, database=database, imzml_path=imzml_path)
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 135, in load_data
+    self.quant = sum_adducts(database=database, images=self.quant)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 434, in sum_adducts
+    stacked = np.stack(adduct_images, axis=0)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/venv/lib/python3.12/site-packages/numpy/core/shape_base.py", line 445, in stack
+    raise ValueError('need at least one array to stack')
+
+ValueError: need at least one array to stack
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 319, in load_database_image_collection
+    image_collection = SectionMsiImage(
+                       ^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 67, in __init__
+    self.load_data(progress_file_callback, database=database, imzml_path=imzml_path)
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 135, in load_data
+    self.quant = sum_adducts(database=database, images=self.quant)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 434, in sum_adducts
+    stacked = np.stack(adduct_images, axis=0)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/venv/lib/python3.12/site-packages/numpy/core/shape_base.py", line 445, in stack
+    raise ValueError('need at least one array to stack')
+ValueError: need at least one array to stack
