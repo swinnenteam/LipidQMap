@@ -1,6 +1,6 @@
 import numpy as np
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QMainWindow
+from PySide6.QtWidgets import QApplication, QFileDialog, QMainWindow
 
 from app import __appname__, __version__
 from app.config import Config, config
@@ -138,6 +138,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Connect methods to signal slots."""
         self.action_open_imzml_dialog.triggered.connect(self.open_imzml_dialog)
         self.action_open_save_dialog.triggered.connect(self.open_save_dialog)
+        self.action_export_python_pickle.triggered.connect(self.open_export_pickle_dialog)
         self.action_open_about_dialog.triggered.connect(self.open_about_dialog)
         self.action_open_settings_window.triggered.connect(self.open_settings_dialog)
         self.action_open_calculator_dialog.triggered.connect(self.open_calculator_dialog)
@@ -176,6 +177,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.save_window.show()
             self.save_window.activateWindow()
             self.save_window.raise_()
+
+    def open_export_pickle_dialog(self) -> None:
+        """Launch the export pickle dialog."""
+        folder = QFileDialog.getExistingDirectory(self, "Select Folder")
+        if folder and self.samples is not None:
+            self.samples.save_to_pickle(folder)
 
     def open_about_dialog(self) -> None:
         self.about_window.show()

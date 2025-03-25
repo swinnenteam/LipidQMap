@@ -1,4 +1,6 @@
 import copy
+import os
+import pickle
 import timeit
 from enum import Enum
 from functools import cache
@@ -127,12 +129,13 @@ class SectionMsiImage:
 
         # replace nan with median of surrounding pixels in quant images
         self.quant = {k: replace_nan_with_median(v) for (k, v) in self.quant.items()}
-        progress_file_callback.emit(100)
+        progress_file_callback.emit(90)
 
         # sum the different adduct forms of the same species
         self.raw = sum_adducts(database=database, images=self.raw)  # type: ignore
         self.isotope = sum_adducts(database=database, images=self.isotope)  # type: ignore
         self.quant = sum_adducts(database=database, images=self.quant)
+        progress_file_callback.emit(100)
 
     def get(self, image_type: ImageType, species_id: str) -> npt.NDArray | None:
         """
@@ -289,6 +292,34 @@ class SampleCollection:
             max_value = image_max if image_max > max_value else max_value
         max_value = None if max_value == 0 else max_value
         return max_value
+
+    def save_to_pickle(self, path):
+        """
+        Saves a pickle file for each sample in self.samples.
+
+        For each key in self.samples, this function creates a pickle file named <key>.pkl in the provided
+        directory. Only the 'quant' dictionary from each SectionImage is saved, and any key/value pair in
+        that dictionary where the value is None is omitted.
+
+        Args:
+            path (str): The directory where the pickle files should be saved.
+        """
+        # Ensure the directory exists
+        os.makedirs(path, exist_ok=True)
+
+        for key, section_image in self.samples.items():
+            # Filter out any entries with None values from the quant dictionary
+            quant_filtered = {k: v for k, v in section_image.quant.items() if v is not None}
+
+            # Define the filename using the key (add .pkl extension)
+            filename = f"{key}.pkl"
+            filepath = os.path.join(path, filename)
+
+            try:
+                with open(filepath, "wb") as file:
+                    pickle.dump(quant_filtered, file)
+            except Exception as e:
+                raise Exception("Error", f"An error occurred while saving the file:\n{e}")
 
     def __iter__(self):
         return iter(self.samples)

@@ -20,6 +20,20 @@ class IonMode(str, Enum):
     neutral = ""
 
 
+def id_adduct(id: str, adduct: str) -> str:
+    """
+    Returns the identifier concatenated with the adduct.
+    Args:
+        id (str): The identifier.
+        adduct (str): The adduct.
+    Returns:
+        str: The identifier concatenated with the adduct.
+    """
+    if adduct == "":
+        return id
+    return id + " " + adduct
+
+
 class LipidSpecies(BaseModel):
     """
     Pydantic data-oriented class to represent a lipid species
@@ -41,12 +55,12 @@ class LipidSpecies(BaseModel):
     @cached_property
     def id_adduct(self) -> str:
         """Returns the identifier concatenated with the adduct."""
-        return self.id + " " + self.adduct
+        return id_adduct(self.id, self.adduct)
 
     @cached_property
     def class_adduct(self) -> str:
         """Returns the lipid class concatenated with the adduct."""
-        return self.lipid_class + " " + self.adduct
+        return id_adduct(self.lipid_class, self.adduct)
 
     @cached_property
     def is_standard(self) -> bool:
@@ -375,7 +389,7 @@ class DatabaseFactory:
                 standard=None,
             )
 
-            adduct_id = id + " " + adduct
+            adduct_id = id_adduct(id, adduct)
             if attributes.get("amount") is None:
                 species[adduct_id] = LipidSpecies(**attributes)
             else:
@@ -384,11 +398,12 @@ class DatabaseFactory:
         for i, row in enumerate(self.df.itertuples()):
             adduct = getattr(row, "Adducts")
             id = getattr(row, "ID")
-            specie = species[id + " " + adduct]
+
+            specie = species[id_adduct(id, adduct)]
 
             standard = self.none_if_nan(getattr(row, "IS"))
             try:
-                standard = species[standard + " " + adduct] if standard is not None else None
+                standard = species[id_adduct(standard, adduct)] if standard is not None else None
             except:
                 raise (
                     ValueError(
@@ -408,7 +423,9 @@ class DatabaseFactory:
 
             m2_isotope = self.none_if_nan(getattr(row, "M2_Isotope"))
             try:
-                m2_isotope = species[m2_isotope + " " + adduct] if m2_isotope is not None else None
+                m2_isotope = (
+                    species[id_adduct(m2_isotope, adduct)] if m2_isotope is not None else None
+                )
             except:
                 raise (
                     ValueError(
@@ -420,7 +437,9 @@ class DatabaseFactory:
 
             na_isotope_id = self.none_if_nan(getattr(row, "Na_Isotope"))
             na_isotope = (
-                species.get(na_isotope_id + " " + "[M+H]+") if na_isotope_id is not None else None
+                species.get(id_adduct(na_isotope_id, "[M+H]+"))
+                if na_isotope_id is not None
+                else None
             )
             specie.na_isotope = na_isotope
 

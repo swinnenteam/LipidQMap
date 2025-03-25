@@ -3257,3 +3257,191 @@ Traceback (most recent call last):
   File "/Users/u0065634/Documents/Software_projects/LipidQMap/venv/lib/python3.12/site-packages/numpy/core/shape_base.py", line 445, in stack
     raise ValueError('need at least one array to stack')
 ValueError: need at least one array to stack
+2025-03-25 15:35:23 CRITICAL Uncaught exception:
+   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 346, in load_database_image_collection
+    database = DatabaseFactory(database_path, ion_mode).create_database()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 384, in create_database
+    species[adduct_id] = LipidStandard(**attributes)
+            ^^^^^^^^^
+
+UnboundLocalError: cannot access local variable 'adduct_id' where it is not associated with a value
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 346, in load_database_image_collection
+    database = DatabaseFactory(database_path, ion_mode).create_database()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 384, in create_database
+    species[adduct_id] = LipidStandard(**attributes)
+            ^^^^^^^^^
+UnboundLocalError: cannot access local variable 'adduct_id' where it is not associated with a value
+2025-03-25 15:36:15 CRITICAL Uncaught exception:
+   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 346, in load_database_image_collection
+    database = DatabaseFactory(database_path, ion_mode).create_database()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 389, in create_database
+    specie = species[id + " " + adduct]
+             ~~~~~~~^^^^^^^^^^^^^^^^^^^
+
+KeyError: 'PC 33:1 d7 '
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 346, in load_database_image_collection
+    database = DatabaseFactory(database_path, ion_mode).create_database()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 389, in create_database
+    specie = species[id + " " + adduct]
+             ~~~~~~~^^^^^^^^^^^^^^^^^^^
+KeyError: 'PC 33:1 d7 '
+2025-03-25 15:38:36 CRITICAL Uncaught exception:
+   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 346, in load_database_image_collection
+    database = DatabaseFactory(database_path, ion_mode).create_database()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 396, in create_database
+    raise (
+
+ValueError: Value 'PC 33:1 d7' found in column 'IS' on row 6 is not a species defined                         in column 'ID'. Check for typos in the IDs.
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 394, in create_database
+    standard = species[standard + " " + adduct] if standard is not None else None
+               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'PC 33:1 d7 '
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 346, in load_database_image_collection
+    database = DatabaseFactory(database_path, ion_mode).create_database()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 396, in create_database
+    raise (
+ValueError: Value 'PC 33:1 d7' found in column 'IS' on row 6 is not a species defined                         in column 'ID'. Check for typos in the IDs.
+2025-03-25 15:42:45 CRITICAL Uncaught exception:
+   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 346, in load_database_image_collection
+    database = DatabaseFactory(database_path, ion_mode).create_database()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 420, in create_database
+    raise (
+
+ValueError: Value 'PC 28:1' found in column 'M-2 Isotope' on row 6 is not a species defined                         in column 'ID'. Check for typos in the IDs.
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 418, in create_database
+    m2_isotope = species[m2_isotope + " " + adduct] if m2_isotope is not None else None
+                 ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'PC 28:1 '
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 346, in load_database_image_collection
+    database = DatabaseFactory(database_path, ion_mode).create_database()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 420, in create_database
+    raise (
+ValueError: Value 'PC 28:1' found in column 'M-2 Isotope' on row 6 is not a species defined                         in column 'ID'. Check for typos in the IDs.
+2025-03-25 16:01:24 CRITICAL Uncaught exception:
+   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/views/main_window.py", line 262, in update_plots
+    all_class_species = self.database.get_all_species_same_class(species_id)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 113, in get_all_species_same_class
+    current_specie = self.species[id]
+                     ~~~~~~~~~~~~^^^^
+
+KeyError: 'PC 33:1 d7 '
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/views/main_window.py", line 262, in update_plots
+    all_class_species = self.database.get_all_species_same_class(species_id)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 113, in get_all_species_same_class
+    current_specie = self.species[id]
+                     ~~~~~~~~~~~~^^^^
+KeyError: 'PC 33:1 d7 '
+2025-03-25 16:06:40 CRITICAL Uncaught exception:
+   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/views/main_window.py", line 262, in update_plots
+    all_class_species = self.database.get_all_species_same_class(species_id)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 113, in get_all_species_same_class
+    current_specie = self.species[id]
+                     ~~~~~~~~~~~~^^^^
+
+KeyError: 'PC 28:0 '
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/views/main_window.py", line 262, in update_plots
+    all_class_species = self.database.get_all_species_same_class(species_id)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 113, in get_all_species_same_class
+    current_specie = self.species[id]
+                     ~~~~~~~~~~~~^^^^
+KeyError: 'PC 28:0 '
+2025-03-25 16:08:55 CRITICAL Uncaught exception:
+   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/views/main_window.py", line 262, in update_plots
+    all_class_species = self.database.get_all_species_same_class(species_id)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 116, in get_all_species_same_class
+    current_specie = self.species[id]
+                     ~~~~~~~~~~~~^^^^
+
+KeyError: 'PC 33:1 d7 '
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/views/main_window.py", line 262, in update_plots
+    all_class_species = self.database.get_all_species_same_class(species_id)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 116, in get_all_species_same_class
+    current_specie = self.species[id]
+                     ~~~~~~~~~~~~^^^^
+KeyError: 'PC 33:1 d7 '
+2025-03-25 16:12:56 CRITICAL Uncaught exception:
+   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/views/main_window.py", line 262, in update_plots
+    all_class_species = self.database.get_all_species_same_class(species_id)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 116, in get_all_species_same_class
+    current_specie = self.species[id]
+                     ~~~~~~~~~~~~^^^^
+
+KeyError: 'PC 33:1 d7 '
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/views/main_window.py", line 262, in update_plots
+    all_class_species = self.database.get_all_species_same_class(species_id)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 116, in get_all_species_same_class
+    current_specie = self.species[id]
+                     ~~~~~~~~~~~~^^^^
+KeyError: 'PC 33:1 d7 '
