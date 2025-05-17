@@ -3445,3 +3445,87 @@ Traceback (most recent call last):
     current_specie = self.species[id]
                      ~~~~~~~~~~~~^^^^
 KeyError: 'PC 33:1 d7 '
+2025-04-01 19:16:19 CRITICAL Uncaught exception:
+   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 346, in load_database_image_collection
+    database = DatabaseFactory(database_path, ion_mode).create_database()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 377, in create_database
+    formula = adduct_formula(getattr(row, "Neutral_Formula"), adduct)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 295, in adduct_formula
+    return Formula(formula)
+           ^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/venv/lib/python3.12/site-packages/molmass/molmass.py", line 495, in __init__
+    self._formula = from_string(
+                    ^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/venv/lib/python3.12/site-packages/molmass/molmass.py", line 1505, in from_string
+    raise ValueError('formula must be a string') from exc
+
+ValueError: formula must be a string
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/venv/lib/python3.12/site-packages/molmass/molmass.py", line 1503, in from_string
+    formula = formula.strip().replace(' ', '')
+              ^^^^^^^^^^^^^
+AttributeError: 'float' object has no attribute 'strip'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 346, in load_database_image_collection
+    database = DatabaseFactory(database_path, ion_mode).create_database()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 377, in create_database
+    formula = adduct_formula(getattr(row, "Neutral_Formula"), adduct)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 295, in adduct_formula
+    return Formula(formula)
+           ^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/venv/lib/python3.12/site-packages/molmass/molmass.py", line 495, in __init__
+    self._formula = from_string(
+                    ^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/venv/lib/python3.12/site-packages/molmass/molmass.py", line 1505, in from_string
+    raise ValueError('formula must be a string') from exc
+ValueError: formula must be a string
+2025-04-01 19:19:54 CRITICAL Uncaught exception:
+   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 346, in load_database_image_collection
+    database = DatabaseFactory(database_path, ion_mode).create_database()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 408, in create_database
+    raise (
+
+ValueError: Value 'SM d18:1/18:1 d9' found in column 'IS' on row 686 is not a species defined                         in column 'ID'. Check for typos in the IDs.
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 406, in create_database
+    standard = species[id_adduct(standard, adduct)] if standard is not None else None
+               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'SM d18:1/18:1 d9'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 346, in load_database_image_collection
+    database = DatabaseFactory(database_path, ion_mode).create_database()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 408, in create_database
+    raise (
+ValueError: Value 'SM d18:1/18:1 d9' found in column 'IS' on row 686 is not a species defined                         in column 'ID'. Check for typos in the IDs.

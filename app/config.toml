@@ -13,7 +13,7 @@ m2_isotope_correction = true
 na_isotope_correction = true
 online_calibration = true
 pos_calibrant = 798.541
-neg_calibrant = 798.541
+neg_calibrant = 885.5499
 calibration_ppm = 30.0
 calibration_min_intensity = 10000
 

@@ -68,7 +68,7 @@ class SectionMsiImage:
         self.average_spectrum: npt.NDArray
         self.load_data(progress_file_callback, database=database, imzml_path=imzml_path)
 
-    def load_data(self, progress_file_callback, database: LipidDB, imzml_path: str):
+    def load_data(self, progress_file_callback, database: LipidDB, imzml_path: str) -> None:
         """
         Load raw images from the imzML file and calculate isotope and quantitative images.
 
@@ -293,7 +293,7 @@ class SampleCollection:
         max_value = None if max_value == 0 else max_value
         return max_value
 
-    def save_to_pickle(self, path):
+    def save_to_pickle(self, path) -> None:
         """
         Saves a pickle file for each sample in self.samples.
 

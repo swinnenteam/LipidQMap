@@ -104,14 +104,29 @@ class ImzMLParser:
         self.root = None
 
     @staticmethod
-    def _infer_bin_filename(imzml_dir: str) -> str:
-        imzml_path = Path(imzml_dir)
-        ibd_path = [
+    def _infer_bin_filename(imzml_filepath_str: str) -> str:
+        imzml_path = Path(imzml_filepath_str)
+        # We expect the .ibd file to be in the same directory as the .imzml file
+        # and have the same stem.
+        ibd_candidates = [
             f
             for f in imzml_path.parent.glob("*")
-            if re.match(r".+\.ibd", str(f), re.IGNORECASE) and f.stem == imzml_path.stem
-        ][0]
-        return str(ibd_path)
+            if f.is_file() and f.suffix.lower() == ".ibd" and f.stem == imzml_path.stem
+        ]
+
+        if not ibd_candidates:
+            raise FileNotFoundError(
+                f"No matching .ibd file found for '{imzml_path.name}' "
+                f"(stem: '{imzml_path.stem}') in directory '{imzml_path.parent}'"
+            )
+
+        if len(ibd_candidates) > 1:
+            print(
+                f"Warning: Multiple matching .ibd files found: {ibd_candidates}. "
+                f"Using the first one: '{ibd_candidates[0]}'"
+            )
+
+        return str(ibd_candidates[0])
 
     def __iter_read_spectrum_meta(self, include_spectra_metadata: str | list[str] | None) -> None:
         """
