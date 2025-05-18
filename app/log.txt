@@ -3529,3 +3529,44 @@ Traceback (most recent call last):
   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 408, in create_database
     raise (
 ValueError: Value 'SM d18:1/18:1 d9' found in column 'IS' on row 686 is not a species defined                         in column 'ID'. Check for typos in the IDs.
+2025-05-18 19:41:48 CRITICAL Uncaught exception:
+   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 350, in load_database_image_collection
+    image_collection = SectionMsiImage(
+                       ^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 69, in __init__
+    self.load_data(progress_file_callback, database=database, imzml_path=imzml_path)
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 81, in load_data
+    imzml_parser = ImzMLParser(imzml_path)
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/pyimzml_mod.py", line 94, in __init__
+    self.__iter_read_spectrum_meta(include_spectra_metadata)
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/pyimzml_mod.py", line 145, in __iter_read_spectrum_meta
+    if "recover" in inspect.getargspec(self.iterparse).args:
+                    ^^^^^^^^^^^^^^^^^^
+
+AttributeError: module 'inspect' has no attribute 'getargspec'
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 350, in load_database_image_collection
+    image_collection = SectionMsiImage(
+                       ^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 69, in __init__
+    self.load_data(progress_file_callback, database=database, imzml_path=imzml_path)
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 81, in load_data
+    imzml_parser = ImzMLParser(imzml_path)
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/pyimzml_mod.py", line 94, in __init__
+    self.__iter_read_spectrum_meta(include_spectra_metadata)
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/pyimzml_mod.py", line 145, in __iter_read_spectrum_meta
+    if "recover" in inspect.getargspec(self.iterparse).args:
+                    ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'inspect' has no attribute 'getargspec'. Did you mean: 'getargs'?

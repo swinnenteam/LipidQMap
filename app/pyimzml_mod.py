@@ -1,3 +1,4 @@
+import inspect
 import re
 import sys
 from pathlib import Path
@@ -5,9 +6,11 @@ from random import sample
 from typing import Any, BinaryIO, Callable, Iterator
 from warnings import warn
 
+# from lxml.etree import _Element, iterparse
+from xml.etree.ElementTree import iterparse
+
 import numpy as np
 import numpy.typing as npt
-from lxml.etree import _Element, iterparse
 from numba import njit, prange
 from pyimzml.ImzMLParser import PRECISION_DICT, SIZE_DICT, _bisect_spectrum, _get_cv_param
 from pyimzml.metadata import Metadata, SpectrumData
@@ -139,9 +142,11 @@ class ImzMLParser:
         """
         mz_group = int_group = None
         slist = None
-        elem_iterator: Iterator = self.iterparse(
-            self.filename, events=("start", "end"), recover=True
-        )
+        elem_iterator: Iterator
+        if "recover" in inspect.signature(self.iterparse).parameters:
+            elem_iterator = self.iterparse(self.filename, events=("start", "end"), recover=True)
+        else:
+            elem_iterator = self.iterparse(self.filename, events=("start", "end"))
 
         if sys.version_info > (3,):
             _, self.root = next(elem_iterator)
