@@ -5,15 +5,21 @@ import numpy.testing as nptest
 import numpy.typing as npt
 import pytest
 
-from app.config import Config, Configuration, FilterSettings, ProcessingSettings, SelectionSettings
+from app.config import (
+    Config,
+    Configuration,
+    FilterSettings,
+    ProcessingSettings,
+    SelectionSettings,
+)
 from app.database import DatabaseFactory, IonMode, LipidDB
 from app.dataprocess import (
     ImageType,
     SampleCollection,
     SectionMsiImage,
     _add_padding,
+    db_isotope_correction,
     load_database_image_collection,
-    m2_isotope_correction,
     na_isotope_correction,
     ppm_to_tolerance,
     replace_nan_with_median,
@@ -89,7 +95,7 @@ def mock_config() -> Config:
     mock_processing_settings.ppm = 15.0
     mock_processing_settings.bin_size = 5.0
     mock_processing_settings.na_isotope_correction = True
-    mock_processing_settings.m2_isotope_correction = True
+    mock_processing_settings.db_isotope_correction = True
 
     # Set up the attributes on the selection settings mock
     mock_selection_settings.minimum_intensity = 1000
@@ -235,7 +241,7 @@ def test_sample_collection(mock_config, database) -> None:
 
 def test_sample_collection_no_isotope_no_quant(mock_config, database) -> None:
     """Test SampleCollection methods."""
-    mock_config.settings.processing_settings.m2_isotope_correction = False
+    mock_config.settings.processing_settings.db_isotope_correction = False
     mock_config.settings.processing_settings.na_isotope_correction = False
 
     sample = SectionMsiImage(
@@ -251,9 +257,9 @@ def test_sample_collection_no_isotope_no_quant(mock_config, database) -> None:
     assert iso is None
 
 
-def test_sample_collection_m2_isotope_no_na_isotope(mock_config, database) -> None:
+def test_sample_collection_db_isotope_no_na_isotope(mock_config, database) -> None:
     """Test SampleCollection methods."""
-    mock_config.settings.processing_settings.m2_isotope_correction = True
+    mock_config.settings.processing_settings.db_isotope_correction = True
     mock_config.settings.processing_settings.na_isotope_correction = False
 
     sample = SectionMsiImage(
@@ -346,11 +352,11 @@ def test_ppm_to_tolerance() -> None:
     assert pytest.approx(0.008, rel=1e-6) == ppm_to_tolerance(ppm=10, mz=800)
 
 
-def test_m2_isotope_correction(database: LipidDB, images: dict[str, npt.NDArray]) -> None:
-    result = m2_isotope_correction(database=database, images=images)
+def test_db_isotope_correction(database: LipidDB, images: dict[str, npt.NDArray]) -> None:
+    result = db_isotope_correction(database=database, images=images)
     expected_output = {
         "PC 33:1 d7 [M+H]+": np.array([[80], [1200]]),
-        "PC 32:0 [M+H]+": np.array([[75.93041423], [1138.956213]]),
+        "PC 32:0 [M+H]+": np.array([[75.62796874], [1134.419531]]),
         "PC 32:1 [M+H]+": np.array([[79.11985272], [1186.797791]]),
         "PC 34:1 [M+H]+": np.array([[56.28108146], [844.216222]]),
         "PC 36:1 [M+H]+": np.array([[42.57103302], [638.5654953]]),
@@ -362,7 +368,7 @@ def test_m2_isotope_correction(database: LipidDB, images: dict[str, npt.NDArray]
         "PC 36:4 [M+H]+": np.array([[60], [900]]),
         "PC 38:4 [M+H]+": np.array([[45], [675]]),
         "PC 33:1 d7 [M+Na]+": np.array([[40], [600]]),
-        "PC 32:0 [M+Na]+": np.array([[31.89053337], [478.3580006]]),
+        "PC 32:0 [M+Na]+": np.array([[31.811004], [477.165057]]),
         "PC 32:1 [M+Na]+": np.array([[27.1380917], [407.0713755]]),
         "PC 34:1 [M+Na]+": np.array([[48.77490479], [731.6235719]]),
         "PC 36:1 [M+Na]+": np.array([[61.22399177], [918.3598766]]),

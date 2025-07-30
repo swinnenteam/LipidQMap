@@ -24,7 +24,7 @@ def test_default_config_values(temp_config_dir):
     assert config.settings.filter_settings.quant_image_winsorizing_percentile == 99
 
     assert config.settings.processing_settings.ppm == 15.0
-    assert config.settings.processing_settings.m2_isotope_correction is True
+    assert config.settings.processing_settings.db_isotope_correction is True
     assert config.settings.processing_settings.na_isotope_correction is True
     assert config.settings.processing_settings.online_calibration is True
     assert config.settings.processing_settings.pos_calibrant == 798.5410

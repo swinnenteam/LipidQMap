@@ -38,7 +38,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.ppm_spinbox.setValue(self.config.settings.processing_settings.ppm)
         self.bin_size_spinbox.setValue(self.config.settings.processing_settings.bin_size)
         self.m2_iso_cor_checkbox.setChecked(
-            self.config.settings.processing_settings.m2_isotope_correction
+            self.config.settings.processing_settings.db_isotope_correction
         )
         self.na_iso_cor_checkbox.setChecked(
             self.config.settings.processing_settings.na_isotope_correction
@@ -169,7 +169,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         elif sender == self.na_iso_cor_checkbox:
             self.config.settings.processing_settings.na_isotope_correction = sender.isChecked()
         elif sender == self.m2_iso_cor_checkbox:
-            self.config.settings.processing_settings.m2_isotope_correction = sender.isChecked()
+            self.config.settings.processing_settings.db_isotope_correction = sender.isChecked()
         elif sender == self.cal_checkbox:
             self.config.settings.processing_settings.online_calibration = sender.isChecked()
         self.config.save()

@@ -129,6 +129,21 @@ def test_get_M2_isotope_percent(database: LipidDB) -> None:
     assert pytest.approx(0.11457, rel=1e-3) == database.species["PC 32:1 [M+Na]+"].m2_rel_abundance
 
 
+def test_get_M4_isotope_ID(database: LipidDB) -> None:
+    species = database.species["PC 32:0 [M+H]+"]
+    assert species.m4_isotope is not None
+    assert species.m4_isotope.id_adduct == "PC 32:2 [M+H]+"
+
+
+def test_get_M4_isotope_ID_None(database: LipidDB) -> None:
+    species = database.species["PC 34:2 [M+Na]+"]
+    assert species.m2_isotope == None
+
+
+def test_get_M4_isotope_percent(database: LipidDB) -> None:
+    assert pytest.approx(0.003186, rel=1e-3) == database.species["PC 32:1 [M+Na]+"].m4_rel_abundance
+
+
 def test_get_Na_isotope_ID(database: LipidDB) -> None:
     species = database.species["PC 34:4 [M+H]+"]
     assert species.na_isotope is not None

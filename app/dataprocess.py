@@ -113,11 +113,11 @@ class SectionMsiImage:
         self.isotope = dict()
         if self.config.settings.processing_settings.na_isotope_correction:
             self.isotope = na_isotope_correction(database=database, images=self.raw)
-        if self.config.settings.processing_settings.m2_isotope_correction:
+        if self.config.settings.processing_settings.db_isotope_correction:
             if self.isotope:
-                self.isotope = m2_isotope_correction(database=database, images=self.isotope)
+                self.isotope = db_isotope_correction(database=database, images=self.isotope)
             else:
-                self.isotope = m2_isotope_correction(database=database, images=self.raw)
+                self.isotope = db_isotope_correction(database=database, images=self.raw)
         progress_file_callback.emit(75)
 
         # perform quantitation
@@ -364,12 +364,29 @@ def ppm_to_tolerance(ppm: float, mz: float) -> float:
     return abs(ppm / 1e6 * mz)
 
 
-def m2_isotope_correction(
+def db_isotope_correction(
     database: LipidDB, images: dict[str, npt.NDArray]
 ) -> dict[str, npt.NDArray]:
     """
-    Isotopic correction for species withing same class between the M+2 (two 13C) of a species
-    and a corresponding monoisotopic species with one less double bond (two extra H).
+    Corrects for isotopic overlap between lipids of the same class but different degrees of saturation.
+
+    This function addresses isobaric interferences where the isotopic peaks of a
+    more unsaturated lipid overlap with the monoisotopic peak of a less
+    unsaturated lipid within the same class. It accounts for the following cases:
+
+    1.  **M+2 Overlap**: The M+2 isotopologue of a lipid (e.g., from two ¹³C atoms)
+        with N double bonds interferes with the monoisotopic peak of a lipid with
+        N-1 double bonds (which has two extra hydrogens).
+        - Example: The M+2 peak of PC 34:2 contributes to the signal of PC 34:1.
+
+    2.  **M+4 Overlap**: The M+4 isotopologue of a lipid (e.g., from four ¹³C atoms)
+        with N double bonds interferes with the monoisotopic peak of a lipid with
+        N-2 double bonds (which has four extra hydrogens).
+        - Example: The M+4 peak of PC 34:2 contributes to the signal of PC 34:0.
+
+    The function calculates the theoretical isotopic contributions from the more
+    unsaturated species and subtracts them from the measured intensity of the
+    less unsaturated species.
     """
     corrected_images: dict[str, npt.NDArray] = copy.deepcopy(images)
     for s in database.get_species_sorted_for_isotope():
@@ -380,6 +397,11 @@ def m2_isotope_correction(
                 images[s.id_adduct]
                 - s.m2_isotope.m2_rel_abundance * corrected_images[s.m2_isotope.id_adduct]
             ).clip(min=0)
+            if s.m4_isotope:
+                corrected_images[s.id_adduct] = (
+                    corrected_images[s.id_adduct]
+                    - s.m4_isotope.m4_rel_abundance * corrected_images[s.m4_isotope.id_adduct]
+                ).clip(min=0)
         else:
             corrected_images[s.id_adduct] = np.copy(images[s.id_adduct])
 

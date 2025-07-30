@@ -49,6 +49,8 @@ class LipidSpecies(BaseModel):
     formula: Formula
     m2_isotope: LipidSpecies | None
     m2_rel_abundance: float
+    m4_isotope: LipidSpecies | None
+    m4_rel_abundance: float
     na_isotope: LipidSpecies | None
     standard: LipidStandard | None
 
@@ -319,6 +321,7 @@ class DatabaseFactory:
             "Class",
             "Adducts",
             "M-2 Isotope",
+            "M-4 Isotope",
             "Na+ Isotope",
             "IS",
             "IS amount (pmol / mm2)",
@@ -337,6 +340,7 @@ class DatabaseFactory:
         # replace spaces in column names with underscores and remove special characters +,-,/
         self.df.rename(columns={"IS amount (pmol / mm2)": "IS amount"}, inplace=True)
         self.df.rename(columns={"M-2 Isotope": "M2 Isotope"}, inplace=True)
+        self.df.rename(columns={"M-4 Isotope": "M4 Isotope"}, inplace=True)
         self.df.rename(columns={"Na+ Isotope": "Na Isotope"}, inplace=True)
         self.df.columns = [c.replace(" ", "_") for c in self.df.columns]
 
@@ -383,8 +387,10 @@ class DatabaseFactory:
                 formula=formula,
                 mz=formula.monoisotopic_mass,
                 m2_rel_abundance=[i for (_, i) in formula.spectrum().items()][2].intensity / 100,
+                m4_rel_abundance=[i for (_, i) in formula.spectrum().items()][4].intensity / 100,
                 amount=self.none_if_nan(getattr(row, "IS_amount")),
                 m2_isotope=None,
+                m4_isotope=None,
                 na_isotope=None,
                 standard=None,
             )
@@ -434,6 +440,20 @@ class DatabaseFactory:
                     )
                 )
             specie.m2_isotope = m2_isotope
+
+            m4_isotope = self.none_if_nan(getattr(row, "M4_Isotope"))
+            try:
+                m4_isotope = (
+                    species[id_adduct(m4_isotope, adduct)] if m4_isotope is not None else None
+                )
+            except:
+                raise (
+                    ValueError(
+                        f"Value '{m4_isotope}' found in column 'M-4 Isotope' on row {i+2} is not a species defined \
+                        in column 'ID'. Check for typos in the IDs."
+                    )
+                )
+            specie.m4_isotope = m4_isotope
 
             na_isotope_id = self.none_if_nan(getattr(row, "Na_Isotope"))
             na_isotope = (
