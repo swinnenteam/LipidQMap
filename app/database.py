@@ -190,14 +190,14 @@ class LipidDB:
             tuple[list[str], list[float]]: A tuple containing a list of species IDs and a list of their m/z values.
         """
         if neutral:
-            l = [(specie.id_adduct, specie.mz) for specie in self.species.values()]
+            species_list = [(specie.id_adduct, specie.mz) for specie in self.species.values()]
         else:
-            l = [
+            species_list = [
                 (specie.id_adduct, specie.mz)
                 for specie in self.species.values()
                 if specie.ion_mode != IonMode.neutral
             ]
-        ids, mzs = zip(*l)
+        ids, mzs = zip(*species_list)
         return list(ids), list(mzs)
 
     def get_table(self) -> pd.DataFrame:
@@ -421,7 +421,7 @@ class DatabaseFactory:
             standard = self.none_if_nan(getattr(row, "IS"))
             try:
                 standard = species[id_adduct(standard, adduct)] if standard is not None else None
-            except:
+            except Exception:
                 raise (
                     ValueError(
                         f"Value '{standard}' found in column 'IS' on row {i+2} is not a species defined \
@@ -443,7 +443,7 @@ class DatabaseFactory:
                 m2_isotope = (
                     species[id_adduct(m2_isotope, adduct)] if m2_isotope is not None else None
                 )
-            except:
+            except Exception:
                 raise (
                     ValueError(
                         f"Value '{m2_isotope}' found in column 'M-2 Isotope' on row {i+2} is not a species defined \
@@ -457,7 +457,7 @@ class DatabaseFactory:
                 m4_isotope = (
                     species[id_adduct(m4_isotope, adduct)] if m4_isotope is not None else None
                 )
-            except:
+            except Exception:
                 raise (
                     ValueError(
                         f"Value '{m4_isotope}' found in column 'M-4 Isotope' on row {i+2} is not a species defined \

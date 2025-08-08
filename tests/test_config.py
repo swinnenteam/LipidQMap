@@ -46,7 +46,7 @@ def test_load_nonexistent_config_file(temp_config_dir):
     config_path = temp_config_dir
     assert not os.path.exists(config_path)
 
-    config = Config(path=str(config_path))
+    _config = Config(path=str(config_path))
     assert os.path.exists(config_path)
 
     with open(config_path, "r", encoding="utf8") as file:
@@ -101,7 +101,7 @@ def test_default_config_creation(temp_config_dir):
     config_path = temp_config_dir
     assert not os.path.exists(config_path)
 
-    config = Config(path=str(config_path))
+    _config = Config(path=str(config_path))
     assert os.path.exists(config_path)
 
     with open(config_path, "r", encoding="utf8") as file:

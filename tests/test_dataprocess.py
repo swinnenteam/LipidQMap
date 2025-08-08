@@ -189,7 +189,7 @@ def test_criteria_check(section_msi_image) -> None:
 def test_threshold_check(image) -> None:
     """Test the threshold_check method."""
     np.array([[10.0, 12.0, 15.0], [14.0, 12.0, 12.0], [11.0, 6.0, 8.0]])
-    assert threshold_check.py_func(image=image, min_intensity=10, min_pixels=5)
+    assert threshold_check(image=image, min_intensity=10, min_pixels=5)
     assert not threshold_check(image=image, min_intensity=15, min_pixels=2)
 
 
@@ -297,7 +297,7 @@ def test_load_database_image_collection(mock_config) -> None:
 
 def test_add_padding() -> None:
     nptest.assert_array_equal(
-        _add_padding.py_func(
+        _add_padding(
             np.array(
                 [
                     [1],
@@ -311,7 +311,8 @@ def test_add_padding() -> None:
 
 
 def test_winsorize_image(image: npt.NDArray) -> None:
-    win_image = winsorize_image.py_func(image, upper_percentile=99)
+    win_image = winsorize_image(image, upper_percentile=99)
+    assert win_image is not None
     nptest.assert_array_equal(
         win_image,
         np.array([[10.0, 12.0, 14.92], [14.0, 12.0, 12.0], [11.0, 6.0, 8.0]]),
@@ -320,11 +321,12 @@ def test_winsorize_image(image: npt.NDArray) -> None:
 
 
 def test_winsorize_image_none() -> None:
-    assert winsorize_image.py_func(None, upper_percentile=99) == None
+    assert winsorize_image(None, upper_percentile=99) is None
 
 
 def test_winsorize_image_nan(nan_image: npt.NDArray) -> None:
-    win_image = winsorize_image.py_func(nan_image, upper_percentile=99)
+    win_image = winsorize_image(nan_image, upper_percentile=99)
+    assert win_image is not None
     nptest.assert_allclose(
         win_image,
         np.array([[10.0, 12.0, np.nan], [13.88, np.nan, 12.0], [11.0, 6.0, 8.0]]),
@@ -332,7 +334,7 @@ def test_winsorize_image_nan(nan_image: npt.NDArray) -> None:
 
 
 def test_replace_nan_with_median(nan_image: npt.NDArray) -> None:
-    median_filled_image = replace_nan_with_median.py_func(nan_image)
+    median_filled_image = replace_nan_with_median(nan_image)
     nptest.assert_allclose(
         median_filled_image,
         np.array([[10.0, 12.0, 12.0], [14.0, 11.0, 12.0], [11.0, 6.0, 8.0]]),

@@ -1,7 +1,8 @@
 import copy
 import os
 import pickle
-import timeit
+
+# import timeit
 from enum import Enum
 from functools import cache
 from pathlib import Path
@@ -297,7 +298,7 @@ class SampleCollection:
         for _, (_, image_collection) in enumerate(self.samples.items()):
             image = image_collection.get(image_type, species_id)
             image_max = np.nanmax(image) if image is not None else 0
-            max_value = image_max if image_max > max_value else max_value
+            max_value = image_max if max_value is not None and image_max > max_value else max_value
         max_value = None if max_value == 0 else max_value
         return max_value
 
@@ -553,4 +554,6 @@ def winsorize_image(image: npt.NDArray | None, upper_percentile: float = 99) -> 
             if winsorized_image[i, j] > upper_bound:
                 winsorized_image[i, j] = upper_bound
 
+    return winsorized_image
+    return winsorized_image
     return winsorized_image

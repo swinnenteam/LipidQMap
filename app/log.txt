@@ -3632,3 +3632,34 @@ Traceback (most recent call last):
   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 462, in create_database
     raise (
 ValueError: Value '' found in column 'M-4 Isotope' on row 2 is not a species defined                         in column 'ID'. Check for typos in the IDs.
+2025-08-08 17:32:48 CRITICAL Uncaught exception:
+   File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/__main__.py", line 45, in <module>
+    main()
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/__main__.py", line 22, in main
+    window = MainWindow()
+             ^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/views/main_window.py", line 41, in __init__
+    self.imzml_import_window = ImzmlImportWindow(config=config)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/views/imzml_import_window.py", line 35, in __init__
+    self.update_ion_mode()
+    ^^^^^^^^^^^^^^^^^^^^
+
+AttributeError: 'ImzmlImportWindow' object has no attribute 'update_ion_mode'
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/__main__.py", line 45, in <module>
+    main()
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/__main__.py", line 22, in main
+    window = MainWindow()
+             ^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/views/main_window.py", line 41, in __init__
+    self.imzml_import_window = ImzmlImportWindow(config=config)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/views/imzml_import_window.py", line 35, in __init__
+    self.update_ion_mode()
+    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'ImzmlImportWindow' object has no attribute 'update_ion_mode'

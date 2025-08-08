@@ -23,7 +23,7 @@ class PandasModelEditable(QAbstractTableModel):
         """
         QAbstractTableModel.__init__(self, parent)
         self._data = data
-        self.checkableColumns = [2]
+        self.checkableColumns = {2}
         self.boolean_delegate = BooleanDelegate()
 
     def setColumnCheckable(self, column, checkable=True):
@@ -59,13 +59,13 @@ class PandasModelEditable(QAbstractTableModel):
                 # if isinstance(value, float):
                 if index.column() == 1:
                     id = self._data.iloc[index.row(), 0]
-                    if not ("]+" in id or "]+" in id):
+                    if not ("]+" in id or "]-" in id):
                         value = ""
                     else:
                         value = "{:.5f}".format(value)
                 else:
                     value = str(value)
-                    if "]+" in value or "]+" in value:
+                    if "]+" in value or "]-" in value:
                         value = "     " + value
                 return value
 

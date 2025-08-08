@@ -1,8 +1,9 @@
-import numpy as np
+from typing import cast
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QFileDialog, QMainWindow
 
-from app import __appname__, __version__
+from app import __version__
 from app.config import Config, config
 from app.database import LipidDB
 from app.dataprocess import ImageType, SampleCollection
@@ -94,7 +95,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if self.species_table.selectionModel() is None:
                 return
             index = self.species_table.selectionModel().selectedRows()[0].row()
-            model = self.species_table.model()
+            model = cast(PandasModelEditable, self.species_table.model())
             num_rows = model.rowCount()
             for i in range(index + 1, num_rows):
                 if model.get_is_checked(i):
@@ -106,7 +107,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if self.species_table.selectionModel() is None:
                 return
             index = self.species_table.selectionModel().selectedRows()[0].row()
-            model = self.species_table.model()
+            model = cast(PandasModelEditable, self.species_table.model())
             num_rows = model.rowCount()
             for i in range(index - 1, -1, -1):
                 if model.get_is_checked(i):
@@ -118,7 +119,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if self.species_table.selectionModel() is None:
                 return
             index = self.species_table.selectionModel().selectedRows()[0].row()
-            model = self.species_table.model()
+            model = cast(PandasModelEditable, self.species_table.model())
             value = model.get_is_checked(index)
             model.setData(model.index(index, 2), not value)
 
@@ -169,7 +170,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Launch the save images dialog."""
         self.save_window.set_ui_components_status(True)
         if self.database is not None:
-            self.save_window.species_selection = self.species_table.model().get_checked_list()
+            model = cast(PandasModelEditable, self.species_table.model())
+            self.save_window.species_selection = model.get_checked_list()
             self.save_window.samples = self.samples
             self.save_window.global_scale = self.action_global.isChecked()
             self.save_window.nrows = self.nrows
@@ -231,6 +233,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         if self.samples is None:
             return
+        active_sample = self.samples[self.active_sample_id]
+        if active_sample is None:
+            return
         nsamples = len(self.samples)
         if nsamples == 1:
             self.ncols = 1
@@ -241,11 +246,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.image_canvas_iso.setup(nrows=self.nrows, ncols=self.ncols, dimensions=dimensions)
         self.image_canvas_quant.setup(nrows=self.nrows, ncols=self.ncols, dimensions=dimensions)
         self.barplot_canvas.setup()
-        self.spectrum_view.update_figure(self.samples[self.active_sample_id].average_spectrum)
+        self.spectrum_view.update_figure(active_sample.average_spectrum)
         # set height according to heuristic (multiply nrows by a factor that decreases by number of columns)
-        self.scroll_area_raw_contents.setMinimumHeight((1 / self.ncols) * 800 * self.nrows)
-        self.scroll_area_iso_contents.setMinimumHeight((1 / self.ncols) * 800 * self.nrows)
-        self.scroll_area_quant_contents.setMinimumHeight((1 / self.ncols) * 800 * self.nrows)
+        self.scroll_area_raw_contents.setMinimumHeight(int((1 / self.ncols) * 800 * self.nrows))
+        self.scroll_area_iso_contents.setMinimumHeight(int((1 / self.ncols) * 800 * self.nrows))
+        self.scroll_area_quant_contents.setMinimumHeight(int((1 / self.ncols) * 800 * self.nrows))
 
     def update_plots(self) -> None:
         """
@@ -264,7 +269,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if species_id is None or self.samples is None:
             return
 
-        if self.image_canvas_raw is not None:
+        active_sample = self.samples[self.active_sample_id]
+
+        if self.image_canvas_raw is not None and active_sample is not None:
             self.image_canvas_raw.update_figure(
                 samples=self.samples,
                 species_id=species_id,
@@ -272,7 +279,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 global_scale=global_scale,
             )
             self.barplot_canvas.update_figure(
-                sample=self.samples[self.active_sample_id],
+                sample=active_sample,
                 species=all_class_species,
                 image_type=self.current_tab_type,
             )
@@ -318,13 +325,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         species_id = self.database.get_id(index)
         all_class_species = self.database.get_all_species_same_class(species_id)
 
+        selected_sample = self.samples[image_id]
+        if selected_sample is None:
+            return
+
         self.barplot_canvas.update_figure(
-            sample=self.samples[image_id],
+            sample=selected_sample,
             species=all_class_species,
             image_type=self.current_tab_type,
         )
 
-        self.spectrum_view.update_figure(self.samples[image_id].average_spectrum)
+        self.spectrum_view.update_figure(selected_sample.average_spectrum)
 
     def copy_species_plot(self) -> None:
         self.barplot_canvas.copy_to_clipboard()
@@ -344,13 +355,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.current_tab_type
         if self.database is None or self.samples is None or self.species_table is None:
             return
+        active_sample = self.samples[self.active_sample_id]
+        if active_sample is None:
+            return
         index = self.species_table.selectionModel().selectedRows()[0].row()
 
         species_id = self.database.get_id(index)
         all_class_species = self.database.get_all_species_same_class(species_id)
 
         self.barplot_canvas.update_figure(
-            sample=self.samples[self.active_sample_id],
+            sample=active_sample,
             species=all_class_species,
             image_type=self.current_tab_type,
         )
@@ -386,21 +400,37 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.update_plots()
 
     def rotate_left(self) -> None:
-        if self.samples is not None:
-            self.samples[self.active_sample_id].transform("rotate_left")
-            self.update_plots()
+        if self.samples is None:
+            return
+        active_sample = self.samples[self.active_sample_id]
+        if active_sample is None:
+            return
+        active_sample.transform("rotate_left")
+        self.update_plots()
 
     def rotate_right(self) -> None:
-        if self.samples is not None:
-            self.samples[self.active_sample_id].transform("rotate_right")
-            self.update_plots()
+        if self.samples is None:
+            return
+        active_sample = self.samples[self.active_sample_id]
+        if active_sample is None:
+            return
+        active_sample.transform("rotate_right")
+        self.update_plots()
 
     def reflect_horizontal(self) -> None:
-        if self.samples is not None:
-            self.samples[self.active_sample_id].transform("reflect_horizontal")
-            self.update_plots()
+        if self.samples is None:
+            return
+        active_sample = self.samples[self.active_sample_id]
+        if active_sample is None:
+            return
+        active_sample.transform("reflect_horizontal")
+        self.update_plots()
 
     def reflect_vertical(self) -> None:
-        if self.samples is not None:
-            self.samples[self.active_sample_id].transform("reflect_vertical")
-            self.update_plots()
+        if self.samples is None:
+            return
+        active_sample = self.samples[self.active_sample_id]
+        if active_sample is None:
+            return
+        active_sample.transform("reflect_vertical")
+        self.update_plots()

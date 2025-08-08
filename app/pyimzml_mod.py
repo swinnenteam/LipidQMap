@@ -1,5 +1,6 @@
+# pylint: skip-file
+
 import inspect
-import re
 import sys
 from pathlib import Path
 from random import sample

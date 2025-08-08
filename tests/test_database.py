@@ -74,8 +74,8 @@ def test_get_id(database: LipidDB) -> None:
 def test_get_ids_non_standards(database: LipidDB) -> None:
     species_ids = [s.id_adduct for s in database.get_ids_non_standards()]
     assert "PC 32:1 [M+Na]+" in species_ids
-    assert not "PC 33:1 d7" in species_ids
-    assert not "PC 28:0 " in species_ids
+    assert "PC 33:1 d7" not in species_ids
+    assert "PC 28:0 " not in species_ids
 
 
 def test_get_all_species_same_class(database: LipidDB) -> None:
@@ -111,7 +111,7 @@ def test_get_standard(database: LipidDB) -> None:
 
 def test_get_standard_not_present(neg_database: LipidDB) -> None:
     species = neg_database.species["PE 32:1 [M-H]-"]
-    assert species.standard == None
+    assert species.standard is None
 
 
 def test_get_M2_isotope_ID(database: LipidDB) -> None:
@@ -122,7 +122,7 @@ def test_get_M2_isotope_ID(database: LipidDB) -> None:
 
 def test_get_M2_isotope_ID_None(database: LipidDB) -> None:
     species = database.species["PC 34:2 [M+Na]+"]
-    assert species.m2_isotope == None
+    assert species.m2_isotope is None
 
 
 def test_get_M2_isotope_percent(database: LipidDB) -> None:
@@ -137,7 +137,7 @@ def test_get_M4_isotope_ID(database: LipidDB) -> None:
 
 def test_get_M4_isotope_ID_None(database: LipidDB) -> None:
     species = database.species["PC 34:2 [M+Na]+"]
-    assert species.m2_isotope == None
+    assert species.m2_isotope is None
 
 
 def test_get_M4_isotope_percent(database: LipidDB) -> None:
@@ -152,7 +152,7 @@ def test_get_Na_isotope_ID(database: LipidDB) -> None:
 
 def test_get_Na_isotope_ID_None(database: LipidDB) -> None:
     species = database.species["PC 32:2 [M+H]+"]
-    assert species.na_isotope == None
+    assert species.na_isotope is None
 
 
 def test_get_hydrogen_sodium_std_pairs(database: LipidDB) -> None:
