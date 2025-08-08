@@ -48,6 +48,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.cal_int_spinbox.setValue(
             self.config.settings.processing_settings.calibration_min_intensity
         )
+        self.imputation_checkbox.setChecked(self.config.settings.processing_settings.imputation)
         # set last used database
         index = self.database_combo_box.findText(
             self.config.settings.database_settings.last_used_database
@@ -72,6 +73,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.cal_int_spinbox.valueChanged.connect(self.update_save_setting)
         self.pos_radio_button.clicked.connect(self.update_ion_mode)
         self.database_combo_box.currentTextChanged.connect(self.update_save_setting)
+        self.imputation_checkbox.clicked.connect(self.update_save_setting)
 
     def process_imzml_files(self) -> None:
 
@@ -172,6 +174,8 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
             self.config.settings.processing_settings.db_isotope_correction = sender.isChecked()
         elif sender == self.cal_checkbox:
             self.config.settings.processing_settings.online_calibration = sender.isChecked()
+        elif sender == self.imputation_checkbox:
+            self.config.settings.processing_settings.imputation = sender.isChecked()
         self.config.save()
 
     def set_ui_components_status(self, active: bool) -> None:
@@ -187,3 +191,4 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.na_iso_cor_checkbox.setEnabled(active)
         self.cal_checkbox.setEnabled(active)
         self.cal_group_box.setEnabled(active)
+        self.imputation_checkbox.setEnabled(active)

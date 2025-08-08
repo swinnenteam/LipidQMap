@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 from enum import Enum
 from functools import cached_property
 from typing import Any
@@ -312,23 +311,35 @@ class DatabaseFactory:
 
     def check_columns(self) -> None:
         """
-        Check if the necessary columns are present in the database.
+        Check if necessary columns are present, add optional ones, and raise
+        a comprehensive error for missing required ones.
         """
 
-        columns = [
+        required_cols = {
             "ID",
             "Neutral Formula",
             "Class",
             "Adducts",
             "M-2 Isotope",
-            "M-4 Isotope",
             "Na+ Isotope",
             "IS",
             "IS amount (pmol / mm2)",
-        ]
-        for col in columns:
-            if not col in self.df.columns:
-                raise ValueError(f"The excel database is missing the '{col}' column.")
+        }
+        optional_cols = {"M-4 Isotope"}
+
+        df_cols = set(self.df.columns)
+
+        missing_required = required_cols - df_cols
+        if missing_required:
+            missing_list = ", ".join(sorted(list(missing_required)))
+            raise ValueError(
+                f"The database is missing required columns: '{missing_list}'. "
+                "Please ensure you have a valid database and restart."
+            )
+
+        missing_optional = optional_cols - df_cols
+        for col in missing_optional:
+            self.df[col] = None
 
     def setup_dataframe(self) -> None:
         """

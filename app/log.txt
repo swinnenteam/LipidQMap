@@ -3570,3 +3570,65 @@ Traceback (most recent call last):
     if "recover" in inspect.getargspec(self.iterparse).args:
                     ^^^^^^^^^^^^^^^^^^
 AttributeError: module 'inspect' has no attribute 'getargspec'. Did you mean: 'getargs'?
+2025-08-06 10:14:36 CRITICAL Uncaught exception:
+   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 354, in load_database_image_collection
+    database = DatabaseFactory(database_path, ion_mode).create_database()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 310, in __init__
+    self.check_columns()
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 331, in check_columns
+    raise ValueError(f"The excel database is missing the '{col}' column.")
+
+ValueError: The excel database is missing the 'M-4 Isotope' column.
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 354, in load_database_image_collection
+    database = DatabaseFactory(database_path, ion_mode).create_database()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 310, in __init__
+    self.check_columns()
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 331, in check_columns
+    raise ValueError(f"The excel database is missing the '{col}' column.")
+ValueError: The excel database is missing the 'M-4 Isotope' column.
+2025-08-06 10:25:14 CRITICAL Uncaught exception:
+   File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 354, in load_database_image_collection
+    database = DatabaseFactory(database_path, ion_mode).create_database()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 462, in create_database
+    raise (
+
+ValueError: Value '' found in column 'M-4 Isotope' on row 2 is not a species defined                         in column 'ID'. Check for typos in the IDs.
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 459, in create_database
+    species[id_adduct(m4_isotope, adduct)] if m4_isotope is not None else None
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyError: ''
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 64, in run
+    raise exc
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/multithreading.py", line 62, in run
+    result_1, result_2 = self.function(*self.args, **self.kwargs)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/dataprocess.py", line 354, in load_database_image_collection
+    database = DatabaseFactory(database_path, ion_mode).create_database()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/u0065634/Documents/Software_projects/LipidQMap/app/database.py", line 462, in create_database
+    raise (
+ValueError: Value '' found in column 'M-4 Isotope' on row 2 is not a species defined                         in column 'ID'. Check for typos in the IDs.

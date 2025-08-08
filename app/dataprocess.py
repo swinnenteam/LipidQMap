@@ -101,7 +101,7 @@ class SectionMsiImage:
         tolerances = [ppm_to_tolerance(ppm=ppm, mz=mz) for mz in species_mzs]
         image_stack = get_ion_images(p=imzml_parser, mzs=species_mzs, tolerances=tolerances)
         self.raw = dict(zip(species_ids, list(image_stack)))
-        progress_file_callback.emit(70)
+        progress_file_callback.emit(60)
 
         # calculate average spectrum
         bin_size = self.config.settings.processing_settings.bin_size
@@ -118,17 +118,25 @@ class SectionMsiImage:
                 self.isotope = db_isotope_correction(database=database, images=self.isotope)
             else:
                 self.isotope = db_isotope_correction(database=database, images=self.raw)
-        progress_file_callback.emit(75)
+        progress_file_callback.emit(70)
 
         # perform quantitation
         if self.isotope:
             self.quant = quantitaton(database=database, images=self.isotope)
         else:
             self.quant = quantitaton(database=database, images=self.raw)
-        progress_file_callback.emit(80)
+        progress_file_callback.emit(75)
 
-        # replace nan with median of surrounding pixels in quant images
-        self.quant = {k: replace_nan_with_median(v) for (k, v) in self.quant.items()}
+        # replace nan with median of surrounding pixels
+        if self.config.settings.processing_settings.imputation:
+            self.raw = {k: replace_nan_with_median(v) for (k, v) in self.raw.items()}
+            progress_file_callback.emit(80)
+            self.isotope = {k: replace_nan_with_median(v) for (k, v) in self.isotope.items()}
+            progress_file_callback.emit(85)
+            self.quant = {
+                k: replace_nan_with_median(v) if v is not None else None
+                for k, v in self.quant.items()
+            }
         progress_file_callback.emit(90)
 
         # sum the different adduct forms of the same species
@@ -513,12 +521,10 @@ def _add_padding(arr, pad_width):
 
 
 @njit
-def replace_nan_with_median(arr: npt.NDArray | None) -> npt.NDArray | None:
+def replace_nan_with_median(arr: npt.NDArray) -> npt.NDArray:
     """
     Replaces nan values with mean of surrounding window of 3 by 3 pixels, excluding any nan in the window
     """
-    if arr is None:
-        return None
     # Pad the array with NaNs to handle edge cases
     padded_arr = _add_padding(arr, 1)
     nan_mask = np.isnan(arr)

@@ -5,13 +5,7 @@ import numpy.testing as nptest
 import numpy.typing as npt
 import pytest
 
-from app.config import (
-    Config,
-    Configuration,
-    FilterSettings,
-    ProcessingSettings,
-    SelectionSettings,
-)
+from app.config import Config, Configuration, FilterSettings, ProcessingSettings, SelectionSettings
 from app.database import DatabaseFactory, IonMode, LipidDB
 from app.dataprocess import (
     ImageType,
@@ -96,6 +90,7 @@ def mock_config() -> Config:
     mock_processing_settings.bin_size = 5.0
     mock_processing_settings.na_isotope_correction = True
     mock_processing_settings.db_isotope_correction = True
+    mock_processing_settings.imputation = True
 
     # Set up the attributes on the selection settings mock
     mock_selection_settings.minimum_intensity = 1000
@@ -342,10 +337,6 @@ def test_replace_nan_with_median(nan_image: npt.NDArray) -> None:
         median_filled_image,
         np.array([[10.0, 12.0, 12.0], [14.0, 11.0, 12.0], [11.0, 6.0, 8.0]]),
     )
-
-
-def test_replace_nan_with_median_none() -> None:
-    assert replace_nan_with_median.py_func(None) == None
 
 
 def test_ppm_to_tolerance() -> None:

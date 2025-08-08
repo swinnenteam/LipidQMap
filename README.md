@@ -35,10 +35,11 @@ Click on the folder icon in the top left of the main program window to open the 
 2. Select if the file contains positive or negative ion mode data.
 3. Select the maximum tolerated mass error (in ppm) for for extracting the ion images.
 4. Select the Bin size used for calculating the average spectrum (Default 5 mDa for TOF instruments, should be decreased for higher resolution instruments)
-5. Select which database should be used in the Database dropdown menu.
-6. Select which (if any) isotope correction algorithm should be used.
-7. Select if online calibration should be applied to the images. This requires a reference m/z, a tolerance (in ppm) of the maximum allowed deviation from the reference mass, and a minimum intensity of the reference m/z. If these criteria are met, the spectrum of each pixel is shifted to match the m/z of the reference mass.
-8. Click on "**Import Data**" to start importing the imzML files.
+5. Select if missing pixels should be imputated by taking the mean of the surrounding 3x3 pixels.
+6. Select which database should be used in the Database dropdown menu.
+7. Select which (if any) isotope correction algorithm should be used.
+8. Select if online calibration should be applied to the images. This requires a reference m/z, a tolerance (in ppm) of the maximum allowed deviation from the reference mass, and a minimum intensity of the reference m/z. If these criteria are met, the spectrum of each pixel is shifted to match the m/z of the reference mass.
+9. Click on "**Import Data**" to start importing the imzML files.
 
 ![alt text](resources/images/guide_imzml_import.png "imzML files import")
 

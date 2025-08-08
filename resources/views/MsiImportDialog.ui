@@ -66,33 +66,10 @@
      <property name="topMargin">
       <number>0</number>
      </property>
-     <item row="0" column="1">
-      <widget class="QRadioButton" name="pos_radio_button">
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_5">
        <property name="text">
-        <string>Positive</string>
-       </property>
-       <property name="checked">
-        <bool>true</bool>
-       </property>
-       <attribute name="buttonGroup">
-        <string notr="true">button_group</string>
-       </attribute>
-      </widget>
-     </item>
-     <item row="2" column="1" colspan="4">
-      <widget class="QComboBox" name="database_combo_box"/>
-     </item>
-     <item row="1" column="3">
-      <widget class="QLabel" name="label_9">
-       <property name="text">
-        <string>Bin size:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>Ion mode:</string>
+        <string>Database:</string>
        </property>
       </widget>
      </item>
@@ -103,30 +80,16 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="4">
-      <spacer name="horizontalSpacer_2">
-       <property name="orientation">
-        <enum>Qt::Orientation::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
+     <item row="3" column="1" colspan="4">
+      <widget class="QComboBox" name="database_combo_box"/>
      </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_5">
+     <item row="0" column="1">
+      <widget class="QRadioButton" name="pos_radio_button">
        <property name="text">
-        <string>Database:</string>
+        <string>Positive</string>
        </property>
-      </widget>
-     </item>
-     <item row="0" column="2">
-      <widget class="QRadioButton" name="neg_radio_button">
-       <property name="text">
-        <string>Negative</string>
+       <property name="checked">
+        <bool>true</bool>
        </property>
        <attribute name="buttonGroup">
         <string notr="true">button_group</string>
@@ -165,6 +128,60 @@
        </property>
        <property name="value">
         <double>5.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Ion mode:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QRadioButton" name="neg_radio_button">
+       <property name="text">
+        <string>Negative</string>
+       </property>
+       <attribute name="buttonGroup">
+        <string notr="true">button_group</string>
+       </attribute>
+      </widget>
+     </item>
+     <item row="0" column="4">
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="1" column="3">
+      <widget class="QLabel" name="label_9">
+       <property name="text">
+        <string>Bin size:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>Imputation:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1" colspan="3">
+      <widget class="QCheckBox" name="imputation_checkbox">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;Enables median imputation to fill in pixels with no signal, using the values of 3x3 surrounding pixels.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>Fill in missing pixel values ⓘ</string>
        </property>
       </widget>
      </item>
