@@ -3,25 +3,86 @@ according to principles described:
 https://tech.preferred.jp/en/blog/working-with-configuration-in-python/
 """
 
+from __future__ import annotations
+
 import os
 import sys
+from pathlib import Path
 
 import toml
+from platformdirs import user_data_dir
 from pydantic import BaseModel, Field
 
-
-def get_bundle_dir() -> str:
-    if getattr(sys, "frozen", False):
-        return sys._MEIPASS  # type: ignore # pylint: disable=W0212
-    else:
-        return str(os.path.dirname(__file__))
+from app import __appauthor__, __appname__
 
 
+def _is_frozen() -> bool:
+    return getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
+
+
+def _bundle_root() -> Path:
+    if _is_frozen():
+        return Path(sys._MEIPASS)  # type: ignore[attr-defined]
+    return Path(__file__).resolve().parent
+
+
+def resource_path(*segments: str) -> Path:
+    base = _bundle_root()
+    for c in (base / "Resources" / Path(*segments), base / Path(*segments)):
+        if c.exists():
+            return c
+    return Path(__file__).resolve().parent / Path(*segments)
+
+
+def user_root() -> Path:
+    p = Path(user_data_dir(appname=__appname__, appauthor=__appauthor__))
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def user_db_dir() -> Path:
+    p = user_root() / "database"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+SEED_DB_WHITELIST = [
+    "MSI_database_V1.0.xlsx",
+]
+
+SEED_DB_PACKAGED_DIR = ("seed",)  # inside Resources/seed when bundled
+SEED_DB_DEV_DIR = Path(__file__).resolve().parent / "database"  # app/database in dev
+
+
+def _seed_source_dir() -> Path:
+    return resource_path(*SEED_DB_PACKAGED_DIR) if _is_frozen() else SEED_DB_DEV_DIR
+
+
+def ensure_user_database_dir() -> Path:
+    """
+    Ensure the user database dir exists and contains the whitelisted seed files.
+    Copies only files from SEED_DB_WHITELIST that are found in the seed source dir.
+    Does not overwrite existing files.
+    """
+    dest = user_db_dir()
+    src_dir = _seed_source_dir()
+
+    for name in SEED_DB_WHITELIST:
+        src = src_dir / name
+        dst = dest / name
+        if src.exists() and not dst.exists():
+            dst.write_bytes(src.read_bytes())
+
+    return dest
+
+
+# ---- public paths ----
 config_paths = {
-    "DATABASE_DIR": os.path.join(get_bundle_dir(), "database"),
-    "USER_CONFIG_FILE": os.path.join(get_bundle_dir(), "config.toml"),
-    "STYLE_FILE": os.path.join(get_bundle_dir(), "style.css"),
-    "LOG_FILE": os.path.join(get_bundle_dir(), "log.txt"),
+    "DATABASE_DIR": str(user_db_dir()),
+    "USER_CONFIG_FILE": str(user_root() / "config.toml"),
+    "LOG_FILE": str(user_root() / "log.txt"),
+    "STYLE_FILE": str(resource_path("style.css")),
+    "SEED_DATABASE_DIR": str(resource_path(*SEED_DB_PACKAGED_DIR)),
 }
 
 
@@ -150,4 +211,17 @@ class Config:
                 return self
 
 
-config = Config()
+_config: Config | None = None
+
+
+def set_config(c: Config) -> None:
+    global _config
+    _config = c
+
+
+def get_config() -> Config:
+    global _config
+    if _config is None:
+        ensure_user_database_dir()  # safe to call repeatedly
+        _config = Config()
+    return _config

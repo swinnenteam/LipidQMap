@@ -5,13 +5,19 @@ from PySide6.QtWidgets import QApplication
 from qt_material import apply_stylesheet
 
 from app import __appname__, __desktopid__, __version__
-from app.config import config_paths
+from app.config import Config, config_paths, ensure_user_database_dir, set_config
 from app.logger import UncaughtHook
 from app.views.main_window import MainWindow
 
 
 def main() -> NoReturn:
     """Instantiate program loading and start the main program."""
+
+    ensure_user_database_dir()
+
+    # Instantiate global config and assign into settings module
+    set_config(Config())
+
     # create the application
     app = QApplication(sys.argv)
     app.setApplicationVersion(__version__)

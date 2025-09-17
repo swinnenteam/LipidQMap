@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QFileDialog, QMainWindow
 
 from app import __version__
-from app.config import Config, config
+from app.config import Config, get_config
 from app.database import LipidDB
 from app.dataprocess import ImageType, SampleCollection
 from app.generated.MsiMainWindow_ui import Ui_MainWindow
@@ -32,17 +32,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         super().__init__()
         self.database: LipidDB | None = None
-        self.config: Config = config
+        self.config: Config = get_config()
         self.samples: SampleCollection | None = None
         self.active_sample_id: str = ""
         self.current_tab_type: ImageType = ImageType.raw
         self.ncols: int = 2
         self.nrows: int
-        self.imzml_import_window = ImzmlImportWindow(config=config)
-        self.save_window = FileSaveWindow(config=config)
+        self.imzml_import_window = ImzmlImportWindow(config=self.config)
+        self.save_window = FileSaveWindow(config=self.config)
         self.about_window = AboutWindow(__version__)
-        self.settings_window = SettingsWindow(config=config)
-        self.calculator_window = CalculatorWindow(config=config)
+        self.settings_window = SettingsWindow(config=self.config)
+        self.calculator_window = CalculatorWindow(config=self.config)
         self.boolean_delegate = BooleanDelegate()
 
         self.setupUi(self)
