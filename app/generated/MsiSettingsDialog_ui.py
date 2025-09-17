@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'MsiSettingsDialog.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.7.2
+## Created by: Qt User Interface Compiler version 6.9.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -103,26 +103,26 @@ class Ui_Dialog(object):
         self.label = QLabel(self.groupBox)
         self.label.setObjectName(u"label")
 
-        self.formLayout.setWidget(0, QFormLayout.FieldRole, self.label)
+        self.formLayout.setWidget(0, QFormLayout.ItemRole.FieldRole, self.label)
 
         self.spinbox_winsor_quant = QDoubleSpinBox(self.groupBox)
         self.spinbox_winsor_quant.setObjectName(u"spinbox_winsor_quant")
         self.spinbox_winsor_quant.setDecimals(1)
         self.spinbox_winsor_quant.setValue(99.000000000000000)
 
-        self.formLayout.setWidget(1, QFormLayout.LabelRole, self.spinbox_winsor_quant)
+        self.formLayout.setWidget(1, QFormLayout.ItemRole.LabelRole, self.spinbox_winsor_quant)
 
         self.label_2 = QLabel(self.groupBox)
         self.label_2.setObjectName(u"label_2")
 
-        self.formLayout.setWidget(1, QFormLayout.FieldRole, self.label_2)
+        self.formLayout.setWidget(1, QFormLayout.ItemRole.FieldRole, self.label_2)
 
         self.spinbox_winsor_raw = QDoubleSpinBox(self.groupBox)
         self.spinbox_winsor_raw.setObjectName(u"spinbox_winsor_raw")
         self.spinbox_winsor_raw.setDecimals(1)
         self.spinbox_winsor_raw.setValue(99.000000000000000)
 
-        self.formLayout.setWidget(0, QFormLayout.LabelRole, self.spinbox_winsor_raw)
+        self.formLayout.setWidget(0, QFormLayout.ItemRole.LabelRole, self.spinbox_winsor_raw)
 
 
         self.gridLayout_2.addLayout(self.formLayout, 1, 0, 1, 2)

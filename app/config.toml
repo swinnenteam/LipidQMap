@@ -1,7 +1,7 @@
 debug = false
 
 [filter_settings]
-raw_image_winsorizing_percentile = 99.0
+raw_image_winsorizing_percentile = 95.0
 quant_image_winsorizing_percentile = 99.0
 gaussian_filter = true
 
@@ -32,3 +32,20 @@ save_quant_images = true
 save_individual_unfiltered = false
 save_individual_filtered_scaled = true
 save_panel_filtered_scaled = false
+
+[sprayer_settings]
+x_left = 22
+x_right = 40
+y_bottom = 5
+y_top = 17
+margin = 5
+total_used_volume_mL = 0.8
+syringe_flow_mL_per_min = 0.06
+drying_time_min = 0.5
+drying_cycles = 16
+initial_equilibration_min = 0.833
+stock_conc_mg_per_mL = 0.11
+working_dilution_factor = 3.0
+volume_working_stock_uL = 1000.0
+final_mix_volume_mL = 8.0
+molecular_weight_ug_per_umol = 504.69

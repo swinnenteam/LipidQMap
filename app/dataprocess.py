@@ -511,7 +511,7 @@ def sum_adducts(
 
 
 @njit
-def _add_padding(arr, pad_width):
+def _add_padding(arr, pad_width) -> npt.NDArray:
     """
     Pads the array with NaNs to handle edge cases.
     """
@@ -528,7 +528,8 @@ def replace_nan_with_median(arr: npt.NDArray) -> npt.NDArray:
     """
     # Pad the array with NaNs to handle edge cases
     padded_arr = _add_padding(arr, 1)
-    nan_mask = np.isnan(arr)
+    padded_arr = np.where(padded_arr == 0.0, np.nan, padded_arr)  # also replace 0.0 with NaN
+    nan_mask = np.isnan(arr) | (arr == 0.0)
     indices = np.argwhere(nan_mask)
     result = np.copy(arr)
     for i, j in indices:

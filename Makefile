@@ -1,5 +1,19 @@
 export PROJECTNAME=$(shell basename "$(PWD)")
 
+# --- macOS signing/notarization config ---
+APP_NAME       ?= LipidQMap
+MAC_SPEC       ?= mac-app.spec
+DIST_DIR       ?= dist/$(APP_NAME)
+APP_BUNDLE     ?= $(DIST_DIR)/$(APP_NAME).app
+ZIP_FOR_NOTARY ?= $(DIST_DIR).zip
+RELEASE_ZIP    ?= $(APP_NAME)-macOS.zip
+
+# Set to your exact Developer ID cert CN (as shown by `security find-identity -v -p codesigning`)
+CODESIGN_IDENTITY ?= Developer ID Application: Your Name (YOURTEAMID)
+
+# Notarytool keychain profile name you created with `notarytool store-credentials`
+NOTARY_PROFILE ?= AC_NOTARY
+
 clean-pyc: ## remove Python file artifacts
 	find . -name '*.pyc' -exec rm -f {} +
 	find . -name '*.pyo' -exec rm -f {} +
@@ -34,7 +48,7 @@ run: ## Runs the application
 
 build: ## Builds the application
 	make clean
-	./venv/bin/pyinstaller app.spec
+	./venv/bin/pyinstaller mac-app.spec
 
 coverage: ## Coverage report of the unit testing
 	coverage run -m pytest

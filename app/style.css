@@ -13,4 +13,24 @@ QComboBox {{
 QLineEdit {{
     color: white;
 }}
+QLabel#label_area {{
+    font-size: 16px;
+    font-weight: 800;
+}}
+QLabel#label_mix_conc {{
+    font-size: 16px;
+    font-weight: 800;
+}}
+QLabel#label_volume {{
+    font-size: 16px;
+    font-weight: 800;
+}}
+QLabel#label_surface_conc {{
+    font-size: 16px;
+    font-weight: 800;
+}}
+QLabel#label_surface_conc_result {{
+    font-size: 20px;
+    font-weight: 1000;
+}}
 

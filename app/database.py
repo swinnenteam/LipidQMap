@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from enum import Enum
 from functools import cached_property
 from typing import Any
@@ -79,6 +80,9 @@ class LipidSpecies(BaseModel):
             return IonMode.neutral
 
     def __repr__(self):
+        return self.id_adduct
+
+    def __str__(self) -> str:
         return self.id_adduct
 
     def __lt__(self, other) -> bool:
@@ -298,6 +302,38 @@ def adduct_formula(formula: str, adduct: str) -> Formula:
             raise ValueError(f"Unsupported adduct in database: {adduct}")
 
 
+def to_attr(col: str) -> str:
+    # Replace anything that isn't a letter, digit, or underscore with "_"
+    col = re.sub(r"[^0-9a-zA-Z_]", "_", col)
+    # Ensure it doesn't start with a digit
+    if col and col[0].isdigit():
+        col = "_" + col
+    return col
+
+
+ID = "ID"
+NEUTRAL_FORMULA = "Neutral Formula"
+CLASS = "Class"
+ADDUCTS = "Adducts"
+M2_ISOTOPE = "M-2 Isotope"
+M4_ISOTOPE = "M-4 Isotope"
+NA_ISOTOPE = "Na+ Isotope"
+IS = "IS"
+AMOUNT_COL = "IS amount (pmol / mm2)"
+STD_COL = "IS standard"
+
+S_ID = to_attr(ID)
+S_NEUTRAL_FORMULA = to_attr(NEUTRAL_FORMULA)
+S_CLASS = to_attr(CLASS)
+S_ADDUCTS = to_attr(ADDUCTS)
+S_M2_ISOTOPE = to_attr(M2_ISOTOPE)
+S_M4_ISOTOPE = to_attr(M4_ISOTOPE)
+S_NA_ISOTOPE = to_attr(NA_ISOTOPE)
+S_IS = to_attr(IS)
+S_AMOUNT_COL = to_attr(AMOUNT_COL)
+S_STD_COL = to_attr(STD_COL)
+
+
 class DatabaseFactory:
     """
     Class to help create a LipidDB instance based on information in an excel file.
@@ -316,16 +352,17 @@ class DatabaseFactory:
         """
 
         required_cols = {
-            "ID",
-            "Neutral Formula",
-            "Class",
-            "Adducts",
-            "M-2 Isotope",
-            "Na+ Isotope",
-            "IS",
-            "IS amount (pmol / mm2)",
+            ID,
+            NEUTRAL_FORMULA,
+            CLASS,
+            ADDUCTS,
+            M2_ISOTOPE,
+            NA_ISOTOPE,
+            IS,
+            STD_COL,
+            AMOUNT_COL,
         }
-        optional_cols = {"M-4 Isotope"}
+        optional_cols = {M4_ISOTOPE}
 
         df_cols = set(self.df.columns)
 
@@ -349,28 +386,24 @@ class DatabaseFactory:
         """
 
         # replace spaces in column names with underscores and remove special characters +,-,/
-        self.df.rename(columns={"IS amount (pmol / mm2)": "IS amount"}, inplace=True)
-        self.df.rename(columns={"M-2 Isotope": "M2 Isotope"}, inplace=True)
-        self.df.rename(columns={"M-4 Isotope": "M4 Isotope"}, inplace=True)
-        self.df.rename(columns={"Na+ Isotope": "Na Isotope"}, inplace=True)
-        self.df.columns = [c.replace(" ", "_") for c in self.df.columns]
+        self.df.columns = [to_attr(c) for c in self.df.columns]
 
         # add species with multiple adduct forms as individual rows for each adduct
-        self.df["Adducts"] = self.df["Adducts"].str.replace(" ", "")
-        self.df["Adducts"] = self.df["Adducts"].str.split(",")
+        self.df[S_ADDUCTS] = self.df[S_ADDUCTS].str.replace(" ", "")
+        self.df[S_ADDUCTS] = self.df[S_ADDUCTS].str.split(",")
         # add empty string adduct for neutral form
-        self.df["Adducts"].apply(
+        self.df[S_ADDUCTS].apply(
             lambda lst: (
                 lst.insert(0, "")
                 if any([e for e in lst if e.endswith(self.ion_mode.value)])
                 else lst
             )
         )
-        self.df = self.df.explode("Adducts")
+        self.df = self.df.explode(S_ADDUCTS)
 
         # filter by ion mode
-        ion_mode_filer = self.df["Adducts"].str.endswith(self.ion_mode.value)
-        neutral_species_filter = self.df["Adducts"] == ""
+        ion_mode_filer = self.df[S_ADDUCTS].str.endswith(self.ion_mode.value)
+        neutral_species_filter = self.df[S_ADDUCTS] == ""
         self.df = self.df[ion_mode_filer | neutral_species_filter]
 
     @staticmethod
@@ -381,44 +414,51 @@ class DatabaseFactory:
         else:
             return value
 
+    @staticmethod
+    def normalize_bool(v):
+        if isinstance(v, bool):
+            return v
+        if pd.isna(v):
+            return False
+        s = str(v).strip().lower()
+        return s in {"true", "1", "yes", "y"}
+
     def create_database(self) -> LipidDB:
         """creates a LipidDB"""
 
         species: dict[str, LipidSpecies] = dict()
 
         for row in self.df.itertuples():
-            id = getattr(row, "ID")
-            adduct = getattr(row, "Adducts")
-            formula = adduct_formula(getattr(row, "Neutral_Formula"), adduct)
+            id = getattr(row, S_ID)
+            adduct = getattr(row, S_ADDUCTS)
+            formula = adduct_formula(getattr(row, S_NEUTRAL_FORMULA), adduct)
             attributes = dict(
-                adduct=getattr(row, "Adducts"),
+                adduct=getattr(row, S_ADDUCTS),
                 id=id,
-                lipid_class=getattr(row, "Class"),
-                neutral_formula=Formula(getattr(row, "Neutral_Formula")),
+                lipid_class=getattr(row, S_CLASS),
+                neutral_formula=Formula(getattr(row, S_NEUTRAL_FORMULA)),
                 formula=formula,
                 mz=formula.monoisotopic_mass,
                 m2_rel_abundance=[i for (_, i) in formula.spectrum().items()][2].intensity / 100,
                 m4_rel_abundance=[i for (_, i) in formula.spectrum().items()][4].intensity / 100,
-                amount=self.none_if_nan(getattr(row, "IS_amount")),
+                amount=self.none_if_nan(getattr(row, S_AMOUNT_COL)),
                 m2_isotope=None,
                 m4_isotope=None,
                 na_isotope=None,
                 standard=None,
             )
-
             adduct_id = id_adduct(id, adduct)
-            if attributes.get("amount") is None:
-                species[adduct_id] = LipidSpecies(**attributes)
-            else:
+            if getattr(row, S_STD_COL):
                 species[adduct_id] = LipidStandard(**attributes)
+            else:
+                species[adduct_id] = LipidSpecies(**attributes)
 
         for i, row in enumerate(self.df.itertuples()):
-            adduct = getattr(row, "Adducts")
-            id = getattr(row, "ID")
-
+            adduct = getattr(row, S_ADDUCTS)
+            id = getattr(row, S_ID)
             specie = species[id_adduct(id, adduct)]
+            standard = self.none_if_nan(getattr(row, S_IS))
 
-            standard = self.none_if_nan(getattr(row, "IS"))
             try:
                 standard = species[id_adduct(standard, adduct)] if standard is not None else None
             except Exception:
@@ -438,7 +478,7 @@ class DatabaseFactory:
                 )
             specie.standard = standard
 
-            m2_isotope = self.none_if_nan(getattr(row, "M2_Isotope"))
+            m2_isotope = self.none_if_nan(getattr(row, S_M2_ISOTOPE))
             try:
                 m2_isotope = (
                     species[id_adduct(m2_isotope, adduct)] if m2_isotope is not None else None
@@ -452,7 +492,7 @@ class DatabaseFactory:
                 )
             specie.m2_isotope = m2_isotope
 
-            m4_isotope = self.none_if_nan(getattr(row, "M4_Isotope"))
+            m4_isotope = self.none_if_nan(getattr(row, S_M4_ISOTOPE))
             try:
                 m4_isotope = (
                     species[id_adduct(m4_isotope, adduct)] if m4_isotope is not None else None
@@ -466,7 +506,7 @@ class DatabaseFactory:
                 )
             specie.m4_isotope = m4_isotope
 
-            na_isotope_id = self.none_if_nan(getattr(row, "Na_Isotope"))
+            na_isotope_id = self.none_if_nan(getattr(row, S_NA_ISOTOPE))
             na_isotope = (
                 species.get(id_adduct(na_isotope_id, "[M+H]+"))
                 if na_isotope_id is not None
@@ -480,40 +520,54 @@ class DatabaseFactory:
 class DatabaseEditor:
     def __init__(self, file_path):
         self.file_path = file_path
-        self.data = pd.read_excel(file_path, dtype={"IS amount (pmol / mm2)": float})
+        self.data = pd.read_excel(file_path, dtype={AMOUNT_COL: float})
         self.updated_IS_amounts = {}
 
-        # Check for duplicate IDs
-        duplicated_rows = self.data[self.data.duplicated(subset=["ID", "Adducts"])]
+        # Validate required columns
+        missing = {ID, ADDUCTS, AMOUNT_COL, STD_COL} - set(self.data.columns)
+        if missing:
+            raise ValueError(f"Database is missing required columns: {sorted(missing)}")
+
+        # Check for duplicate IDs + Adducts (as before)
+        duplicated_rows = self.data[self.data.duplicated(subset=[ID, ADDUCTS])]
         if not duplicated_rows.empty:
-            duplicates = duplicated_rows[["ID", "Adducts"]].values.tolist()
+            duplicates = duplicated_rows[[ID, ADDUCTS]].values.tolist()
             raise ValueError(
                 f"Database is invalid: Duplicate ID + Adducts combination(s) found - {duplicates}"
             )
 
+        # Normalize flag to bool
+        self.data[STD_COL] = self.data[STD_COL].astype(bool)
+
     def get_standard_ids(self):
-        """Return a list of IDs where IS amount has a numeric value."""
-        return self.data[self.data["IS amount (pmol / mm2)"].notna()]["ID"].tolist()
+        """Return IDs explicitly marked as standards, plus any with staged edits."""
+        ids = self.data.loc[self.data[STD_COL], ID].tolist()
+        for staged_id in self.updated_IS_amounts.keys():
+            if staged_id not in ids:
+                ids.append(staged_id)
+        return ids
 
     def get_IS_amount(self, id: str):
-        """Return the IS amount (as a float) for a given ID."""
-        row = self.data[self.data["ID"] == id]
-        if not row.empty:
-            return float(row["IS amount (pmol / mm2)"].iloc[0])
-        else:
+        """Prefer staged edits; otherwise return stored amount."""
+        if id in self.updated_IS_amounts:
+            return float(self.updated_IS_amounts[id])
+        row = self.data[self.data[ID] == id]
+        if row.empty:
             raise ValueError(f"ID {id} not found in database")
+        return float(row[AMOUNT_COL].iloc[0])
 
     def set_IS_amount(self, id: str, new_IS_amount: str):
-        """Set the new IS amount for a given ID."""
-        if id in self.data["ID"].values:
-            self.updated_IS_amounts[id] = float(new_IS_amount)
-        else:
+        if id not in self.data[ID].values:
             raise ValueError(f"ID {id} not found in database")
+        self.updated_IS_amounts[id] = float(new_IS_amount)
+
+    def set_is_standard(self, id: str, is_standard: bool):
+        if id not in self.data[ID].values:
+            raise ValueError(f"ID {id} not found in database")
+        self.data.loc[self.data[ID] == id, STD_COL] = bool(is_standard)
 
     def save(self):
-        """Save updated IS amounts to the Excel file."""
-        for ID, new_IS_amount in self.updated_IS_amounts.items():
-            self.data.loc[self.data["ID"] == ID, "IS amount (pmol / mm2)"] = new_IS_amount
-
-        # Save to the original file
+        for id, new_IS_amount in self.updated_IS_amounts.items():
+            self.data.loc[self.data[ID] == id, AMOUNT_COL] = new_IS_amount
         self.data.to_excel(self.file_path, index=False)
+        self.updated_IS_amounts.clear()

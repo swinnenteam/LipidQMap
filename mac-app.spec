@@ -45,6 +45,6 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='LipidQMap.app',
-    icon=None,
-    bundle_identifier=None,
+    icon='resources/icons/app.icns',
+    bundle_identifier='com.swinnenlab.lipidqmap',
 )

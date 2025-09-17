@@ -83,6 +83,28 @@ class ProcessingSettings(BaseModel):
     imputation: bool = Field(default=True)
 
 
+class SprayerSettings(BaseModel):
+    """
+    Class for validation of the configuration file
+    """
+
+    x_left: int = Field(default=20)  # mm
+    x_right: int = Field(default=40)  # mm
+    y_bottom: int = Field(default=5)  # mm
+    y_top: int = Field(default=17)  # mm
+    margin: int = Field(default=5)  # mm
+    total_used_volume_mL: float = Field(default=0.80)  # mL
+    syringe_flow_mL_per_min: float = Field(default=0.06)  # mL/min
+    drying_time_min: float = Field(default=0.5)  # min
+    drying_cycles: int = Field(default=16)  # unitless
+    initial_equilibration_min: float = Field(default=0.833)  # min
+    stock_conc_mg_per_mL: float = Field(default=0.11)  # mg/mL
+    working_dilution_factor: float = Field(default=3)  # unitless
+    volume_working_stock_uL: float = Field(default=1000)  # uL
+    final_mix_volume_mL: float = Field(default=8)  # mL
+    molecular_weight_ug_per_umol: float = Field(default=504.690)  # µg/µmol
+
+
 class Configuration(BaseModel):
     """
     Class used by Config for validation of the configuration file
@@ -93,6 +115,7 @@ class Configuration(BaseModel):
     selection_settings: SelectionSettings = SelectionSettings()
     database_settings: DatabaseSettings = DatabaseSettings()
     save_settings: SaveSettings = SaveSettings()
+    sprayer_settings: SprayerSettings = SprayerSettings()
     debug: bool = Field(default=False)
 
 

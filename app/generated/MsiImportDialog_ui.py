@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'MsiImportDialog.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.7.2
+## Created by: Qt User Interface Compiler version 6.9.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -52,7 +52,7 @@ class Ui_Dialog(object):
         self.imzml_list_view.setObjectName(u"imzml_list_view")
         self.imzml_list_view.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.imzml_list_view.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.imzml_list_view.setProperty("showDropIndicator", False)
+        self.imzml_list_view.setProperty(u"showDropIndicator", False)
         self.imzml_list_view.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
 
         self.verticalLayout.addWidget(self.imzml_list_view)
