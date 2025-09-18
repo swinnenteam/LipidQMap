@@ -1,3 +1,7 @@
+import os
+import platform
+import subprocess
+
 from PySide6.QtCore import QAbstractTableModel, QEvent, Qt
 from PySide6.QtWidgets import QItemDelegate
 
@@ -115,3 +119,20 @@ class BooleanDelegate(QItemDelegate):
             model.setData(index, not is_checked)
             event.accept()
         return super(BooleanDelegate, self).editorEvent(event, model, option, index)
+
+
+def open_folder(path: str) -> None:
+    """
+    Open a folder in Finder (macOS) or Explorer (Windows).
+    Falls back to xdg-open on Linux.
+    """
+    system = platform.system()
+
+    if system == "Darwin":  # macOS
+        subprocess.run(["open", path], check=False)
+    elif system == "Windows":
+        # Use explorer — note backslashes are required
+        norm_path = os.path.normpath(path)
+        subprocess.run(["explorer", norm_path], check=False)
+    else:  # Linux / other Unixes
+        subprocess.run(["xdg-open", path], check=False)

@@ -4,13 +4,13 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QFileDialog, QMainWindow
 
 from app import __version__
-from app.config import Config, get_config
+from app.config import Config, config_paths, get_config
 from app.database import LipidDB
 from app.dataprocess import ImageType, SampleCollection
 from app.generated.MsiMainWindow_ui import Ui_MainWindow
 from app.matplotlib_figures import BarplotCanvas, MplCanvas
 from app.qt_figures import SpectrumPlotView
-from app.utils import BooleanDelegate, PandasModelEditable
+from app.utils import BooleanDelegate, PandasModelEditable, open_folder
 from app.views.about_window import AboutWindow
 from app.views.calculator_window import CalculatorWindow
 from app.views.file_save_window import FileSaveWindow
@@ -140,6 +140,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_open_imzml_dialog.triggered.connect(self.open_imzml_dialog)
         self.action_open_save_dialog.triggered.connect(self.open_save_dialog)
         self.action_export_python_pickle.triggered.connect(self.open_export_pickle_dialog)
+        self.action_show_database_location.triggered.connect(self.open_database_location)
         self.action_open_about_dialog.triggered.connect(self.open_about_dialog)
         self.action_open_settings_window.triggered.connect(self.open_settings_dialog)
         self.action_open_calculator_dialog.triggered.connect(self.open_calculator_dialog)
@@ -185,6 +186,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         folder = QFileDialog.getExistingDirectory(self, "Select Folder")
         if folder and self.samples is not None:
             self.samples.save_to_pickle(folder)
+
+    def open_database_location(self) -> None:
+        """Open the folder containing the database files."""
+        open_folder(config_paths["DATABASE_DIR"])
 
     def open_about_dialog(self) -> None:
         self.about_window.show()

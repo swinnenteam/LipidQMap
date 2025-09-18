@@ -134,12 +134,10 @@ class CalculatorWindow(QWidget, Ui_Dialog):
 
     def quantity_changed(self, text: str) -> None:
         """Triggered when the text in quantity_line_edit changes."""
-        print("Quantity changed:", text)
         current_row = self.standards_list_view.currentRow()
         if current_row >= 0:
             selected_item = self.standards_list_view.item(current_row)
             if selected_item:
-                print("Selected item:", selected_item.text())
                 self.db_writer.set_IS_amount(id=selected_item.text(), new_IS_amount=text)
 
     def update_data_model(self) -> None:

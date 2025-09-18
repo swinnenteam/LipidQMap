@@ -113,8 +113,8 @@
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>98</width>
-                  <height>28</height>
+                  <width>337</width>
+                  <height>281</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_2"/>
@@ -141,8 +141,8 @@
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>98</width>
-                  <height>28</height>
+                  <width>337</width>
+                  <height>281</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_3"/>
@@ -257,9 +257,11 @@
      <string>&amp;File</string>
     </property>
     <addaction name="action_open_imzml_dialog"/>
-    <addaction name="action_open_save_dialog"/>
     <addaction name="separator"/>
+    <addaction name="action_open_save_dialog"/>
     <addaction name="action_export_python_pickle"/>
+    <addaction name="separator"/>
+    <addaction name="action_show_database_location"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
     <property name="title">
@@ -485,6 +487,11 @@
   <action name="action_export_python_pickle">
    <property name="text">
     <string>Export Python pickle...</string>
+   </property>
+  </action>
+  <action name="action_show_database_location">
+   <property name="text">
+    <string>Show Database Location...</string>
    </property>
   </action>
  </widget>
