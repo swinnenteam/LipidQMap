@@ -50,7 +50,7 @@ class PandasModelEditable(QAbstractTableModel):
         df = self._data[self._data["Export"]]
         return df.index.tolist()
 
-    def data(self, index, role):
+    def data(self, index, role: int = Qt.ItemDataRole.DisplayRole):
         if index.isValid():
             if role == Qt.ItemDataRole.CheckStateRole and index.column() in self.checkableColumns:
                 value = self._data.iloc[index.row(), index.column()]
@@ -75,7 +75,7 @@ class PandasModelEditable(QAbstractTableModel):
 
         return None
 
-    def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
+    def setData(self, index, value, role: int = Qt.ItemDataRole.EditRole):
         if role == Qt.ItemDataRole.CheckStateRole and index.column() in self.checkableColumns:
             self._data.iloc[index.row(), index.column()] = value == Qt.CheckState.Checked
             self.dataChanged.emit(index, index)
@@ -86,7 +86,7 @@ class PandasModelEditable(QAbstractTableModel):
             return True
         return False
 
-    def headerData(self, section, orientation, role):
+    def headerData(self, section, orientation, role: int = Qt.ItemDataRole.DisplayRole):
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             return self._data.columns[section]
         if orientation == Qt.Orientation.Vertical and role == Qt.ItemDataRole.DisplayRole:
