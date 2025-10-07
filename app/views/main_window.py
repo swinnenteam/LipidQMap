@@ -16,6 +16,7 @@ from app.views.calculator_window import CalculatorWindow
 from app.views.file_save_window import FileSaveWindow
 from app.views.imzml_import_window import ImzmlImportWindow
 from app.views.settings_window import SettingsWindow
+from app.views.hdf5_export_window import Hdf5ExportWindow
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -43,6 +44,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.about_window = AboutWindow(__version__)
         self.settings_window = SettingsWindow(config=self.config)
         self.calculator_window = CalculatorWindow(config=self.config)
+        self.hdf5_export_window = Hdf5ExportWindow(parent=self)
         self.boolean_delegate = BooleanDelegate()
 
         self.setupUi(self)
@@ -140,6 +142,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_open_imzml_dialog.triggered.connect(self.open_imzml_dialog)
         self.action_open_save_dialog.triggered.connect(self.open_save_dialog)
         self.action_export_python_pickle.triggered.connect(self.open_export_pickle_dialog)
+        self.action_export_cardinal_HDF5.triggered.connect(self.open_export_cardinal_hdf5_dialog)
         self.action_show_database_location.triggered.connect(self.open_database_location)
         self.action_open_about_dialog.triggered.connect(self.open_about_dialog)
         self.action_open_settings_window.triggered.connect(self.open_settings_dialog)
@@ -188,6 +191,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         folder = QFileDialog.getExistingDirectory(self, "Select Folder")
         if folder and self.samples is not None:
             self.samples.save_to_pickle(folder)
+
+    def open_export_cardinal_hdf5_dialog(self) -> None:
+        """Launch the Cardinal HDF5 export dialog."""
+        if self.samples is None or self.database is None:
+            return
+        model_obj = self.species_table.model()
+        if model_obj is None:
+            return
+
+        model = cast(PandasModelEditable, model_obj)
+        if not self.hdf5_export_window.set_context(
+            samples=self.samples,
+            database=self.database,
+            species_ids=model.get_checked_list(),
+        ):
+            return
+
+        self.hdf5_export_window.show()
+        self.hdf5_export_window.activateWindow()
+        self.hdf5_export_window.raise_()
 
     def open_database_location(self) -> None:
         """Open the folder containing the database files."""

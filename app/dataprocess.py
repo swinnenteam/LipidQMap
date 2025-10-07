@@ -68,6 +68,8 @@ class SectionMsiImage:
         self.isotope: dict[str, npt.NDArray]
         self.quant: dict[str, npt.NDArray | None]
         self.average_spectrum: npt.NDArray
+        self.num_spectra: int = 0
+        self.coordinates: npt.NDArray = np.empty((0, 3), dtype=int)
         self.pixel_size_um: tuple[float, float] | None = None
         self.load_data(progress_file_callback, database=database, imzml_path=imzml_path)
 
@@ -82,6 +84,7 @@ class SectionMsiImage:
         """
         # create imzml parser
         imzml_parser = ImzMLParser(imzml_path)
+        self.coordinates = np.asarray(imzml_parser.coordinates, dtype=np.int32)
         self.pixel_size_um = self._extract_pixel_size(imzml_parser)
         progress_file_callback.emit(20)
 
@@ -112,6 +115,7 @@ class SectionMsiImage:
         self.average_spectrum = get_average_spectrum(
             p=imzml_parser, bin_size=bin_size, n_pixels=1000
         )
+        self.num_spectra = len(imzml_parser.coordinates)
 
         # perform isotope correction
         self.isotope = dict()

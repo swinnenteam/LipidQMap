@@ -259,6 +259,7 @@
     <addaction name="action_open_imzml_dialog"/>
     <addaction name="separator"/>
     <addaction name="action_open_save_dialog"/>
+    <addaction name="action_export_cardinal_HDF5"/>
     <addaction name="action_export_python_pickle"/>
     <addaction name="separator"/>
     <addaction name="action_show_database_location"/>
@@ -505,6 +506,11 @@
   <action name="action_deselect_all_species">
    <property name="text">
     <string>Deselect all species</string>
+   </property>
+  </action>
+  <action name="action_export_cardinal_HDF5">
+   <property name="text">
+    <string>Export Cardinal h5...</string>
    </property>
   </action>
  </widget>
