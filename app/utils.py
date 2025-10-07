@@ -47,17 +47,17 @@ class PandasModelEditable(QAbstractTableModel):
         return self._data.iloc[row, 2]
 
     def get_checked_list(self) -> list[str]:
-        df = self._data[self._data["Export"] == True]
+        df = self._data[self._data["Export"]]
         return df.index.tolist()
 
     def data(self, index, role):
         if index.isValid():
-            if role == Qt.CheckStateRole and index.column() in self.checkableColumns:
+            if role == Qt.ItemDataRole.CheckStateRole and index.column() in self.checkableColumns:
                 value = self._data.iloc[index.row(), index.column()]
-                return Qt.Checked if value else Qt.Unchecked
+                return Qt.CheckState.Checked if value else Qt.CheckState.Unchecked
             if index.column() not in self.checkableColumns and role in (
-                Qt.DisplayRole,
-                Qt.EditRole,
+                Qt.ItemDataRole.DisplayRole,
+                Qt.ItemDataRole.EditRole,
             ):
                 value = self._data.iloc[index.row(), index.column()]
                 # if isinstance(value, float):
@@ -75,28 +75,28 @@ class PandasModelEditable(QAbstractTableModel):
 
         return None
 
-    def setData(self, index, value, role=Qt.EditRole):
-        if role == Qt.CheckStateRole and index.column() in self.checkableColumns:
-            self._data.iloc[index.row(), index.column()] = value == Qt.Checked
+    def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
+        if role == Qt.ItemDataRole.CheckStateRole and index.column() in self.checkableColumns:
+            self._data.iloc[index.row(), index.column()] = value == Qt.CheckState.Checked
             self.dataChanged.emit(index, index)
             return True
-        if value is not None and role == Qt.EditRole:
+        if value is not None and role == Qt.ItemDataRole.EditRole:
             self._data.iloc[index.row(), index.column()] = value
             self.dataChanged.emit(index, index)
             return True
         return False
 
     def headerData(self, section, orientation, role):
-        if orientation == Qt.Orientation.Horizontal and role == Qt.DisplayRole:
+        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             return self._data.columns[section]
-        if orientation == Qt.Orientation.Vertical and role == Qt.DisplayRole:
+        if orientation == Qt.Orientation.Vertical and role == Qt.ItemDataRole.DisplayRole:
             return self._data.index[section]
         return None
 
     def flags(self, index):
-        flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
         if index.column() in self.checkableColumns:
-            flags |= Qt.ItemIsUserCheckable
+            flags |= Qt.ItemFlag.ItemIsUserCheckable
         return flags
 
 
@@ -109,13 +109,13 @@ class BooleanDelegate(QItemDelegate):
         super(BooleanDelegate, self).__init__(*args, **kwargs)
 
     def paint(self, painter, option, index):
-        value = index.data(Qt.CheckStateRole)
+        value = index.data(Qt.ItemDataRole.CheckStateRole)
         self.drawCheck(painter, option, option.rect, value)
         self.drawFocus(painter, option, option.rect)
 
     def editorEvent(self, event, model, option, index):
-        if event.type() == QEvent.MouseButtonRelease:
-            is_checked = model.data(index, Qt.CheckStateRole) == Qt.Checked
+        if event.type() == QEvent.Type.MouseButtonRelease:
+            is_checked = model.data(index, Qt.ItemDataRole.CheckStateRole) == Qt.CheckState.Checked
             model.setData(index, not is_checked)
             event.accept()
         return super(BooleanDelegate, self).editorEvent(event, model, option, index)

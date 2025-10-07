@@ -99,7 +99,7 @@ class Ui_Dialog(object):
 
         self.formLayout = QFormLayout()
         self.formLayout.setObjectName(u"formLayout")
-        self.formLayout.setFormAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignTop)
+        self.formLayout.setFormAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignTop)
         self.label = QLabel(self.groupBox)
         self.label.setObjectName(u"label")
 
@@ -107,6 +107,7 @@ class Ui_Dialog(object):
 
         self.spinbox_winsor_quant = QDoubleSpinBox(self.groupBox)
         self.spinbox_winsor_quant.setObjectName(u"spinbox_winsor_quant")
+        self.spinbox_winsor_quant.setMinimumSize(QSize(65, 0))
         self.spinbox_winsor_quant.setDecimals(1)
         self.spinbox_winsor_quant.setValue(99.000000000000000)
 
@@ -119,6 +120,7 @@ class Ui_Dialog(object):
 
         self.spinbox_winsor_raw = QDoubleSpinBox(self.groupBox)
         self.spinbox_winsor_raw.setObjectName(u"spinbox_winsor_raw")
+        self.spinbox_winsor_raw.setMinimumSize(QSize(65, 0))
         self.spinbox_winsor_raw.setDecimals(1)
         self.spinbox_winsor_raw.setValue(99.000000000000000)
 

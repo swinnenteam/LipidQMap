@@ -152,6 +152,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_reflect_horizontal.triggered.connect(self.reflect_horizontal)
         self.action_reflect_vertical.triggered.connect(self.reflect_vertical)
         self.action_copy_species_plot.triggered.connect(self.copy_species_plot)
+        self.action_select_all_species.triggered.connect(self.select_all_species)
+        self.action_deselect_all_species.triggered.connect(self.deselect_all_species)
         self.imzml_import_window.finished_imzml_loading.connect(self.init_data)
         self.image_canvas_raw.image_clicked.connect(self.select_image)
         self.image_canvas_iso.image_clicked.connect(self.select_image)
@@ -314,6 +316,34 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             model = self.species_table.model()
             for i, species_check in enumerate(self.samples.criteria_check()):
                 model.setData(model.index(i, 2), species_check)
+
+    def select_all_species(self) -> None:
+        """Mark every species row for export."""
+        model = self.species_table.model()
+        if model is None:
+            return
+        editable_model = cast(PandasModelEditable, model)
+        for row in range(editable_model.rowCount()):
+            if not editable_model.get_is_checked(row):
+                editable_model.setData(
+                    editable_model.index(row, 2),
+                    Qt.CheckState.Checked,
+                    Qt.ItemDataRole.CheckStateRole,
+                )
+
+    def deselect_all_species(self) -> None:
+        """Clear the export flag on every species row."""
+        model = self.species_table.model()
+        if model is None:
+            return
+        editable_model = cast(PandasModelEditable, model)
+        for row in range(editable_model.rowCount()):
+            if editable_model.get_is_checked(row):
+                editable_model.setData(
+                    editable_model.index(row, 2),
+                    Qt.CheckState.Unchecked,
+                    Qt.ItemDataRole.CheckStateRole,
+                )
 
     def select_image(self, image_id: str) -> None:
         """
