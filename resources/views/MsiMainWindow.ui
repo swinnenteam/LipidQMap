@@ -74,7 +74,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>337</width>
-                  <height>279</height>
+                  <height>275</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_4"/>
@@ -114,7 +114,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>337</width>
-                  <height>281</height>
+                  <height>277</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_2"/>
@@ -142,7 +142,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>337</width>
-                  <height>281</height>
+                  <height>277</height>
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_3"/>
@@ -249,7 +249,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>24</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_file">
@@ -271,6 +271,9 @@
     <addaction name="action_rotate_right"/>
     <addaction name="action_reflect_horizontal"/>
     <addaction name="action_reflect_vertical"/>
+    <addaction name="separator"/>
+    <addaction name="action_select_all_species"/>
+    <addaction name="action_deselect_all_species"/>
     <addaction name="separator"/>
     <addaction name="action_copy_species_plot"/>
    </widget>
@@ -492,6 +495,16 @@
   <action name="action_show_database_location">
    <property name="text">
     <string>Show Database Location...</string>
+   </property>
+  </action>
+  <action name="action_select_all_species">
+   <property name="text">
+    <string>Select all species</string>
+   </property>
+  </action>
+  <action name="action_deselect_all_species">
+   <property name="text">
+    <string>Deselect all species</string>
    </property>
   </action>
  </widget>

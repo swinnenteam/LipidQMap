@@ -319,8 +319,8 @@ M2_ISOTOPE = "M-2 Isotope"
 M4_ISOTOPE = "M-4 Isotope"
 NA_ISOTOPE = "Na+ Isotope"
 IS = "IS"
-AMOUNT_COL = "IS amount (pmol / mm2)"
-STD_COL = "IS standard"
+AMOUNT_COL = "Standard amount (pmol / mm2)"
+STD_COL = "Is standard"
 
 S_ID = to_attr(ID)
 S_NEUTRAL_FORMULA = to_attr(NEUTRAL_FORMULA)

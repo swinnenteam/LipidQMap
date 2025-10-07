@@ -88,7 +88,7 @@ mac-sign:
 	codesign --force --options runtime --entitlements "$(ENTITLEMENTS)" --sign "$(CODESIGN_IDENTITY)" "$(APP_BUNDLE)"
 
 
-mac-dmg:
+mac-dmg: ## needs: brew install create-dmg
 	@test -d "$(APP_BUNDLE)" || (echo "Missing $(APP_BUNDLE). Build/sign first." && exit 1)
 	@rm -f "$(DMG_PATH)"
 	create-dmg \

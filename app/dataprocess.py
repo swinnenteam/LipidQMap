@@ -1,8 +1,7 @@
 import copy
 import os
 import pickle
-
-# import timeit
+import timeit
 from enum import Enum
 from functools import cache
 from pathlib import Path
@@ -100,7 +99,10 @@ class SectionMsiImage:
         species_ids, species_mzs = database.get_all_species()
         ppm = self.config.settings.processing_settings.ppm
         tolerances = [ppm_to_tolerance(ppm=ppm, mz=mz) for mz in species_mzs]
+        start_time = timeit.default_timer()
         image_stack = get_ion_images(p=imzml_parser, mzs=species_mzs, tolerances=tolerances)
+        print(timeit.default_timer() - start_time)
+        print(species_mzs)
         self.raw = dict(zip(species_ids, list(image_stack)))
         progress_file_callback.emit(60)
 

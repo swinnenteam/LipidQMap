@@ -1,0 +1,1 @@
+- If there are species in the DB with isobaric overlap, indicate this to the user (cf triangles in spectrum in Scils)
