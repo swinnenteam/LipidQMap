@@ -341,6 +341,18 @@ def test_replace_nan_with_median(nan_image: npt.NDArray) -> None:
     )
 
 
+def test_replace_nan_with_median_zero_block() -> None:
+    zero_block = np.zeros((3, 3))
+    median_filled_image = replace_nan_with_median(zero_block)
+    nptest.assert_allclose(median_filled_image, zero_block)
+
+
+def test_replace_nan_with_median_nan_block() -> None:
+    nan_block = np.full((3, 3), np.nan)
+    median_filled_image = replace_nan_with_median(nan_block)
+    assert np.isnan(median_filled_image).all()
+
+
 def test_ppm_to_tolerance() -> None:
     assert pytest.approx(0.008, rel=1e-6) == ppm_to_tolerance(ppm=10, mz=800)
 

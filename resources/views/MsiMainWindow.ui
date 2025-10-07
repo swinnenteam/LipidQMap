@@ -495,7 +495,7 @@
   </action>
   <action name="action_show_database_location">
    <property name="text">
-    <string>Show Database Location...</string>
+    <string>Open Database Location...</string>
    </property>
   </action>
   <action name="action_select_all_species">

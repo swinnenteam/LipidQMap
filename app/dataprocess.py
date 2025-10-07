@@ -638,7 +638,12 @@ def replace_nan_with_median(arr: npt.NDArray) -> npt.NDArray:
     for i, j in indices:
         # Extract surrounding 3x3 window, taking into account offset by 1
         window = padded_arr[i : i + 3, j : j + 3]
-        result[i, j] = np.nanmedian(window)
+        median = np.nanmedian(window)
+        if math.isnan(median):  # window contained only NaNs (originally NaN or zero values)
+            # Preserve transparency (NaN) for pixels with no data, otherwise keep zeros zero.
+            result[i, j] = np.nan if math.isnan(arr[i, j]) else 0.0
+        else:
+            result[i, j] = median
     return result
 
 

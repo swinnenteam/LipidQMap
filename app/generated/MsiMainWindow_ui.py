@@ -340,7 +340,7 @@ class Ui_MainWindow(object):
         self.action_copy_species_plot.setText(QCoreApplication.translate("MainWindow", u"Copy Species plot...", None))
         self.action_open_calculator_dialog.setText(QCoreApplication.translate("MainWindow", u"Standard calculator", None))
         self.action_export_python_pickle.setText(QCoreApplication.translate("MainWindow", u"Export Python pickle...", None))
-        self.action_show_database_location.setText(QCoreApplication.translate("MainWindow", u"Show Database Location...", None))
+        self.action_show_database_location.setText(QCoreApplication.translate("MainWindow", u"Open Database Location...", None))
         self.action_select_all_species.setText(QCoreApplication.translate("MainWindow", u"Select all species", None))
         self.action_deselect_all_species.setText(QCoreApplication.translate("MainWindow", u"Deselect all species", None))
         self.action_export_cardinal_HDF5.setText(QCoreApplication.translate("MainWindow", u"Export Cardinal h5...", None))
