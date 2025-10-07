@@ -45,9 +45,7 @@ def sample_collection() -> SampleCollection:
         "B [M+H]+": np.array([[5.0, 6.0], [7.0, 8.0]], dtype=np.float32),
     }
     section = DummySection(images, pixel_size_um=(45.0, 50.0))
-    samples = cast(
-        dict[str, SectionMsiImage], {"sample": cast(SectionMsiImage, section)}
-    )
+    samples = cast(dict[str, SectionMsiImage], {"sample": cast(SectionMsiImage, section)})
     return SampleCollection(samples)
 
 
