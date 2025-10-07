@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import h5py
 import numpy as np
@@ -8,17 +9,19 @@ import pytest
 from molmass import Formula
 
 from app.database import LipidDB, LipidSpecies
-from app.dataprocess import ImageType, SampleCollection
+from app.dataprocess import ImageType, SampleCollection, SectionMsiImage
 from app.export import CardinalExportError, export_cardinal_hdf5
 
 
 class DummySection:
-    def __init__(self, images: dict[str, np.ndarray], pixel_size_um: tuple[float, float] | None = None):
+    def __init__(
+        self, images: dict[str, np.ndarray], pixel_size_um: tuple[float, float] | None = None
+    ):
         self.quant = images
         self.isotope = images
         self.raw = images
         first_image = next(iter(images.values()))
-        self._shape = first_image.shape
+        self._shape: tuple[int, int] = cast(tuple[int, int], first_image.shape)
         self.coordinates = np.array(
             [
                 [1, 1, 1],
@@ -42,7 +45,10 @@ def sample_collection() -> SampleCollection:
         "B [M+H]+": np.array([[5.0, 6.0], [7.0, 8.0]], dtype=np.float32),
     }
     section = DummySection(images, pixel_size_um=(45.0, 50.0))
-    return SampleCollection({"sample": section})
+    samples = cast(
+        dict[str, SectionMsiImage], {"sample": cast(SectionMsiImage, section)}
+    )
+    return SampleCollection(samples)
 
 
 @pytest.fixture()
@@ -106,12 +112,26 @@ def test_export_cardinal_hdf5_writes_expected_structure(
         assert h5.attrs["format"] == "Cardinal::HDF5"
         assert h5.attrs["image_type"] == ImageType.quant.value
 
-        intensity = h5["spectraData"]["intensity"][:]
-        np.testing.assert_array_equal(intensity[0], np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32))
-        np.testing.assert_array_equal(intensity[1], np.array([5.0, 6.0, 7.0, 8.0], dtype=np.float32))
+        spectra_group = cast(h5py.Group, h5["spectraData"])
+        intensity_dataset = cast(h5py.Dataset, spectra_group["intensity"])
+        intensity = intensity_dataset[:]
+        np.testing.assert_array_equal(
+            intensity[0], np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+        )
+        np.testing.assert_array_equal(
+            intensity[1], np.array([5.0, 6.0, 7.0, 8.0], dtype=np.float32)
+        )
 
-        pixel_group = h5["pixelData"]
-        assert set(pixel_group.attrs["columns"]) == {
+        pixel_group = cast(h5py.Group, h5["pixelData"])
+        columns_attr = pixel_group.attrs["columns"]
+        columns_array = cast(np.ndarray, columns_attr)
+        columns: set[str] = set()
+        for column in columns_array.tolist():
+            if isinstance(column, bytes):
+                columns.add(column.decode())
+            else:
+                columns.add(str(column))
+        assert columns == {
             "pixel_index",
             "x",
             "y",
@@ -119,14 +139,18 @@ def test_export_cardinal_hdf5_writes_expected_structure(
             "run",
             "sample_id",
         }
-        assert pixel_group["pixel_index"].shape[0] == 4
+        pixel_index_dataset = cast(h5py.Dataset, pixel_group["pixel_index"])
+        assert pixel_index_dataset.shape[0] == 4
 
-        feature_group = h5["featureData"]
-        mz_values = feature_group["mz"][:]
+        feature_group = cast(h5py.Group, h5["featureData"])
+        mz_dataset = cast(h5py.Dataset, feature_group["mz"])
+        mz_values = np.asarray(mz_dataset[:], dtype=np.float32)
         np.testing.assert_allclose(mz_values, np.array([100.0, 200.0], dtype=np.float32))
-        assert feature_group["is_standard"].dtype == np.bool_
+        is_standard_dataset = cast(h5py.Dataset, feature_group["is_standard"])
+        assert is_standard_dataset.dtype == np.bool_
 
-        sample_group = h5["samples"]["1"]
+        samples_group = cast(h5py.Group, h5["samples"])
+        sample_group = cast(h5py.Group, samples_group["1"])
         assert sample_group.attrs["sample_id"] == "sample"
         assert sample_group.attrs["n_pixels"] == 4
         assert sample_group.attrs["pixel_size_um_x"] == pytest.approx(45.0)
