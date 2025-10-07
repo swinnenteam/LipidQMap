@@ -242,6 +242,11 @@ def _write_hdf5(
             else:
                 sample_group.attrs["n_pixels"] = height * width
 
+            pixel_size = getattr(section, "pixel_size_um", None)
+            if pixel_size:
+                sample_group.attrs["pixel_size_um_x"] = float(pixel_size[0])
+                sample_group.attrs["pixel_size_um_y"] = float(pixel_size[1])
+
 
 def _write_dataframe(group: h5py.Group, df: pd.DataFrame) -> None:
     """Store a pandas DataFrame as datasets within an HDF5 group."""

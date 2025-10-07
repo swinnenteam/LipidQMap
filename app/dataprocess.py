@@ -262,6 +262,9 @@ class SectionMsiImage:
             case _:
                 return
 
+        if self.coordinates.size > 0:
+            self.coordinates = self._transform_coordinates(self.coordinates, transformation)
+
         if self.pixel_size_um is not None and transformation in {"rotate_left", "rotate_right"}:
             self.pixel_size_um = (self.pixel_size_um[1], self.pixel_size_um[0])
 
@@ -293,6 +296,49 @@ class SectionMsiImage:
     def shape(self) -> tuple[int, int]:
         x, y = self.raw[next(iter(self.raw))].shape
         return (x, y)
+
+    @staticmethod
+    def _transform_coordinates(
+        coords: npt.NDArray[np.int32], transformation: str
+    ) -> npt.NDArray[np.int32]:
+        """Todo: refactor to avoid handling rotation in 2 places. (self.transform() and here)"""
+        if coords.size == 0:
+            return coords
+
+        transformed = coords.copy()
+        x = transformed[:, 0].astype(np.int64)
+        y = transformed[:, 1].astype(np.int64)
+
+        x_min = x.min()
+        y_min = y.min()
+        width = x.max() - x_min + 1
+        height = y.max() - y_min + 1
+
+        x_rel = x - x_min
+        y_rel = y - y_min
+
+        match transformation:
+            case "rotate_left":  # np.rot90(..., -1) clockwise
+                new_x_rel = (height - 1) - y_rel
+                new_y_rel = x_rel
+            case "rotate_right":  # np.rot90(..., 1) counter-clockwise
+                new_x_rel = y_rel
+                new_y_rel = (width - 1) - x_rel
+            case "reflect_horizontal":  # flip LR
+                new_x_rel = (width - 1) - x_rel
+                new_y_rel = y_rel
+            case "reflect_vertical":  # flip UD
+                new_x_rel = x_rel
+                new_y_rel = (height - 1) - y_rel
+            case _:
+                return transformed
+
+        new_x = new_x_rel + 1
+        new_y = new_y_rel + 1
+
+        transformed[:, 0] = new_x.astype(np.int32)
+        transformed[:, 1] = new_y.astype(np.int32)
+        return transformed
 
     def width_um(self) -> float | None:
         """Return the physical width of the MSI image in micrometers if metadata is available."""

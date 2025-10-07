@@ -179,6 +179,36 @@ def test_transform(section_msi_image) -> None:
     assert isinstance(section_msi_image.quant, dict)
 
 
+@pytest.mark.parametrize(
+    "operation, expected",
+    [
+        (
+            "rotate_left",
+            np.array([[2, 1, 1], [2, 2, 1], [1, 1, 1], [1, 2, 1]], dtype=np.int32),
+        ),
+        (
+            "rotate_right",
+            np.array([[1, 2, 1], [1, 1, 1], [2, 2, 1], [2, 1, 1]], dtype=np.int32),
+        ),
+        (
+            "reflect_horizontal",
+            np.array([[2, 1, 1], [1, 1, 1], [2, 2, 1], [1, 2, 1]], dtype=np.int32),
+        ),
+        (
+            "reflect_vertical",
+            np.array([[1, 2, 1], [2, 2, 1], [1, 1, 1], [2, 1, 1]], dtype=np.int32),
+        ),
+    ],
+)
+def test_transform_coordinates(operation: str, expected: npt.NDArray[np.int32]) -> None:
+    coords = np.array(
+        [[1, 1, 1], [2, 1, 1], [1, 2, 1], [2, 2, 1]],
+        dtype=np.int32,
+    )
+    transformed = SectionMsiImage._transform_coordinates(coords, operation)
+    nptest.assert_array_equal(transformed, expected)
+
+
 def test_criteria_check(section_msi_image) -> None:
     """Test the criteria_check method."""
     checks = section_msi_image.criteria_check()

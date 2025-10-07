@@ -13,7 +13,7 @@ from app.export import CardinalExportError, export_cardinal_hdf5
 
 
 class DummySection:
-    def __init__(self, images: dict[str, np.ndarray]):
+    def __init__(self, images: dict[str, np.ndarray], pixel_size_um: tuple[float, float] | None = None):
         self.quant = images
         self.isotope = images
         self.raw = images
@@ -28,6 +28,7 @@ class DummySection:
             ],
             dtype=np.int32,
         )
+        self.pixel_size_um = pixel_size_um
 
     @property
     def shape(self) -> tuple[int, int]:
@@ -40,7 +41,7 @@ def sample_collection() -> SampleCollection:
         "A [M+H]+": np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32),
         "B [M+H]+": np.array([[5.0, 6.0], [7.0, 8.0]], dtype=np.float32),
     }
-    section = DummySection(images)
+    section = DummySection(images, pixel_size_um=(45.0, 50.0))
     return SampleCollection({"sample": section})
 
 
@@ -128,6 +129,8 @@ def test_export_cardinal_hdf5_writes_expected_structure(
         sample_group = h5["samples"]["1"]
         assert sample_group.attrs["sample_id"] == "sample"
         assert sample_group.attrs["n_pixels"] == 4
+        assert sample_group.attrs["pixel_size_um_x"] == pytest.approx(45.0)
+        assert sample_group.attrs["pixel_size_um_y"] == pytest.approx(50.0)
 
 
 def test_export_cardinal_hdf5_requires_species(

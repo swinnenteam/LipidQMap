@@ -1,8 +1,9 @@
 import os
+from typing import Optional
 
 from PySide6.QtCore import QSignalBlocker, Signal
 from PySide6.QtGui import QDoubleValidator
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QMessageBox, QWidget
 
 from app.config import Config, config_paths
 from app.database import DatabaseEditor
@@ -22,7 +23,8 @@ class CalculatorWindow(QWidget, Ui_Dialog):
         super().__init__()
         self.setupUi(self)
         self.config = config
-        self.db_writer: DatabaseEditor
+        self.db_writer: Optional[DatabaseEditor] = None
+        self._last_valid_db_index: Optional[int] = None
         self.sprayrun: SprayRun
         self.setup_combo_box()
         self.database_combo_box.currentIndexChanged.connect(self.database_selection_changed)
@@ -103,7 +105,23 @@ class CalculatorWindow(QWidget, Ui_Dialog):
         self.standards_list_view.clear()
         db_name = self.database_combo_box.currentText()
         db_path = os.path.join(config_paths["DATABASE_DIR"], db_name + ".xlsx")
-        self.db_writer = DatabaseEditor(db_path)
+        try:
+            self.db_writer = DatabaseEditor(db_path)
+        except ValueError as exc:
+            QMessageBox.critical(
+                self,
+                "Invalid Database",
+                f"Failed to open '{db_name}.xlsx'.\n\n{exc}",
+            )
+            self.db_writer = None
+            if self._last_valid_db_index is not None:
+                blocker = QSignalBlocker(self.database_combo_box)
+                try:
+                    self.database_combo_box.setCurrentIndex(self._last_valid_db_index)
+                finally:
+                    del blocker
+            return
+        self._last_valid_db_index = self.database_combo_box.currentIndex()
         self.standards_list_view.addItems(self.db_writer.get_standard_ids())
         # Set the first item as selected
         if self.standards_list_view.count() > 0:
@@ -122,6 +140,8 @@ class CalculatorWindow(QWidget, Ui_Dialog):
         """Triggered when the selection in standards_list_view is changed."""
         if current_row < 0:
             return
+        if self.db_writer is None:
+            return
         item = self.standards_list_view.item(current_row)
         if not item:
             return
@@ -138,6 +158,8 @@ class CalculatorWindow(QWidget, Ui_Dialog):
         if current_row >= 0:
             selected_item = self.standards_list_view.item(current_row)
             if selected_item:
+                if self.db_writer is None:
+                    return
                 self.db_writer.set_IS_amount(id=selected_item.text(), new_IS_amount=text)
 
     def update_data_model(self) -> None:
@@ -174,6 +196,13 @@ class CalculatorWindow(QWidget, Ui_Dialog):
         self.quantity_line_edit.setText(f"{self.sprayrun.pmol_per_mm2:.3f}")
 
     def save_and_close(self) -> None:
+        if self.db_writer is None:
+            QMessageBox.warning(
+                self,
+                "No Database Loaded",
+                "Cannot save because the selected database could not be opened.",
+            )
+            return
         self.db_writer.save()
         self.config.settings.sprayer_settings.x_left = self.spinbox_x_left.value()
         self.config.settings.sprayer_settings.x_right = self.spinbox_x_right.value()
