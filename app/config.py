@@ -126,6 +126,14 @@ class SaveSettings(BaseModel):
     save_panel_filtered_scaled: bool = Field(default=True)
 
 
+class ScaleBarSettings(BaseModel):
+    """Configuration options for the image scale bar."""
+
+    enabled: bool = Field(default=True)
+    auto: bool = Field(default=True)
+    manual_length_um: int = Field(default=100)
+
+
 class ProcessingSettings(BaseModel):
     """
     Class for validation of the configuration file
@@ -176,6 +184,7 @@ class Configuration(BaseModel):
     selection_settings: SelectionSettings = SelectionSettings()
     database_settings: DatabaseSettings = DatabaseSettings()
     save_settings: SaveSettings = SaveSettings()
+    scalebar_settings: ScaleBarSettings = ScaleBarSettings()
     sprayer_settings: SprayerSettings = SprayerSettings()
     debug: bool = Field(default=False)
 

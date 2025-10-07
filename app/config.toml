@@ -33,6 +33,11 @@ save_individual_unfiltered = false
 save_individual_filtered_scaled = true
 save_panel_filtered_scaled = false
 
+[scalebar_settings]
+enabled = true
+auto = true
+manual_length_um = 100
+
 [sprayer_settings]
 x_left = 22
 x_right = 40

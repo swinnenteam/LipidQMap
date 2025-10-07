@@ -86,6 +86,8 @@ class Ui_Dialog(object):
 
         self.ppm_spinbox = QDoubleSpinBox(Dialog)
         self.ppm_spinbox.setObjectName(u"ppm_spinbox")
+        self.ppm_spinbox.setMinimumSize(QSize(100, 0))
+        self.ppm_spinbox.setBaseSize(QSize(0, 0))
         self.ppm_spinbox.setMinimum(0.050000000000000)
         self.ppm_spinbox.setValue(10.000000000000000)
 

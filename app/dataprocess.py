@@ -1,6 +1,8 @@
 import copy
+import math
 import os
 import pickle
+import statistics
 from enum import Enum
 from functools import cache
 from pathlib import Path
@@ -39,6 +41,7 @@ class SectionMsiImage:
         quant (dict[str, npt.NDArray]): Dictionary of quantitated images.
         average_spectrum (npt.NDArray): [0,:] the mz array and [1,:] intensity array of the spectrum
         shape (tuple[int, int]): Shape of the images.
+        pixel_size_um (tuple[float, float] | None): Pixel size in micrometers along (x, y).
     """
 
     def __init__(
@@ -65,6 +68,7 @@ class SectionMsiImage:
         self.isotope: dict[str, npt.NDArray]
         self.quant: dict[str, npt.NDArray | None]
         self.average_spectrum: npt.NDArray
+        self.pixel_size_um: tuple[float, float] | None = None
         self.load_data(progress_file_callback, database=database, imzml_path=imzml_path)
 
     def load_data(self, progress_file_callback, database: LipidDB, imzml_path: str) -> None:
@@ -78,6 +82,7 @@ class SectionMsiImage:
         """
         # create imzml parser
         imzml_parser = ImzMLParser(imzml_path)
+        self.pixel_size_um = self._extract_pixel_size(imzml_parser)
         progress_file_callback.emit(20)
 
         # internal calibration
@@ -143,6 +148,28 @@ class SectionMsiImage:
         self.isotope = sum_adducts(database=database, images=self.isotope)  # type: ignore
         self.quant = sum_adducts(database=database, images=self.quant)
         progress_file_callback.emit(100)
+
+    @staticmethod
+    def _extract_pixel_size(parser: ImzMLParser) -> tuple[float, float] | None:
+        """Return the pixel size in micrometers if present in the imzML metadata."""
+        try:
+            pixel_size_x = parser.imzmldict.get("pixel size x")
+            pixel_size_y = parser.imzmldict.get("pixel size y")
+        except AttributeError:
+            return None
+
+        if pixel_size_x is None or pixel_size_y is None:
+            return None
+
+        try:
+            pixel_size_tuple = (float(pixel_size_x), float(pixel_size_y))
+        except (TypeError, ValueError):
+            return None
+
+        px, py = pixel_size_tuple
+        if px <= 0 or py <= 0:
+            return None
+        return px, py
 
     def get(self, image_type: ImageType, species_id: str) -> npt.NDArray | None:
         """
@@ -231,6 +258,9 @@ class SectionMsiImage:
             case _:
                 return
 
+        if self.pixel_size_um is not None and transformation in {"rotate_left", "rotate_right"}:
+            self.pixel_size_um = (self.pixel_size_um[1], self.pixel_size_um[0])
+
         self.raw = {
             key: func(value, param) if value is not None else value
             for (key, value) in self.raw.items()
@@ -260,6 +290,20 @@ class SectionMsiImage:
         x, y = self.raw[next(iter(self.raw))].shape
         return (x, y)
 
+    def width_um(self) -> float | None:
+        """Return the physical width of the MSI image in micrometers if metadata is available."""
+        if self.pixel_size_um is None:
+            return None
+        _, width_px = self.shape
+        return self.pixel_size_um[0] * width_px
+
+    def height_um(self) -> float | None:
+        """Return the physical height of the MSI image in micrometers if metadata is available."""
+        if self.pixel_size_um is None:
+            return None
+        height_px, _ = self.shape
+        return self.pixel_size_um[1] * height_px
+
 
 @njit
 def threshold_check(image: npt.NDArray, min_intensity: int, min_pixels: int) -> bool:
@@ -280,6 +324,63 @@ class SampleCollection:
 
     def dimensions(self):
         return [sample.shape for sample in self.samples.values()]
+
+    def _scalebar_widths_um(self) -> list[float]:
+        widths: list[float] = []
+        for sample in self.samples.values():
+            width = sample.width_um()
+            if width is not None:
+                widths.append(width)
+        return widths
+
+    @staticmethod
+    def _max_scalebar_length(widths: list[float]) -> int | None:
+        if not widths:
+            return None
+        min_width = min(widths)
+        max_length = int(math.floor(min_width))
+        if max_length < 10:
+            return None
+        return max_length
+
+    @staticmethod
+    def _auto_scalebar_length(widths: list[float], max_length: int | None) -> int | None:
+        if not widths or max_length is None or max_length < 100:
+            return None
+        targets = [width / 5.0 for width in widths]
+        auto_estimate = statistics.median(targets)
+        auto_length = int(round(auto_estimate / 100.0) * 100)
+        auto_length = max(100, auto_length)
+        if auto_length > max_length:
+            auto_length = (max_length // 100) * 100
+        if auto_length < 100:
+            return None
+        return auto_length
+
+    def get_scalebar_auto_length_um(self) -> int | None:
+        widths = self._scalebar_widths_um()
+        max_length = self._max_scalebar_length(widths)
+        return self._auto_scalebar_length(widths, max_length)
+
+    def get_scalebar_max_length_um(self) -> int | None:
+        widths = self._scalebar_widths_um()
+        return self._max_scalebar_length(widths)
+
+    def get_scalebar_length_um(self, config: Config) -> int | None:
+        if not config.settings.scalebar_settings.enabled:
+            return None
+        widths = self._scalebar_widths_um()
+        max_length = self._max_scalebar_length(widths)
+        if max_length is None:
+            return None
+        if config.settings.scalebar_settings.auto:
+            return self._auto_scalebar_length(widths, max_length)
+        manual_length = int(config.settings.scalebar_settings.manual_length_um)
+        manual_length = max(0, manual_length)
+        manual_length = (manual_length // 10) * 10
+        if manual_length < 10:
+            return None
+        return min(manual_length, max_length)
 
     def criteria_check(self) -> list[bool]:
         checks = []

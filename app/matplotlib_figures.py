@@ -1,6 +1,7 @@
 import os
 import re
 from pathlib import Path
+from typing import Any
 
 import matplotlib
 import matplotlib.figure
@@ -9,9 +10,11 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from matplotlib import colormaps
+from matplotlib.axes import Axes
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from PySide6.QtCore import Signal
+from matplotlib_scalebar.scalebar import ScaleBar
 
 from app.config import Config
 from app.database import LipidSpecies
@@ -29,6 +32,49 @@ plt.rcParams.update(
 )
 
 cyan = "#1de9b6"
+
+
+def _remove_scalebar(artist: Any | None) -> None:
+    """Remove a previously attached scalebar artist if it exists."""
+    if artist is None:
+        return
+    if hasattr(artist, "remove"):
+        try:
+            artist.remove()
+        except ValueError:
+            # already removed from the figure
+            pass
+
+
+def _attach_scale_bar(
+    ax: Axes,
+    pixel_size_um: tuple[float, float] | None,
+    scale_length_um: int | None,
+    color: str,
+) -> Any | None:
+    """Attach a scalebar to *ax* and return the created artist."""
+    if pixel_size_um is None or scale_length_um is None:
+        return None
+    pixel_size_x = float(pixel_size_um[0])
+    if pixel_size_x <= 0:
+        return None
+
+    scalebar = ScaleBar(
+        dx=pixel_size_x,
+        units="um",
+        fixed_value=float(scale_length_um),
+        fixed_units="um",
+        color=color,
+        box_alpha=0,
+        location="lower right",
+        scale_loc="bottom",
+        label_loc="bottom",
+        length_fraction=None,
+    )
+    scalebar.scale_formatter = lambda value, unit: f"{int(round(value))} {unit}"
+    scalebar.set_zorder(5)
+    ax.add_artist(scalebar)
+    return scalebar
 
 
 class BarplotCanvas(FigureCanvasQTAgg):
@@ -129,6 +175,7 @@ class MplCanvas(FigureCanvasQTAgg):
         self.config = config
         self.ncols: int = 2
         self.ims: list = []
+        self.scale_bars: list[Any | None] = []
         self.fig: matplotlib.figure.Figure = plt.figure()
         super(MplCanvas, self).__init__(self.fig)
         self.mpl_connect("button_press_event", self.on_press)
@@ -149,6 +196,7 @@ class MplCanvas(FigureCanvasQTAgg):
         """
 
         self.ims = []
+        self.scale_bars = []
         cmap = colormaps.get_cmap("viridis")
         fg_color = "white"
 
@@ -164,6 +212,7 @@ class MplCanvas(FigureCanvasQTAgg):
                 aspect="equal",
             )
             self.ims.append(im)
+            self.scale_bars.append(None)
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="3%", pad=0.2)
             cb = plt.colorbar(im, ax=ax, cax=cax)
@@ -205,6 +254,7 @@ class MplCanvas(FigureCanvasQTAgg):
         else:
             max_value = None
         filter = "gaussian" if self.config.settings.filter_settings.gaussian_filter else "nearest"
+        scale_bar_length_um = samples.get_scalebar_length_um(self.config)
         for i, (key, image_collection) in enumerate(samples.items()):
             image = image_collection.get(self.canvas_type, species_id)
             x, y = image_collection.shape
@@ -212,6 +262,7 @@ class MplCanvas(FigureCanvasQTAgg):
                 image = np.full([x, y], np.nan)
             if i >= len(self.ims):
                 return
+            ax = self.ims[i].axes
             self.ims[i].set_data(image)
             self.ims[i].set_extent((0, y, 0, x))
             self.ims[i].autoscale()
@@ -220,7 +271,19 @@ class MplCanvas(FigureCanvasQTAgg):
             color = "white"
             if key == active_sample_id:
                 color = cyan
-            self.fig.axes[i * 2].set_title(key, fontdict={"color": color, "size": 10})
+            ax.set_title(key, fontdict={"color": color, "size": 10})
+
+            if i < len(self.scale_bars):
+                _remove_scalebar(self.scale_bars[i])
+                self.scale_bars[i] = None
+                if scale_bar_length_um is not None:
+                    scalebar = _attach_scale_bar(
+                        ax=ax,
+                        pixel_size_um=image_collection.pixel_size_um,
+                        scale_length_um=scale_bar_length_um,
+                        color="white",
+                    )
+                    self.scale_bars[i] = scalebar
 
         self.flush_events()
         self.draw()
@@ -241,10 +304,17 @@ class MplCanvas(FigureCanvasQTAgg):
         for ax in self.fig.get_axes():
             ax.cla()
             ax.remove()
+        self.scale_bars = []
 
 
 def save_individual_image(
-    species_id: str, image: npt.NDArray, max_scale: int | None, path: str, image_type: ImageType
+    species_id: str,
+    image: npt.NDArray,
+    max_scale: int | None,
+    path: str,
+    image_type: ImageType,
+    pixel_size_um: tuple[float, float] | None = None,
+    scale_bar_length_um: int | None = None,
 ) -> None:
     """
     Save an interpolated image with color scalebar to a PNG file.
@@ -255,6 +325,8 @@ def save_individual_image(
         max_scale: (int | None): the maximum value for the color scale
         path (str): The directory path to save the image.
         image_type (ImageType): Raw, Iso or Quant image
+        pixel_size_um (tuple[float, float] | None): Pixel size metadata for scalebar placement.
+        scale_bar_length_um (int | None): Shared scale bar length in micrometers.
     """
 
     # image with colorbar
@@ -272,6 +344,9 @@ def save_individual_image(
     else:
         cbar.set_label(label="Intensity", size=18)
     cbar.ax.tick_params(labelsize=18)
+    _attach_scale_bar(
+        ax=ax, pixel_size_um=pixel_size_um, scale_length_um=scale_bar_length_um, color="black"
+    )
     plt.savefig(full_path, bbox_inches="tight", pad_inches=0)
     plt.close()
 
@@ -317,6 +392,7 @@ def save_panel_image(
     ncols: int,
     image_type: ImageType,
     species_selection: list[str],
+    scale_bar_length_um: int | None,
 ) -> None:
     """
     Save a matplotlib image panel to a PNG file.
@@ -325,6 +401,7 @@ def save_panel_image(
         species (str): The species name.
         image (matplotlib.figure.Figure): A matplotlib figure.
         path (str): The directory path to save the image.
+        scale_bar_length_um (int | None): Shared scale bar length in micrometers.
     """
     base_path = os.path.join(path, image_type, "combined")
     Path(base_path).mkdir(parents=True, exist_ok=True)
@@ -361,6 +438,13 @@ def save_panel_image(
             ax.set_axis_off()
             ax.set(adjustable="datalim")
             ax.apply_aspect()
+
+            _attach_scale_bar(
+                ax=ax,
+                pixel_size_um=image_collection.pixel_size_um,
+                scale_length_um=scale_bar_length_um,
+                color="black",
+            )
 
             if image_type == ImageType.quant:
                 cb.set_label("pmol / mm2")
@@ -399,6 +483,8 @@ def save_image_collection(
     if config.settings.save_settings.save_quant_images:
         image_types.append(ImageType.quant)
 
+    scale_bar_length_um = samples.get_scalebar_length_um(config)
+
     for image_type in image_types:
         for sample_name, sample in samples.items():
             path = os.path.join(savepath, image_type, sample_name)
@@ -415,6 +501,8 @@ def save_image_collection(
                         max_scale=max_scale,
                         path=path,
                         image_type=image_type,
+                        pixel_size_um=sample.pixel_size_um,
+                        scale_bar_length_um=scale_bar_length_um,
                     )
                 if config.settings.save_settings.save_individual_unfiltered:
                     Path(path).mkdir(parents=True, exist_ok=True)
@@ -428,4 +516,5 @@ def save_image_collection(
                 ncols=ncols,
                 image_type=image_type,
                 species_selection=species_selection,
+                scale_bar_length_um=scale_bar_length_um,
             )
