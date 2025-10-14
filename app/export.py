@@ -60,6 +60,18 @@ def export_cardinal_hdf5(
     feature_df = _build_feature_dataframe(database, species_ids)
     intensity_matrix = _build_intensity_matrix(samples, species_ids, image_type)
 
+    if not feature_df.empty:
+        sort_order = np.argsort(feature_df["mz"].to_numpy(dtype=np.float64), kind="stable")
+        feature_df = feature_df.iloc[sort_order].reset_index(drop=True)
+        if intensity_matrix.size:
+            intensity_matrix = intensity_matrix[sort_order, :]
+        feature_df = feature_df.assign(
+            feature_index=np.arange(1, len(feature_df) + 1, dtype=np.int64)
+        )
+    intensity_matrix = np.asarray(intensity_matrix, dtype=np.float32)
+    if intensity_matrix.size:
+        intensity_matrix = np.ascontiguousarray(intensity_matrix)
+
     if intensity_matrix.shape != (len(feature_df), len(pixel_df)):
         raise CardinalExportError(
             "Exported intensity matrix shape does not match feature or pixel dimensions."
@@ -211,14 +223,15 @@ def _write_hdf5(
         spectra_group = h5.create_group("spectraData")
         spectra_group.create_dataset(
             "intensity",
-            data=intensity_matrix.astype(np.float32),
+            data=intensity_matrix,
             compression="gzip",
             compression_opts=4,
             shuffle=True,
         )
         spectra_group.attrs["n_features"] = intensity_matrix.shape[0]
         spectra_group.attrs["n_spectra"] = intensity_matrix.shape[1]
-
+        intensity_dataset = spectra_group["intensity"]
+        intensity_dataset.attrs["layout"] = "feature_by_pixel"
         pixel_group = h5.create_group("pixelData")
         _write_dataframe(pixel_group, pixel_df)
 

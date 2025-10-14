@@ -113,13 +113,17 @@ def test_export_cardinal_hdf5_writes_expected_structure(
         spectra_group = cast(h5py.Group, h5["spectraData"])
         intensity_dataset = cast(h5py.Dataset, spectra_group["intensity"])
         intensity = intensity_dataset[:]
+        assert intensity.shape == (2, 4)
         np.testing.assert_array_equal(
             intensity[0], np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
         )
         np.testing.assert_array_equal(
             intensity[1], np.array([5.0, 6.0, 7.0, 8.0], dtype=np.float32)
         )
-
+        layout_attr = intensity_dataset.attrs["layout"]
+        if isinstance(layout_attr, bytes):
+            layout_attr = layout_attr.decode()
+        assert layout_attr == "feature_by_pixel"
         pixel_group = cast(h5py.Group, h5["pixelData"])
         columns_attr = pixel_group.attrs["columns"]
         columns_array = cast(np.ndarray, columns_attr)
@@ -138,9 +142,17 @@ def test_export_cardinal_hdf5_writes_expected_structure(
             "sample_id",
         }
         pixel_index_dataset = cast(h5py.Dataset, pixel_group["pixel_index"])
-        assert pixel_index_dataset.shape[0] == 4
+        np.testing.assert_array_equal(
+            np.asarray(pixel_index_dataset[:], dtype=np.int64),
+            np.array([1, 2, 3, 4], dtype=np.int64),
+        )
 
         feature_group = cast(h5py.Group, h5["featureData"])
+        feature_ids_dataset = cast(h5py.Dataset, feature_group["feature_id"])
+        feature_ids = [
+            fid.decode() if isinstance(fid, bytes) else str(fid) for fid in feature_ids_dataset[:]
+        ]
+        assert feature_ids == ["A [M+H]+", "B [M+H]+"]
         mz_dataset = cast(h5py.Dataset, feature_group["mz"])
         mz_values = np.asarray(mz_dataset[:], dtype=np.float32)
         np.testing.assert_allclose(mz_values, np.array([100.0, 200.0], dtype=np.float32))

@@ -205,7 +205,7 @@ class MplCanvas(FigureCanvasQTAgg):
             ax = self.fig.add_subplot(nrows, ncols, sample_idx + 1)
             im = ax.imshow(
                 np.full([x, y], np.nan),
-                origin="lower",
+                origin="upper",
                 interpolation=filter,
                 cmap=cmap,
                 vmin=0,
@@ -336,7 +336,7 @@ def save_individual_image(
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.1)
     ax.set_title(label=species_id, size=24)
-    img = ax.imshow(image, interpolation="gaussian", origin="lower")
+    img = ax.imshow(image, interpolation="gaussian", origin="upper")
     img.set_clim(vmin=0, vmax=max_scale)
     cbar = plt.colorbar(img, cax=cax)
     if image_type == ImageType.quant:
@@ -423,7 +423,7 @@ def save_panel_image(
             ax = fig.add_subplot(nrows, ncols, sample_idx + 1)
             im = ax.imshow(
                 image,
-                origin="lower",
+                origin="upper",
                 interpolation="gaussian",
                 cmap=colormaps.get_cmap("viridis"),
                 vmin=0,

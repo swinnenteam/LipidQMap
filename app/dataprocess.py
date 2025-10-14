@@ -248,11 +248,10 @@ class SectionMsiImage:
         match transformation:
             case "rotate_left":
                 func = np.rot90
-                param = -1
+                param = 1
             case "rotate_right":
                 func = np.rot90
-                param = 1
-                pass
+                param = -1
             case "reflect_horizontal":
                 func = np.flip
                 param = 1
@@ -318,12 +317,12 @@ class SectionMsiImage:
         y_rel = y - y_min
 
         match transformation:
-            case "rotate_left":  # np.rot90(..., -1) clockwise
-                new_x_rel = (height - 1) - y_rel
-                new_y_rel = x_rel
-            case "rotate_right":  # np.rot90(..., 1) counter-clockwise
+            case "rotate_left":  # np.rot90(..., 1) counter-clockwise
                 new_x_rel = y_rel
                 new_y_rel = (width - 1) - x_rel
+            case "rotate_right":  # np.rot90(..., -1) clockwise
+                new_x_rel = (height - 1) - y_rel
+                new_y_rel = x_rel
             case "reflect_horizontal":  # flip LR
                 new_x_rel = (width - 1) - x_rel
                 new_y_rel = y_rel
