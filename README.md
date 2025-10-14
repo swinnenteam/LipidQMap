@@ -17,8 +17,8 @@ LipidQMap is a program to support accurate quantitation of Mass Spectrometry Ima
 LipidQMap is available for Windows 10 (and up) and Mac (Apple silicon, M1 and up).
 Download LipidQMap from the [releases](https://github.com/swinnenteam/LipidQMap/releases) page or get the latest version from the links below:
 
-- [LipidQMap V0.1.0 - **Windows 10/11**](https://TODO)
-- [LipidQMap V0.1.0 - **Mac**](https://TODO)
+- [LipidQMap V0.1.0 - **Windows 10/11**](https://github.com/swinnenteam/LipidQMap/releases/download/v0.1.0/LipidQMap-0.1.0-windows.zip)
+- [LipidQMap V0.1.0 - **Mac**](https://github.com/swinnenteam/LipidQMap/releases/download/v0.1.0/LipidQMap-0.1.0-macOS.dmg)
 
 Simply unzip the downloaded file in any location and double click on the LipidQMap executable inside the extracted folder.
 For operating systems other than Windows and MacOS, we refer to the [developer section](#for-developers) on how to run the app.
