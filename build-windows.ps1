@@ -37,7 +37,6 @@ $BuildDir     = 'build'
 $Venv         = 'venv'
 $PythonExe    = Join-Path $Venv 'Scripts\python.exe'
 $PipExe       = Join-Path $Venv 'Scripts\pip.exe'
-$PyInstaller  = "$PythonExe -m PyInstaller"
 
 # One-file output goes here:
 $MainExe      = Join-Path $DistRoot "$AppName.exe"
@@ -102,13 +101,13 @@ function Task-Res {
 function Task-Run {
   $env:PYTHONPATH = (Get-Location).Path
   Ensure-Venv
-  & $PythonExe app
+  & $PythonExe -m app
 }
 
 function Task-WinBuild {
   Task-Clean
   Ensure-Venv
-  & $PyInstaller $Spec
+  & $PythonExe -m PyInstaller $Spec
   if (-not (Test-Path $MainExe)) {
     throw "Build failed: $MainExe not found."
   }
