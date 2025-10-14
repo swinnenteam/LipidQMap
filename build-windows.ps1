@@ -29,22 +29,26 @@ param(
   [string]$TimestampUrl = 'http://timestamp.digicert.com'
 )
 
+# --- Paths anchored to this script's directory ---
+$RepoRoot     = $PSScriptRoot
+if (-not $RepoRoot) { $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path } # fallback for older PS
+
 # --- Config ---
 $AppName      = 'LipidQMap'
-$Spec         = 'win-app.spec'
-$DistRoot     = 'dist'
-$BuildDir     = 'build'
-$Venv         = 'venv'
+$Spec         = Join-Path $RepoRoot 'win-app.spec'
+$DistRoot     = Join-Path $RepoRoot 'dist'
+$BuildDir     = Join-Path $RepoRoot 'build'
+$Venv         = Join-Path $RepoRoot 'venv'
 $PythonExe    = Join-Path $Venv 'Scripts\python.exe'
 $PipExe       = Join-Path $Venv 'Scripts\pip.exe'
 
-# One-file output goes here:
+# One-file output
 $MainExe      = Join-Path $DistRoot "$AppName.exe"
 
 # Release artifacts
 $ZipPath      = Join-Path $DistRoot "$AppName-windows.zip"
 $ShaPath      = "$ZipPath.sha256"
-$RequirementsDev = 'requirements\dev.txt'
+$RequirementsDev = Join-Path $RepoRoot 'requirements\dev.txt'
 
 function Ensure-Venv {
   if (-not (Test-Path $PythonExe)) {
@@ -54,8 +58,8 @@ function Ensure-Venv {
 }
 
 function Task-CleanPyc {
-  Get-ChildItem -Recurse -Include *.pyc,*.pyo | Remove-Item -Force -ErrorAction SilentlyContinue
-  Get-ChildItem -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+  Get-ChildItem $RepoRoot -Recurse -Include *.pyc,*.pyo | Remove-Item -Force -ErrorAction SilentlyContinue
+  Get-ChildItem $RepoRoot -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 function Task-Clean {
@@ -79,27 +83,27 @@ function Task-Deps {
 function Task-UI {
   Ensure-Venv
   & $PythonExe -m PySide6.scripts.pyside_tool uic --from-imports `
-    resources/views/MsiImportDialog.ui          -o app/generated/MsiImportDialog_ui.py
+    (Join-Path $RepoRoot 'resources/views/MsiImportDialog.ui')          -o (Join-Path $RepoRoot 'app/generated/MsiImportDialog_ui.py')
   & $PythonExe -m PySide6.scripts.pyside_tool uic --from-imports `
-    resources/views/MsiSaveDialog.ui            -o app/generated/MsiSaveDialog_ui.py
+    (Join-Path $RepoRoot 'resources/views/MsiSaveDialog.ui')            -o (Join-Path $RepoRoot 'app/generated/MsiSaveDialog_ui.py')
   & $PythonExe -m PySide6.scripts.pyside_tool uic --from-imports `
-    resources/views/MsiMainWindow.ui            -o app/generated/MsiMainWindow_ui.py
+    (Join-Path $RepoRoot 'resources/views/MsiMainWindow.ui')            -o (Join-Path $RepoRoot 'app/generated/MsiMainWindow_ui.py')
   & $PythonExe -m PySide6.scripts.pyside_tool uic --from-imports `
-    resources/views/MsiAboutDialog.ui           -o app/generated/MsiAboutDialog_ui.py
+    (Join-Path $RepoRoot 'resources/views/MsiAboutDialog.ui')           -o (Join-Path $RepoRoot 'app/generated/MsiAboutDialog_ui.py')
   & $PythonExe -m PySide6.scripts.pyside_tool uic --from-imports `
-    resources/views/MsiSettingsDialog.ui        -o app/generated/MsiSettingsDialog_ui.py
+    (Join-Path $RepoRoot 'resources/views/MsiSettingsDialog.ui')        -o (Join-Path $RepoRoot 'app/generated/MsiSettingsDialog_ui.py')
   & $PythonExe -m PySide6.scripts.pyside_tool uic --from-imports `
-    resources/views/MsiStandardCalculatorDialog.ui -o app/generated/MsiStandardCalculator_ui.py
+    (Join-Path $RepoRoot 'resources/views/MsiStandardCalculatorDialog.ui') -o (Join-Path $RepoRoot 'app/generated/MsiStandardCalculator_ui.py')
 }
 
 function Task-Res {
   Ensure-Venv
   & $PythonExe -m PySide6.scripts.pyside_tool rcc -compress 9 `
-    -o app/generated/resources_rc.py resources/resources.qrc
+    -o (Join-Path $RepoRoot 'app/generated/resources_rc.py') (Join-Path $RepoRoot 'resources/resources.qrc')
 }
 
 function Task-Run {
-  $env:PYTHONPATH = (Get-Location).Path
+  $env:PYTHONPATH = $RepoRoot
   Ensure-Venv
   & $PythonExe -m app
 }
@@ -107,7 +111,13 @@ function Task-Run {
 function Task-WinBuild {
   Task-Clean
   Ensure-Venv
-  & $PythonExe -m PyInstaller $Spec
+  # Run from repo root to keep PyInstaller paths stable
+  Push-Location $RepoRoot
+  try {
+    & $PythonExe -m PyInstaller $Spec
+  } finally {
+    Pop-Location
+  }
   if (-not (Test-Path $MainExe)) {
     throw "Build failed: $MainExe not found."
   }
@@ -163,6 +173,10 @@ function Task-WinVerify {
 
 function Task-WinZip {
   if (-not (Test-Path $MainExe)) { throw "Missing $MainExe. Build first." }
+
+  # Ensure dist exists (parent of the zip path)
+  if (-not (Test-Path $DistRoot)) { New-Item -ItemType Directory -Path $DistRoot | Out-Null }
+
   if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
 
   Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -174,15 +188,17 @@ function Task-WinZip {
   # Put the EXE at the root of the zip
   Copy-Item $MainExe $tmp
 
-  # (optional) include README/License, configs, etc.
-  # Copy-Item README.md, LICENSE -Destination $tmp -ErrorAction SilentlyContinue
-
   [System.IO.Compression.ZipFile]::CreateFromDirectory($tmp, $ZipPath)
   Remove-Item $tmp -Recurse -Force
+
   Write-Host "Created: $ZipPath"
 }
 
 function Task-WinRelease {
+  if (-not (Test-Path $MainExe)) {
+    Write-Host "No build detected. Building now..."
+    Task-WinBuild
+  }
   Task-WinZip
   if (Test-Path $ShaPath) { Remove-Item $ShaPath -Force }
   $sha = Get-FileHash -Path $ZipPath -Algorithm SHA256
