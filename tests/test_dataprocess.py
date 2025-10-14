@@ -184,11 +184,11 @@ def test_transform(section_msi_image) -> None:
     [
         (
             "rotate_left",
-            np.array([[2, 1, 1], [2, 2, 1], [1, 1, 1], [1, 2, 1]], dtype=np.int32),
+            np.array([[1, 2, 1], [1, 1, 1], [2, 2, 1], [2, 1, 1]], dtype=np.int32),
         ),
         (
             "rotate_right",
-            np.array([[1, 2, 1], [1, 1, 1], [2, 2, 1], [2, 1, 1]], dtype=np.int32),
+            np.array([[2, 1, 1], [2, 2, 1], [1, 1, 1], [1, 2, 1]], dtype=np.int32),
         ),
         (
             "reflect_horizontal",
