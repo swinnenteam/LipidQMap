@@ -124,6 +124,20 @@ def test_export_cardinal_hdf5_writes_expected_structure(
         if isinstance(layout_attr, bytes):
             layout_attr = layout_attr.decode()
         assert layout_attr == "feature_by_pixel"
+        feature_dim = intensity_dataset.dims[0]
+        assert len(feature_dim) == 1
+        feature_scale = feature_dim[0]
+        feature_scale_name = getattr(feature_scale, "name", feature_scale)
+        assert isinstance(feature_scale_name, str)
+        assert feature_scale_name.endswith("/featureData/feature_id")
+        assert intensity_dataset.dims[0].label == "feature_id"
+        pixel_dim = intensity_dataset.dims[1]
+        assert len(pixel_dim) == 1
+        pixel_scale = pixel_dim[0]
+        pixel_scale_name = getattr(pixel_scale, "name", pixel_scale)
+        assert isinstance(pixel_scale_name, str)
+        assert pixel_scale_name.endswith("/pixelData/pixel_index")
+        assert intensity_dataset.dims[1].label == "pixel_index"
         pixel_group = cast(h5py.Group, h5["pixelData"])
         columns_attr = pixel_group.attrs["columns"]
         columns_array = cast(np.ndarray, columns_attr)
@@ -146,6 +160,32 @@ def test_export_cardinal_hdf5_writes_expected_structure(
             np.asarray(pixel_index_dataset[:], dtype=np.int64),
             np.array([1, 2, 3, 4], dtype=np.int64),
         )
+        coord_dataset = cast(h5py.Dataset, pixel_group["coord"])
+        assert coord_dataset.shape == (4, 2)
+        np.testing.assert_array_equal(
+            coord_dataset[:, 0],
+            pixel_group["x"][:],
+        )
+        np.testing.assert_array_equal(
+            coord_dataset[:, 1],
+            pixel_group["y"][:],
+        )
+        coord_columns_attr = coord_dataset.attrs["columns"]
+        coord_columns_array = cast(np.ndarray, coord_columns_attr)
+        coord_columns: set[str] = set()
+        for column in coord_columns_array.tolist():
+            if isinstance(column, bytes):
+                coord_columns.add(column.decode())
+            else:
+                coord_columns.add(str(column))
+        assert coord_columns == {"x", "y"}
+        coord_pixel_dim = coord_dataset.dims[0]
+        assert len(coord_pixel_dim) == 1
+        coord_pixel_scale = coord_pixel_dim[0]
+        coord_pixel_scale_name = getattr(coord_pixel_scale, "name", coord_pixel_scale)
+        assert isinstance(coord_pixel_scale_name, str)
+        assert coord_pixel_scale_name.endswith("/pixelData/pixel_index")
+        assert coord_dataset.dims[0].label == "pixel_index"
 
         feature_group = cast(h5py.Group, h5["featureData"])
         feature_ids_dataset = cast(h5py.Dataset, feature_group["feature_id"])

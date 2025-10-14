@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Iterable, Sequence, cast
 
 import h5py
 import numpy as np
@@ -9,8 +9,8 @@ import pandas as pd
 import pandas.api.types as pdt
 
 from app import __version__
-from app.dataprocess import ImageType, SampleCollection
 from app.database import LipidDB
+from app.dataprocess import ImageType, SampleCollection
 
 
 class CardinalExportError(RuntimeError):
@@ -221,22 +221,26 @@ def _write_hdf5(
         h5.attrs["image_type"] = image_type.value
 
         spectra_group = h5.create_group("spectraData")
-        spectra_group.create_dataset(
-            "intensity",
-            data=intensity_matrix,
-            compression="gzip",
-            compression_opts=4,
-            shuffle=True,
+        intensity_dataset = cast(
+            h5py.Dataset,
+            spectra_group.create_dataset(
+                "intensity",
+                data=intensity_matrix,
+                compression="gzip",
+                compression_opts=4,
+                shuffle=True,
+            ),
         )
         spectra_group.attrs["n_features"] = intensity_matrix.shape[0]
         spectra_group.attrs["n_spectra"] = intensity_matrix.shape[1]
-        intensity_dataset = spectra_group["intensity"]
         intensity_dataset.attrs["layout"] = "feature_by_pixel"
         pixel_group = h5.create_group("pixelData")
         _write_dataframe(pixel_group, pixel_df)
+        _write_pixel_coordinates(pixel_group, pixel_df)
 
         feature_group = h5.create_group("featureData")
         _write_dataframe(feature_group, feature_df)
+        _attach_dimension_scales(intensity_dataset, feature_group, pixel_group)
 
         samples_group = h5.create_group("samples")
         for sample_index, (sample_id, section) in enumerate(samples.items(), start=1):
@@ -278,3 +282,45 @@ def _write_dataframe(group: h5py.Group, df: pd.DataFrame) -> None:
             group.create_dataset(column, data=data, dtype=dtype)
             continue
         group.create_dataset(column, data=data)
+
+
+def _write_pixel_coordinates(pixel_group: h5py.Group, pixel_df: pd.DataFrame) -> None:
+    """Write a compact coordinate table alongside the pixel metadata."""
+    if not {"x", "y"}.issubset(pixel_df.columns):
+        return
+
+    coords = pixel_df[["x", "y"]].to_numpy(dtype=np.int32, copy=False)
+    coord_dataset = pixel_group.create_dataset("coord", data=coords, dtype=np.int32)
+    coord_dataset.attrs["columns"] = np.array(["x", "y"], dtype=h5py.string_dtype(encoding="utf-8"))
+
+    if "pixel_index" in pixel_group:
+        pixel_index_dataset = cast(h5py.Dataset, pixel_group["pixel_index"])
+        _ensure_dimension_scale(pixel_index_dataset, "pixel_index")
+        coord_dataset.dims[0].label = "pixel_index"
+        coord_dataset.dims[0].attach_scale(pixel_index_dataset)
+
+
+def _attach_dimension_scales(
+    intensity_dataset: h5py.Dataset, feature_group: h5py.Group, pixel_group: h5py.Group
+) -> None:
+    """Attach HDF5 dimension scales so consumers can recover dimnames without extra work."""
+    if "feature_id" in feature_group:
+        feature_dataset = cast(h5py.Dataset, feature_group["feature_id"])
+        _ensure_dimension_scale(feature_dataset, "feature_id")
+        intensity_dataset.dims[0].label = "feature_id"
+        intensity_dataset.dims[0].attach_scale(feature_dataset)
+
+    if "pixel_index" in pixel_group:
+        pixel_dataset = cast(h5py.Dataset, pixel_group["pixel_index"])
+        _ensure_dimension_scale(pixel_dataset, "pixel_index")
+        intensity_dataset.dims[1].label = "pixel_index"
+        intensity_dataset.dims[1].attach_scale(pixel_dataset)
+
+
+def _ensure_dimension_scale(dataset: h5py.Dataset, label: str) -> None:
+    """Turn a 1-D dataset into a reusable dimension scale if it has not been promoted yet."""
+    current_class = dataset.attrs.get("CLASS")
+    if isinstance(current_class, bytes):
+        current_class = current_class.decode()
+    if current_class != "DIMENSION_SCALE":
+        dataset.make_scale(label)
