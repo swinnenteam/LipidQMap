@@ -1,16 +1,17 @@
 <#
-Build:
-.\build-windows.ps1 win-build
+Build (one-file EXE):
+  .\build-windows.ps1 win-build
 
-Sign everything:
-.\build-windows.ps1 win-sign -PfxPath "C:\certs\yourcert.pfx" -PfxPassword "*****"
+Run from source (dev):
+  .\build-windows.ps1 run
 
-Verify the main EXE:
-.\build-windows.ps1 win-verify
+Zip for users (unsigned for now):
+  .\build-windows.ps1 win-release
+  → dist\LipidQMap-windows.zip + .sha256
 
-Zip for users:
-.\build-windows.ps1 win-release
-→ dist\LipidQMap-windows.zip + .sha256
+Optional (once you have certs):
+  .\build-windows.ps1 win-sign -PfxPath "C:\certs\yourcert.pfx" -PfxPassword "*****"
+  .\build-windows.ps1 win-verify
 #>
 
 param(
@@ -38,9 +39,8 @@ $PythonExe    = Join-Path $Venv 'Scripts\python.exe'
 $PipExe       = Join-Path $Venv 'Scripts\pip.exe'
 $PyInstaller  = "$PythonExe -m PyInstaller"
 
-# One-folder output goes here:
-$AppDir       = Join-Path $DistRoot $AppName
-$MainExe      = Join-Path $AppDir "$AppName.exe"
+# One-file output goes here:
+$MainExe      = Join-Path $DistRoot "$AppName.exe"
 
 # Release artifacts
 $ZipPath      = Join-Path $DistRoot "$AppName-windows.zip"
@@ -112,7 +112,7 @@ function Task-WinBuild {
   if (-not (Test-Path $MainExe)) {
     throw "Build failed: $MainExe not found."
   }
-  Write-Host "Built folder: $AppDir"
+  Write-Host "Built EXE: $MainExe"
 }
 
 function Find-SignTool {
@@ -129,39 +129,57 @@ function Find-SignTool {
 }
 
 function Task-WinSign {
-  if (-not (Test-Path $AppDir)) { throw "Missing $AppDir. Run 'win-build' first." }
+  if (-not (Test-Path $MainExe)) { throw "Missing $MainExe. Run 'win-build' first." }
   if (-not $PfxPath -or -not (Test-Path $PfxPath)) {
     throw "Provide -PfxPath path\to\cert.pfx for signing."
   }
   $signtool = Find-SignTool
   if (-not $signtool) { throw "signtool.exe not found. Install Windows SDK." }
 
-  # Sign ALL EXEs and DLLs inside the folder
-  $files = Get-ChildItem $AppDir -Recurse -Include *.exe,*.dll
-  foreach ($f in $files) {
-    & $signtool sign `
-      /f $PfxPath `
-      /p $PfxPassword `
-      /fd SHA256 `
-      /td SHA256 `
-      /tr $TimestampUrl `
-      "$($f.FullName)" | Write-Host
-  }
-  Write-Host "Signed binaries in: $AppDir"
+  & $signtool sign `
+    /f $PfxPath `
+    /p $PfxPassword `
+    /fd SHA256 `
+    /td SHA256 `
+    /tr $TimestampUrl `
+    "$MainExe" | Write-Host
+
+  Write-Host "Signed: $MainExe"
 }
 
 function Task-WinVerify {
   if (-not (Test-Path $MainExe)) { throw "Missing $MainExe. Build first." }
+
+  # If unsigned, report and exit cleanly
+  $sig = Get-AuthenticodeSignature -FilePath $MainExe
+  if ($sig.Status -eq 'NotSigned') {
+    Write-Host "$MainExe is NOT signed."
+    return
+  }
+
   $signtool = Find-SignTool
   if (-not $signtool) { throw "signtool.exe not found. Install Windows SDK." }
   & $signtool verify /pa /v "$MainExe" | Write-Host
 }
 
 function Task-WinZip {
-  if (-not (Test-Path $AppDir)) { throw "Missing $AppDir. Build first." }
+  if (-not (Test-Path $MainExe)) { throw "Missing $MainExe. Build first." }
   if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
+
   Add-Type -AssemblyName System.IO.Compression.FileSystem
-  [System.IO.Compression.ZipFile]::CreateFromDirectory($AppDir, $ZipPath)
+
+  $tmp = Join-Path $DistRoot "_zip_tmp"
+  if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
+  New-Item $tmp -ItemType Directory | Out-Null
+
+  # Put the EXE at the root of the zip
+  Copy-Item $MainExe $tmp
+
+  # (optional) include README/License, configs, etc.
+  # Copy-Item README.md, LICENSE -Destination $tmp -ErrorAction SilentlyContinue
+
+  [System.IO.Compression.ZipFile]::CreateFromDirectory($tmp, $ZipPath)
+  Remove-Item $tmp -Recurse -Force
   Write-Host "Created: $ZipPath"
 }
 

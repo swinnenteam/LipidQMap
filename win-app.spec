@@ -18,27 +18,20 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
-# One-folder build:
 exe = EXE(
     pyz,
     a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
     [],
-    exclude_binaries=True,
     name='LipidQMap',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
     console=False,
-    icon='resources/icons/app.ico'
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name='LipidQMap'
+    icon='resources/icons/app.ico',
+    onefile=True,
+    runtime_tmpdir=None
 )
