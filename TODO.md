@@ -1,1 +1,2 @@
 - If there are species in the DB with isobaric overlap, indicate this to the user (cf triangles in spectrum in Scils)
+- Database columns: rename M-2 Isotope -> M-2 Isotopologue, M-4 Isotope -> M-4 Isotopologue, Na+ Isotope -> Na+ Isobar

@@ -1,7 +1,7 @@
 import os
 from typing import Optional
 
-from PySide6.QtCore import QSignalBlocker, Signal
+from PySide6.QtCore import QLocale, QSignalBlocker, Signal
 from PySide6.QtGui import QDoubleValidator
 from PySide6.QtWidgets import QMessageBox, QWidget
 
@@ -160,7 +160,16 @@ class CalculatorWindow(QWidget, Ui_Dialog):
             if selected_item:
                 if self.db_writer is None:
                     return
-                self.db_writer.set_IS_amount(id=selected_item.text(), new_IS_amount=text)
+                locale = QLocale()
+                value, ok = locale.toDouble(text)
+                if not ok:
+                    sanitized = text.replace(locale.groupSeparator(), "")
+                    sanitized = sanitized.replace(locale.decimalPoint(), ".")
+                    try:
+                        value = float(sanitized)
+                    except ValueError:
+                        return
+                self.db_writer.set_IS_amount(id=selected_item.text(), new_IS_amount=value)
 
     def update_data_model(self) -> None:
         """Update the SprayRun data model based on current UI values and refresh labels."""

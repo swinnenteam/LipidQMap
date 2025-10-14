@@ -556,10 +556,19 @@ class DatabaseEditor:
             raise ValueError(f"ID {id} not found in database")
         return float(row[AMOUNT_COL].iloc[0])
 
-    def set_IS_amount(self, id: str, new_IS_amount: str):
+    def set_IS_amount(self, id: str, new_IS_amount: float | str):
         if id not in self.data[ID].values:
             raise ValueError(f"ID {id} not found in database")
-        self.updated_IS_amounts[id] = float(new_IS_amount)
+        try:
+            if isinstance(new_IS_amount, str):
+                sanitized = new_IS_amount.strip()
+                sanitized = sanitized.replace(",", ".")
+                value = float(sanitized)
+            else:
+                value = float(new_IS_amount)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Invalid amount for ID {id}: {new_IS_amount!r}") from exc
+        self.updated_IS_amounts[id] = value
 
     def set_is_standard(self, id: str, is_standard: bool):
         if id not in self.data[ID].values:
