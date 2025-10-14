@@ -14,11 +14,11 @@ LipidQMap is a program to support accurate quantitation of Mass Spectrometry Ima
 
 ## Installation
 
-LipidQMap is available for Windows 10 (and up) and Mac (ARM, M1 and up).
-Download LipidQMap from the [releases](https://TODO) page or get the latest version from the links below:
+LipidQMap is available for Windows 10 (and up) and Mac (Apple silicon, M1 and up).
+Download LipidQMap from the [releases](https://github.com/swinnenteam/LipidQMap/releases) page or get the latest version from the links below:
 
-- [LipidQMap V1.0.0 - **Windows 10**](https://TODO)
-- [LipidQMap V1.0.0 - **Mac**](https://TODO)
+- [LipidQMap V0.1.0 - **Windows 10/11**](https://TODO)
+- [LipidQMap V0.1.0 - **Mac**](https://TODO)
 
 Simply unzip the downloaded file in any location and double click on the LipidQMap executable inside the extracted folder.
 For operating systems other than Windows and MacOS, we refer to the [developer section](#for-developers) on how to run the app.
@@ -84,11 +84,12 @@ LipidQMap's Excel database(s) of lipid species are located inside the `_internal
 
 - **ID**: any name / identification given to the species.
 - **Class**: the lipid class of the species.
-- **Neutral formula**: the neutral formula of the species.
+- **Neutral Formula**: the neutral formula of the species.
 - **Adducts**: the adduct forms of the species, separated by a comma if multiple.
-- **M-2 isotope**: The ID of the species with one double bond more than the current one, only required if the type II isotope correction algorithm is used.
-- **Na+ isotope**: The ID of the species with 2 carbons less and 3 double bonds more than the current one, only required if the sodium isotope correction algorithm is used.
-- **IS amount (pmol / mm2)**: If this species is a standard, how much pmol per mm2 was sprayed.
+- **M-2 Isotope**: The ID of the species with one double bond more than the current one, only required if the type II isotope correction algorithm is used.
+- **Na+ Isotope**: The ID of the species with 2 carbons less and 3 double bonds more than the current one, only required if the sodium isotope correction algorithm is used.
+- **Is standard**: Is this species a standard or not, TRUE or FALSE.
+- **Standard amount (pmol / mm2)**: If this species is a standard, how much pmol per mm2 was sprayed.
 - **IS**: ID of the standard species that should be used for the quantitation.
 
 ## Support
@@ -101,20 +102,9 @@ If you encountered a bug in LipidQMap, let us know by opening an Issue:
 
 LipidQMap is open to contributions, let us know if you want to contribute!
 
-LipidQMap is created with Python 3.12. Useful utility functions to set up the project and get started can be found in the project Makefile (the Makefile was made for MacOS, some of the commands such as creating a virtual env are platform specific and should be adapted for Windows). In Visual Studio Code, open the project directory and in the terminal simply type: `make setup`  to create a virtual environment and install the required packages. Type `make run` to run the application. Consult the Makefile for other useful functions. For linting we use Black, with settings configured in the pyproject.toml.
+LipidQMap is created with Python 3.12. Useful utility functions to set up the project and get started can be found in the project Makefile (for MacOS) and build-windows.ps1 for Windows. For Mac In Visual Studio Code, open the project directory and in the terminal simply type: `make setup`  to create a virtual environment and install the required packages. Type `make run` to run the application. Consult the Makefile for other useful functions. For Windows, use `.\build-windows.ps1 setup` to create a virtual environment and install the required packages, use `.\build-windows.ps1` run to run the application. For linting we use Black, with settings configured in the pyproject.toml.
 
 The GUI was created in Qt (PySide 6) using Qt Designer. If the project has been setup as instructed above with the virtual environment and dependencies installed, the designer program can be found in the the project folder under: `app/venv/lib/python3.12/site-packages/PySide6/Designer`. The Qt Designer .ui files are located in `app/resources/views/`, after edits have been made to these ui files, they have to be converted to python files in `app/generated/` using Pyside's pyside6-uic. This can be done with the Makefile command `make ui`. If additional resource files are added to the GUI (images, icons) the `make res` command needs to be ran as well.
 
-PyInstaller is used to package the app, use `make build`.
-
-  
-
-## Authors and acknowledgment
-
-TODO
-
-  
-
-## License
-
-TODO
+PyInstaller is used to package the app, use `make mac-build` or a standard build `make mac-all` for a complete build with code signing and notarization.
+Use `.\build-windows.ps1 win-build` on Windows.
