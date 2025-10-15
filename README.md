@@ -20,7 +20,8 @@ Download LipidQMap from the [releases](https://github.com/swinnenteam/LipidQMap/
 - [LipidQMap V0.1.0 - **Windows 10/11**](https://github.com/swinnenteam/LipidQMap/releases/download/v0.1.0/LipidQMap-0.1.0-windows.zip)
 - [LipidQMap V0.1.0 - **Mac**](https://github.com/swinnenteam/LipidQMap/releases/download/v0.1.0/LipidQMap-0.1.0-macOS.dmg)
 
-Simply unzip the downloaded file in any location and double click on the LipidQMap executable inside the extracted folder.
+For Windows: Simply unzip the downloaded file to any location, then double-click the LipidQMap executable inside the extracted folder.
+For Mac: Open the .dmg file and drag the LipidQMap icon into your Applications folder.
 For operating systems other than Windows and MacOS, we refer to the [developer section](#for-developers) on how to run the app.
   
 
