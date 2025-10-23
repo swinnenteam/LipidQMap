@@ -233,7 +233,8 @@ def test_sample_collection(mock_config, database) -> None:
         config=mock_config,
     )
 
-    sample_collection = SampleCollection(samples={"sample_1": sample})
+    species_order = list(sample.raw.keys())
+    sample_collection = SampleCollection(samples={"sample_1": sample}, species_order=species_order)
 
     # test __len__ method
     assert len(sample_collection) == 1
@@ -306,7 +307,6 @@ def test_load_database_image_collection(mock_config) -> None:
 
     # Setup test data
     database_path = "tests/database/test_database.xlsx"
-    ion_mode = IonMode.positive
     imzml_paths = ["tests/data/example.imzML"]
 
     # Run the function under test
@@ -314,7 +314,6 @@ def test_load_database_image_collection(mock_config) -> None:
         progress_file_callback=progress_file_callback,
         progress_overall_callback=progress_overall_callback,
         database_path=database_path,
-        ion_mode=ion_mode,
         imzml_paths=imzml_paths,
         config=mock_config,
     )
@@ -323,6 +322,47 @@ def test_load_database_image_collection(mock_config) -> None:
     assert isinstance(database, LipidDB)
     assert isinstance(sample_collection, SampleCollection)
     assert len(sample_collection.samples) == len(imzml_paths)
+    assert sample_collection.species_order == database.index
+    assert any(species.endswith("(+)") for species in database.index)
+    pos_sample = next(iter(sample_collection.samples.values()))
+    assert set(pos_sample.raw.keys()).issubset(set(sample_collection.species_order))
+
+
+def test_load_database_image_collection_mixed_modes(mock_config) -> None:
+    """load_database_image_collection handles files with mixed ion modes."""
+    progress_file_callback, progress_overall_callback = Mock(), Mock()
+
+    database_path = "tests/database/test_database.xlsx"
+    imzml_paths = [
+        "tests/data/example.imzML",
+        "tests/data/example_negative.imzML",
+    ]
+
+    database, sample_collection = load_database_image_collection(
+        progress_file_callback=progress_file_callback,
+        progress_overall_callback=progress_overall_callback,
+        database_path=database_path,
+        imzml_paths=imzml_paths,
+        config=mock_config,
+    )
+
+    assert isinstance(database, LipidDB)
+    assert isinstance(sample_collection, SampleCollection)
+    assert len(sample_collection.samples) == len(imzml_paths)
+    assert sample_collection.species_order == database.index
+    assert "PC 32:1 [M+H]+" in database.species
+    assert "PE 32:1 [M-H]-" in database.species
+    assert any(species.endswith("(+)") for species in database.index)
+    assert any(species.endswith("(-)") for species in database.index)
+    pos_sample = next(sample for sample in sample_collection.samples.values() if sample.ion_mode == IonMode.positive)
+    neg_sample = next(sample for sample in sample_collection.samples.values() if sample.ion_mode == IonMode.negative)
+    assert set(pos_sample.raw.keys()).issubset(set(sample_collection.species_order))
+    assert set(neg_sample.raw.keys()).issubset(set(sample_collection.species_order))
+    assert {sample.ion_mode for sample in sample_collection.samples.values()} == {
+        IonMode.positive,
+        IonMode.negative,
+    }
+    assert len(sample_collection.criteria_check()) == len(database.index)
 
 
 def test_add_padding() -> None:

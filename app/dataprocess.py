@@ -6,14 +6,14 @@ import statistics
 from enum import Enum
 from functools import cache
 from pathlib import Path
-from typing import Callable, ItemsView
+from typing import Callable, ItemsView, Sequence
 
 import numpy as np
 import numpy.typing as npt
 from numba import njit
 
 from app.config import Config
-from app.database import DatabaseFactory, IonMode, LipidDB
+from app.database import DatabaseFactory, IonMode, LipidDB, LipidSpecies
 from app.pyimzml_mod import ImzMLParser, get_average_spectrum, get_ion_images
 
 # start_time = timeit.default_timer()
@@ -64,6 +64,7 @@ class SectionMsiImage:
         """
         self.ion_mode = ion_mode
         self.config = config
+        self.database = database
         self.raw: dict[str, npt.NDArray]
         self.isotope: dict[str, npt.NDArray]
         self.quant: dict[str, npt.NDArray | None]
@@ -84,6 +85,14 @@ class SectionMsiImage:
         """
         # create imzml parser
         imzml_parser = ImzMLParser(imzml_path)
+        detected_polarity = getattr(imzml_parser, "polarity", None)
+        if detected_polarity is not None:
+            detected_mode = _polarity_to_ion_mode(detected_polarity, imzml_path)
+            if detected_mode != self.ion_mode:
+                raise ValueError(
+                    f"ImzML file '{imzml_path}' reports polarity '{detected_polarity}', "
+                    f"which does not match the detected ion mode '{self.ion_mode.name}'."
+                )
         self.coordinates = np.asarray(imzml_parser.coordinates, dtype=np.int32)
         self.pixel_size_um = self._extract_pixel_size(imzml_parser)
         progress_file_callback.emit(20)
@@ -92,7 +101,7 @@ class SectionMsiImage:
         cal_ppm = self.config.settings.processing_settings.calibration_ppm
         calibrant_mz = (
             self.config.settings.processing_settings.pos_calibrant
-            if self.ion_mode.value == IonMode.positive
+            if self.ion_mode == IonMode.positive
             else self.config.settings.processing_settings.neg_calibrant
         )
         min_intensity = self.config.settings.processing_settings.calibration_min_intensity
@@ -148,9 +157,16 @@ class SectionMsiImage:
         progress_file_callback.emit(90)
 
         # sum the different adduct forms of the same species
-        self.raw = sum_adducts(database=database, images=self.raw)  # type: ignore
-        self.isotope = sum_adducts(database=database, images=self.isotope)  # type: ignore
-        self.quant = sum_adducts(database=database, images=self.quant)
+        neutral_suffix = "(+)" if self.ion_mode == IonMode.positive else "(-)"
+        self.raw = sum_adducts(
+            database=database, images=self.raw, neutral_suffix=neutral_suffix
+        )  # type: ignore
+        self.isotope = sum_adducts(
+            database=database, images=self.isotope, neutral_suffix=neutral_suffix
+        )  # type: ignore
+        self.quant = sum_adducts(
+            database=database, images=self.quant, neutral_suffix=neutral_suffix
+        )
         progress_file_callback.emit(100)
 
     @staticmethod
@@ -364,9 +380,10 @@ class SampleCollection:
     Class that manages all the loaded samples.
     """
 
-    def __init__(self, samples: dict[str, SectionMsiImage]):
+    def __init__(self, samples: dict[str, SectionMsiImage], species_order: Sequence[str]):
         self.samples = samples
         self.index: list[str] = list(samples.keys())
+        self.species_order: list[str] = list(species_order)
 
     def items(self) -> ItemsView[str, SectionMsiImage]:
         return self.samples.items()
@@ -432,11 +449,20 @@ class SampleCollection:
         return min(manual_length, max_length)
 
     def criteria_check(self) -> list[bool]:
-        checks = []
-        for _, image in self.samples.items():
-            checks.append(image.criteria_check())
-        checks = list(map(list, zip(*checks)))
-        return [any(check) for check in checks]
+        if not self.samples:
+            return []
+
+        aggregated: dict[str, bool] = {species_id: False for species_id in self.species_order}
+
+        for image in self.samples.values():
+            image_checks = image.criteria_check()
+            for species_id, check in zip(image.raw.keys(), image_checks):
+                if species_id not in aggregated:
+                    aggregated[species_id] = check
+                else:
+                    aggregated[species_id] = aggregated[species_id] or check
+
+        return [aggregated.get(species_id, False) for species_id in self.species_order]
 
     def get_spectrum(self, sample_id: str) -> npt.NDArray:
         return self.samples[sample_id].average_spectrum
@@ -488,32 +514,132 @@ class SampleCollection:
         return len(self.samples)
 
 
+def _polarity_to_ion_mode(polarity: str | None, imzml_path: str) -> IonMode:
+    if polarity == "positive":
+        return IonMode.positive
+    if polarity == "negative":
+        return IonMode.negative
+    if polarity == "mixed":
+        raise ValueError(
+            f"ImzML file '{imzml_path}' reports mixed polarity, which is not supported."
+        )
+    raise ValueError(
+        f"ImzML file '{imzml_path}' does not specify an ion mode. Please ensure polarity metadata is present."
+    )
+
+
+def detect_imzml_ion_mode(imzml_path: str) -> IonMode:
+    """
+    Detect the ion mode of an imzML file by scanning for polarity markers in the XML.
+
+    The function searches for the PSI CV accessions and keywords that indicate polarity:
+    - Positive ion mode: ``MS:1000130`` or ``positive scan``
+    - Negative ion mode: ``MS:1000129`` or ``negative scan``
+
+    Args:
+        imzml_path (str): Path to the imzML file.
+
+    Returns:
+        IonMode: Detected ion mode for the file.
+
+    Raises:
+        ValueError: If the polarity cannot be determined or conflicting markers are found.
+    """
+
+    markers: dict[IonMode, tuple[bytes, ...]] = {
+        IonMode.positive: (b"MS:1000130", b"positive scan"),
+        IonMode.negative: (b"MS:1000129", b"negative scan"),
+    }
+    found_modes: set[IonMode] = set()
+    chunk_size = 65536
+    tail = b""
+
+    try:
+        with open(imzml_path, "rb") as handle:
+            while True:
+                chunk = handle.read(chunk_size)
+                if not chunk:
+                    break
+                data = tail + chunk
+                for mode, terms in markers.items():
+                    if mode in found_modes:
+                        continue
+                    if any(term in data for term in terms):
+                        found_modes.add(mode)
+                if len(found_modes) > 1:
+                    break
+                tail = data[-64:]
+    except OSError as exc:
+        raise ValueError(f"Unable to read imzML file '{imzml_path}': {exc}") from exc
+
+    if len(found_modes) == 1:
+        return next(iter(found_modes))
+    if len(found_modes) > 1:
+        raise ValueError(
+            f"ImzML file '{imzml_path}' contains both positive and negative polarity markers."
+        )
+    raise ValueError(
+        f"ImzML file '{imzml_path}' does not specify ion mode metadata. "
+        "Ensure the file includes 'MS:1000130' (positive) or 'MS:1000129' (negative)."
+    )
+
+
 def load_database_image_collection(
     progress_file_callback,
     progress_overall_callback,
     database_path: str,
-    ion_mode: IonMode,
     imzml_paths: list[str],
     config: Config,
 ) -> tuple[LipidDB, SampleCollection]:
     """
     Load a collection of sample images from multiple imzML files.
     """
-    samples: dict[str, SectionMsiImage] = dict()
-    database = DatabaseFactory(database_path, ion_mode).create_database()
+    samples: dict[str, SectionMsiImage] = {}
+    databases_by_mode: dict[IonMode, LipidDB] = {}
+
     for idx, path in enumerate(imzml_paths):
         progress_overall_callback.emit(int(idx / len(imzml_paths) * 100))
         progress_file_callback.emit(15)
+
+        ion_mode = detect_imzml_ion_mode(path)
+        if ion_mode not in databases_by_mode:
+            db = DatabaseFactory(database_path, ion_mode).create_database()
+            databases_by_mode[ion_mode] = db
+
         image_collection = SectionMsiImage(
             progress_file_callback,
-            database=database,
+            database=databases_by_mode[ion_mode],
             imzml_path=path,
             ion_mode=ion_mode,
             config=config,
         )
         samples[Path(path).stem] = image_collection
     progress_overall_callback.emit(100)
-    return database, SampleCollection(samples)
+    combined_species: dict[str, LipidSpecies] = {}
+    for mode in (IonMode.positive, IonMode.negative):
+        db = databases_by_mode.get(mode)
+        if db is None:
+            continue
+        for specie in db.species.values():
+            if specie.adduct == "":
+                neutral_copy = specie.model_copy(deep=True)
+                neutral_copy.adduct = "(+)" if mode == IonMode.positive else "(-)"
+                for attr in ("id_adduct", "class_adduct", "ion_mode"):
+                    neutral_copy.__dict__.pop(attr, None)
+                combined_species[neutral_copy.id_adduct] = neutral_copy
+            else:
+                combined_species.setdefault(specie.id_adduct, specie)
+
+    for db in databases_by_mode.values():
+        for specie in db.species.values():
+            if specie.adduct in {"", "(+)", "(-)"}:
+                continue
+            combined_species.setdefault(specie.id_adduct, specie)
+
+    combined_database = LipidDB(combined_species)
+    species_order = combined_database.species_ids_neutral_first()
+    combined_database.index = species_order
+    return combined_database, SampleCollection(samples, species_order=species_order)
 
 
 def ppm_to_tolerance(ppm: float, mz: float) -> float:
@@ -625,37 +751,53 @@ def quantitaton(database: LipidDB, images: dict[str, npt.NDArray]) -> dict[str, 
 
 
 def sum_adducts(
-    database: LipidDB, images: dict[str, npt.NDArray | None]
+    database: LipidDB,
+    images: dict[str, npt.NDArray | None],
+    neutral_suffix: str | None = None,
 ) -> dict[str, npt.NDArray | None]:
     """
-    Sum together the different adduct forms of the species
+    Sum together the different adduct forms of each species.
+
+    Args:
+        database: Lipid database providing species relationships.
+        images: Mapping from species ID (with adduct) to image data.
+        neutral_suffix: Optional suffix used to rename neutral species keys. When
+            provided, neutral entries are emitted as ``<id> <neutral_suffix>``.
     """
-    image: npt.NDArray | None = None
+
+    result: dict[str, npt.NDArray | None] = {}
     all_species_ids, _ = database.get_all_species(neutral=True)
-    summed_species = database.get_neutral_species()
-    for specie in summed_species:
-        adduct_forms = database.get_adduct_species_for_neutral(specie)
-        adduct_images: list[npt.NDArray] = [
-            images[s.id_adduct] for s in adduct_forms if s.id_adduct in images and images[s.id_adduct] is not None  # type: ignore
-        ]
-        if len(adduct_images) == 0:
-            image = None
-        elif len(adduct_images) == 1:
-            image = adduct_images[0]
-        else:
-            stacked = np.stack(adduct_images, axis=0)
-            # Sum the images ignoring NaNs.
-            image = np.nansum(stacked, axis=0)
-            # Create a mask for pixels where every image is NaN.
-            all_nan_mask = np.all(np.isnan(stacked), axis=0)
-            # Set those pixels to NaN in the summed image.
-            if image is not None:
+    neutral_lookup = {specie.id_adduct: specie for specie in database.get_neutral_species()}
+
+    for species_id in all_species_ids:
+        specie = database.species[species_id]
+        if species_id in neutral_lookup:
+            neutral_specie = neutral_lookup[species_id]
+            adduct_forms = database.get_adduct_species_for_neutral(neutral_specie)
+            adduct_images: list[npt.NDArray] = [
+                images[s.id_adduct]
+                for s in adduct_forms
+                if s.id_adduct in images and images[s.id_adduct] is not None
+            ]
+
+            if len(adduct_images) == 0:
+                image: npt.NDArray | None = None
+            elif len(adduct_images) == 1:
+                image = adduct_images[0]
+            else:
+                stacked = np.stack(adduct_images, axis=0)
+                image = np.nansum(stacked, axis=0)
+                all_nan_mask = np.all(np.isnan(stacked), axis=0)
                 image[all_nan_mask] = np.nan
 
-        images[specie.id_adduct] = image
+            key = neutral_specie.id_adduct
+            if neutral_suffix is not None:
+                key = f"{neutral_specie.id} {neutral_suffix}"
+            result[key] = image
+        else:
+            result[specie.id_adduct] = images.get(specie.id_adduct)
 
-    # return in original order
-    return {key: images[key] for key in all_species_ids if key in images}
+    return result
 
 
 @njit

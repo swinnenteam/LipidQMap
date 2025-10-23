@@ -1,11 +1,15 @@
 import os
 
 from PySide6.QtCore import QThreadPool, Signal, Slot
-from PySide6.QtWidgets import QFileDialog, QWidget
+from PySide6.QtWidgets import QFileDialog, QMessageBox, QWidget
 
 from app.config import Config, config_paths
 from app.database import IonMode, LipidDB
-from app.dataprocess import SampleCollection, load_database_image_collection
+from app.dataprocess import (
+    SampleCollection,
+    detect_imzml_ion_mode,
+    load_database_image_collection,
+)
 from app.generated.MsiImportDialog_ui import Ui_Dialog
 from app.multithreading import Worker
 
@@ -28,13 +32,12 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.config = config
         self.threadpool = QThreadPool()
         self.filepath: list[str] | None = None
+        self.file_ion_modes: dict[str, IonMode] = {}
         self.database: LipidDB | None = None
         self.samples: SampleCollection
         self.setupUi(self)
         self.database_combo_box.addItems(fetch_db_list())
 
-        self.pos_radio_button.setChecked(self.config.settings.processing_settings.pos_mode)
-        self.neg_radio_button.setChecked(not self.config.settings.processing_settings.pos_mode)
         self.ppm_spinbox.setValue(self.config.settings.processing_settings.ppm)
         self.bin_size_spinbox.setValue(self.config.settings.processing_settings.bin_size)
         self.m2_iso_cor_checkbox.setChecked(
@@ -48,6 +51,8 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.cal_int_spinbox.setValue(
             self.config.settings.processing_settings.calibration_min_intensity
         )
+        self.calibrant_pos_spinbox.setValue(self.config.settings.processing_settings.pos_calibrant)
+        self.calibrant_neg_spinbox.setValue(self.config.settings.processing_settings.neg_calibrant)
         self.imputation_checkbox.setChecked(self.config.settings.processing_settings.imputation)
         # set last used database
         index = self.database_combo_box.findText(
@@ -55,8 +60,8 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         )
         if index >= 0:
             self.database_combo_box.setCurrentIndex(index)
-        self.update_ion_mode()
         self.connect_signals_slots()
+        self.toggle_cal_checked_value(self.cal_checkbox.isChecked())
 
     def connect_signals_slots(self) -> None:
         """
@@ -69,12 +74,11 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.cal_checkbox.toggled.connect(self.toggle_cal_checked_value)
 
         # Connect settings changes to their specific handler slots
-        self.pos_radio_button.toggled.connect(self._on_ion_mode_changed)
-        self.neg_radio_button.toggled.connect(self._on_ion_mode_changed)
         self.database_combo_box.currentTextChanged.connect(self._on_database_changed)
         self.ppm_spinbox.valueChanged.connect(self._on_ppm_changed)
         self.bin_size_spinbox.valueChanged.connect(self._on_bin_size_changed)
-        self.calibrant_spinbox.valueChanged.connect(self._on_calibrant_changed)
+        self.calibrant_pos_spinbox.valueChanged.connect(self._on_calibrant_pos_changed)
+        self.calibrant_neg_spinbox.valueChanged.connect(self._on_calibrant_neg_changed)
         self.cal_ppm_spinbox.valueChanged.connect(self._on_cal_ppm_changed)
         self.cal_int_spinbox.valueChanged.connect(self._on_cal_int_changed)
         self.na_iso_cor_checkbox.toggled.connect(self._on_na_iso_cor_changed)
@@ -95,13 +99,10 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
             raise ValueError(
                 "Please select a database file, the readme provides details on how to create a database."
             )
-        ion_mode = IonMode.positive if self.pos_radio_button.isChecked() else IonMode.negative
-
         if self.filepath:
             worker = Worker(
                 load_database_image_collection,
                 database_path=db_path,
-                ion_mode=ion_mode,
                 imzml_paths=self.filepath,
                 config=self.config,
             )
@@ -131,37 +132,33 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
     def open_imzml_files(self) -> None:
         """Open imzML files."""
         self.imzml_list_view.clear()
+        self.file_ion_modes = {}
         self.filepath, __ = QFileDialog.getOpenFileNames(
             self, "Select imzML file(s)", filter=";imzML(*.imzML)"
         )
         if not self.filepath:
             return
-        self.imzml_list_view.addItems([os.path.basename(path) for path in self.filepath])
-
-    def update_ion_mode(self):
-        """
-        Reads the current state of the ion mode radio buttons and updates the calibrant spinbox to match.
-        """
-        if self.pos_radio_button.isChecked():
-            self.calibrant_spinbox.setValue(self.config.settings.processing_settings.pos_calibrant)
-        else:
-            self.calibrant_spinbox.setValue(self.config.settings.processing_settings.neg_calibrant)
+        items: list[str] = []
+        for path in self.filepath:
+            try:
+                ion_mode = detect_imzml_ion_mode(path)
+            except ValueError as exc:
+                QMessageBox.warning(self, "Ion mode detection failed", str(exc))
+                self.filepath = None
+                self.file_ion_modes = {}
+                self.imzml_list_view.clear()
+                return
+            self.file_ion_modes[path] = ion_mode
+            label = "POS" if ion_mode == IonMode.positive else "NEG"
+            items.append(f"{os.path.basename(path)} ({label})")
+        self.imzml_list_view.addItems(items)
 
     def toggle_cal_checked_value(self, is_checked: bool):
         """Enables or disables calibration-related widgets."""
-        self.calibrant_spinbox.setEnabled(is_checked)
+        self.calibrant_pos_spinbox.setEnabled(is_checked)
+        self.calibrant_neg_spinbox.setEnabled(is_checked)
         self.cal_ppm_spinbox.setEnabled(is_checked)
         self.cal_int_spinbox.setEnabled(is_checked)
-
-    @Slot(bool)
-    def _on_ion_mode_changed(self, is_checked: bool):
-        """Saves the ion mode setting and updates the UI when a radio button is toggled."""
-        if not is_checked:
-            return
-
-        self.config.settings.processing_settings.pos_mode = self.pos_radio_button.isChecked()
-        self.config.save()
-        self.update_ion_mode()
 
     @Slot(str)
     def _on_database_changed(self, db_name: str):
@@ -182,12 +179,15 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         self.config.save()
 
     @Slot(float)
-    def _on_calibrant_changed(self, value: float):
-        """Saves the calibrant m/z for the currently selected ion mode."""
-        if self.pos_radio_button.isChecked():
-            self.config.settings.processing_settings.pos_calibrant = value
-        else:  # Assumes negative mode
-            self.config.settings.processing_settings.neg_calibrant = value
+    def _on_calibrant_pos_changed(self, value: float):
+        """Persist the positive-ion calibrant m/z."""
+        self.config.settings.processing_settings.pos_calibrant = value
+        self.config.save()
+
+    @Slot(float)
+    def _on_calibrant_neg_changed(self, value: float):
+        """Persist the negative-ion calibrant m/z."""
+        self.config.settings.processing_settings.neg_calibrant = value
         self.config.save()
 
     @Slot(float)
@@ -229,8 +229,6 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
     def set_ui_components_status(self, active: bool) -> None:
         self.open_imzml_button.setEnabled(active)
         self.imzml_list_view.setEnabled(active)
-        self.neg_radio_button.setEnabled(active)
-        self.pos_radio_button.setEnabled(active)
         self.ppm_spinbox.setEnabled(active)
         self.bin_size_spinbox.setEnabled(active)
         self.database_combo_box.setEnabled(active)

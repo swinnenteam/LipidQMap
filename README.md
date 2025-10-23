@@ -33,7 +33,7 @@ Click on the folder icon in the top left of the main program window to open the 
 ![alt text](resources/images/guide_open_file.png "LipidQMap")
 
 1. In the imzML import dialog, click on the "**Open Files**" button to select one or more imzML files.
-2. Select if the file contains positive or negative ion mode data.
+2. The ion mode is detected automatically for each file; both positive and negative files can be loaded together.
 3. Select the maximum tolerated mass error (in ppm) for for extracting the ion images.
 4. Select the Bin size used for calculating the average spectrum (Default 5 mDa for TOF instruments, should be decreased for higher resolution instruments)
 5. Select if missing pixels should be imputated by taking the mean of the surrounding 3x3 pixels.

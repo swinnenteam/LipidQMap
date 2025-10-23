@@ -130,6 +130,19 @@ class LipidDB:
         as species with given id
         """
         current_specie = self.species[id]
+        if current_specie.adduct in {"(+)", "(-)"}:
+            target_mode = IonMode.positive if current_specie.adduct == "(+)" else IonMode.negative
+            related: list[LipidSpecies] = []
+            for specie in self.species.values():
+                if specie.lipid_class != current_specie.lipid_class:
+                    continue
+                if specie.adduct in {"(+)", "(-)"}:
+                    if specie.adduct == current_specie.adduct:
+                        related.append(specie)
+                    continue
+                if specie.ion_mode == target_mode:
+                    related.append(specie)
+            return related
         return [s for s in self.species.values() if current_specie.class_adduct == s.class_adduct]
 
     def get_ids_non_standards(self) -> list[LipidSpecies]:
@@ -143,6 +156,67 @@ class LipidDB:
             for s in self.species.values()
             if (not s.is_standard) and s.ion_mode != IonMode.neutral
         ]
+
+    def _species_order_neutral_first(self) -> list[LipidSpecies]:
+        """
+        Return species sorted so that entries are grouped by base ID with positive-mode
+        neutral summaries and adducts preceding negative-mode entries.
+        """
+
+        grouped: dict[str, dict[str, list[LipidSpecies] | LipidSpecies | None]] = {}
+        for specie in self.species.values():
+            base_id = specie.id
+            if base_id not in grouped:
+                grouped[base_id] = {
+                    "neutral_pos": None,
+                    "neutral_neg": None,
+                    "neutral_other": [],
+                    "positive": [],
+                    "negative": [],
+                    "other": [],
+                }
+            bucket = grouped[base_id]
+            if specie.adduct == "(+)":
+                bucket["neutral_pos"] = specie
+            elif specie.adduct == "(-)":
+                bucket["neutral_neg"] = specie
+            else:
+                match specie.ion_mode:
+                    case IonMode.positive:
+                        bucket["positive"].append(specie)
+                    case IonMode.negative:
+                        bucket["negative"].append(specie)
+                    case IonMode.neutral:
+                        bucket["neutral_other"].append(specie)
+                    case _:
+                        bucket["other"].append(specie)
+
+        ordered: list[LipidSpecies] = []
+        seen_ids: set[str] = set()
+        for specie in self.species.values():
+            base_id = specie.id
+            if base_id in seen_ids:
+                continue
+            seen_ids.add(base_id)
+            bucket = grouped[base_id]
+            if bucket["neutral_pos"] is not None:
+                ordered.append(bucket["neutral_pos"])  # type: ignore[arg-type]
+            if bucket["positive"]:
+                ordered.extend(sorted(bucket["positive"], key=lambda s: (s.adduct, s.mz)))
+            if bucket["neutral_neg"] is not None:
+                ordered.append(bucket["neutral_neg"])  # type: ignore[arg-type]
+            if bucket["negative"]:
+                ordered.extend(sorted(bucket["negative"], key=lambda s: (s.adduct, s.mz)))
+            if bucket["neutral_other"]:
+                ordered.extend(sorted(bucket["neutral_other"], key=lambda s: (s.adduct, s.mz)))
+            if bucket["other"]:
+                ordered.extend(sorted(bucket["other"], key=lambda s: (s.adduct, s.mz)))
+
+        return ordered
+
+    def species_ids_neutral_first(self) -> list[str]:
+        """Return species IDs ordered for display (neutral form followed by all adducts)."""
+        return [specie.id_adduct for specie in self._species_order_neutral_first()]
 
     def get_species_sorted_for_isotope(self) -> list[LipidSpecies]:
         """
@@ -185,7 +259,23 @@ class LipidDB:
         """
         Given a species, returns the list of all adduct forms of this species
         """
-        return [s for s in list(self.species.values()) if s.id == species.id and s.adduct != ""]
+        mode_filter: IonMode | None = None
+        if species.adduct == "(+)":
+            mode_filter = IonMode.positive
+        elif species.adduct == "(-)":
+            mode_filter = IonMode.negative
+
+        adducts: list[LipidSpecies] = []
+        for candidate in self.species.values():
+            if candidate.id != species.id:
+                continue
+            if candidate.adduct == "":
+                continue
+            if candidate.adduct in {"(+)", "(-)"}:
+                continue
+            if mode_filter is None or candidate.ion_mode == mode_filter:
+                adducts.append(candidate)
+        return adducts
 
     def get_all_species(self, neutral=False) -> tuple[list[str], list[float]]:
         """
@@ -211,12 +301,15 @@ class LipidDB:
             pd.DataFrame: A DataFrame containing species IDs and their m/z values, marked for export.
         """
 
+        ordered_species = self._species_order_neutral_first()
+        species_ids = [specie.id_adduct for specie in ordered_species]
+        self.index = species_ids
         d = {
-            "Species": self.index,
-            "m/z": [specie.mz for specie in self.species.values()],
+            "Species": species_ids,
+            "m/z": [specie.mz for specie in ordered_species],
             "Export": True,
         }
-        df = pd.DataFrame(data=d, index=self.index)
+        df = pd.DataFrame(data=d, index=species_ids)
         return df
 
     def verify_ion_mode(self, ion_mode: IonMode) -> bool:

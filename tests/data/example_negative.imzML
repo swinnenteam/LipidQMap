@@ -49,7 +49,7 @@
       <cvParam cvRef="MS" accession="MS:1000579" name="MS1 spectrum"/>
       <cvParam cvRef="MS" accession="MS:1000511" name="ms level" value="0"/>
       <cvParam cvRef="MS" accession="MS:1000128" name="profile spectrum"/>
-      <cvParam cvRef="MS" accession="MS:1000130" name="positive scan"/>
+      <cvParam cvRef="MS" accession="MS:1000129" name="negative scan"/>
     </referenceableParamGroup>
   </referenceableParamGroupList>
   <sampleList count="1">

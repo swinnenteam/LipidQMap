@@ -46,7 +46,7 @@ def sample_collection() -> SampleCollection:
     }
     section = DummySection(images, pixel_size_um=(45.0, 50.0))
     samples = cast(dict[str, SectionMsiImage], {"sample": cast(SectionMsiImage, section)})
-    return SampleCollection(samples)
+    return SampleCollection(samples, species_order=list(images.keys()))
 
 
 @pytest.fixture()
