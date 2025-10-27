@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable, Sequence, cast
+from typing import Sequence, cast
 
 import h5py
 import numpy as np
@@ -57,8 +57,10 @@ def export_cardinal_hdf5(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     pixel_df = _build_pixel_dataframe(samples)
-    feature_df = _build_feature_dataframe(database, species_ids)
-    intensity_matrix = _build_intensity_matrix(samples, species_ids, image_type)
+    intensity_matrix, exported_species_ids = _build_intensity_matrix(
+        samples, species_ids, image_type
+    )
+    feature_df = _build_feature_dataframe(database, exported_species_ids)
 
     if not feature_df.empty:
         sort_order = np.argsort(feature_df["mz"].to_numpy(dtype=np.float64), kind="stable")
@@ -150,58 +152,70 @@ def _build_intensity_matrix(
     samples: SampleCollection,
     species_ids: Sequence[str],
     image_type: ImageType,
-) -> np.ndarray:
+) -> tuple[np.ndarray, list[str]]:
     """Build the feature-by-pixel intensity matrix."""
+    sample_entries = list(samples.items())
+    coords_cache: list[np.ndarray | None] = []
+    pixel_counts: list[int] = []
+    for _, section in sample_entries:
+        coords_arr = getattr(section, "coordinates", None)
+        if coords_arr is not None and coords_arr.size > 0:
+            coords_cache.append(coords_arr)
+            pixel_counts.append(coords_arr.shape[0])
+        else:
+            coords_cache.append(None)
+            height, width = section.shape
+            pixel_counts.append(height * width)
+
+    total_pixels = int(sum(pixel_counts))
     feature_stack: list[np.ndarray] = []
+    exported_species: list[str] = []
+
     for species_id in species_ids:
         pixel_values: list[np.ndarray] = []
-        for _, section in samples.items():
-            coords_arr = getattr(section, "coordinates", None)
+        has_image = False
+        for (coords_arr, pixel_count, (_, section)) in zip(
+            coords_cache, pixel_counts, sample_entries
+        ):
             image = _extract_image(section, species_id, image_type)
             if image is None:
-                if coords_arr is not None and coords_arr.size > 0:
-                    pixel_count = coords_arr.shape[0]
-                else:
-                    pixel_count = section.shape[0] * section.shape[1]
-                image_vector = np.full(pixel_count, np.nan, dtype=np.float32)
+                pixel_values.append(np.full(pixel_count, np.nan, dtype=np.float32))
+                continue
+
+            has_image = True
+            image_array = np.asarray(image, dtype=np.float32)
+            if coords_arr is not None and coords_arr.size > 0:
+                x_idx = coords_arr[:, 0].astype(int) - 1
+                y_idx = coords_arr[:, 1].astype(int) - 1
+                pixel_values.append(image_array[y_idx, x_idx])
             else:
-                image_array = np.asarray(image, dtype=np.float32)
-                if coords_arr is not None and coords_arr.size > 0:
-                    x_idx = coords_arr[:, 0].astype(int) - 1
-                    y_idx = coords_arr[:, 1].astype(int) - 1
-                    image_vector = image_array[y_idx, x_idx]
-                else:
-                    image_vector = image_array.ravel(order="C")
-            pixel_values.append(image_vector)
-        if pixel_values:
+                pixel_values.append(image_array.ravel(order="C"))
+
+        if has_image:
             feature_stack.append(np.concatenate(pixel_values))
+            exported_species.append(species_id)
 
     if not feature_stack:
-        return np.empty((0, 0), dtype=np.float32)
+        return np.empty((0, total_pixels), dtype=np.float32), exported_species
 
-    return np.vstack(feature_stack)
+    return np.vstack(feature_stack), exported_species
 
 
 def _extract_image(section, species_id: str, image_type: ImageType):
-    """Return the preferred image array for a species, falling back to raw intensities."""
-    containers: Iterable[dict[str, np.ndarray | None]]
+    """Return the requested image array for a species if available."""
     match image_type:
         case ImageType.raw:
-            containers = (section.raw,)
+            container = getattr(section, "raw", None)
         case ImageType.isotope:
-            containers = (section.isotope, section.raw)
+            container = getattr(section, "isotope", None)
         case ImageType.quant:
-            containers = (section.quant, section.isotope, section.raw)
+            container = getattr(section, "quant", None)
         case _:
-            containers = (section.quant, section.isotope, section.raw)
+            container = getattr(section, image_type.value, None)
 
-    for container in containers:
-        if container is None:
-            continue
-        image = container.get(species_id)
-        if image is not None:
-            return image
-    return None
+    if container is None:
+        return None
+    return container.get(species_id)
 
 
 def _write_hdf5(

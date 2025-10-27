@@ -15,12 +15,18 @@ from app.export import CardinalExportError, export_cardinal_hdf5
 
 class DummySection:
     def __init__(
-        self, images: dict[str, np.ndarray], pixel_size_um: tuple[float, float] | None = None
+        self,
+        images: dict[str, np.ndarray],
+        *,
+        quant_images: dict[str, np.ndarray | None] | None = None,
+        isotope_images: dict[str, np.ndarray] | None = None,
+        raw_images: dict[str, np.ndarray] | None = None,
+        pixel_size_um: tuple[float, float] | None = None,
     ):
-        self.quant = images
-        self.isotope = images
-        self.raw = images
-        first_image = next(iter(images.values()))
+        self.raw = raw_images if raw_images is not None else images
+        self.isotope = isotope_images if isotope_images is not None else self.raw
+        self.quant = quant_images if quant_images is not None else self.raw
+        first_image = next(iter(self.raw.values()))
         self._shape: tuple[int, int] = cast(tuple[int, int], first_image.shape)
         self.coordinates = np.array(
             [
@@ -205,6 +211,49 @@ def test_export_cardinal_hdf5_writes_expected_structure(
         assert sample_group.attrs["n_pixels"] == 4
         assert sample_group.attrs["pixel_size_um_x"] == pytest.approx(45.0)
         assert sample_group.attrs["pixel_size_um_y"] == pytest.approx(50.0)
+
+
+def test_export_cardinal_hdf5_skips_species_without_requested_image(
+    database: LipidDB,
+    output_path: Path,
+) -> None:
+    images = {
+        "A [M+H]+": np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32),
+        "B [M+H]+": np.array([[5.0, 6.0], [7.0, 8.0]], dtype=np.float32),
+    }
+    quant_images = {
+        "A [M+H]+": images["A [M+H]+"],
+        "B [M+H]+": None,
+    }
+    section = DummySection(images, quant_images=quant_images)
+    samples = cast(dict[str, SectionMsiImage], {"sample": cast(SectionMsiImage, section)})
+    sample_collection = SampleCollection(samples, species_order=list(images.keys()))
+
+    species_ids = ["A [M+H]+", "B [M+H]+"]
+
+    written_path = export_cardinal_hdf5(
+        output_path,
+        samples=sample_collection,
+        database=database,
+        species_ids=species_ids,
+        image_type=ImageType.quant,
+    )
+
+    with h5py.File(written_path, "r") as h5:
+        spectra_group = cast(h5py.Group, h5["spectraData"])
+        intensity_dataset = cast(h5py.Dataset, spectra_group["intensity"])
+        intensity = intensity_dataset[:]
+        assert intensity.shape == (1, 4)
+        np.testing.assert_array_equal(
+            intensity[0], np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+        )
+
+        feature_group = cast(h5py.Group, h5["featureData"])
+        feature_ids_dataset = cast(h5py.Dataset, feature_group["feature_id"])
+        feature_ids = [
+            fid.decode() if isinstance(fid, bytes) else str(fid) for fid in feature_ids_dataset[:]
+        ]
+        assert feature_ids == ["A [M+H]+"]
 
 
 def test_export_cardinal_hdf5_requires_species(
