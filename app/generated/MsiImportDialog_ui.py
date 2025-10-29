@@ -15,11 +15,11 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QAbstractItemView, QApplication, QButtonGroup, QCheckBox,
-    QComboBox, QDialog, QDoubleSpinBox, QGridLayout,
-    QGroupBox, QHBoxLayout, QLabel, QListWidget,
-    QListWidgetItem, QProgressBar, QPushButton, QSizePolicy,
-    QSpacerItem, QSpinBox, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
+    QDoubleSpinBox, QGridLayout, QGroupBox, QHBoxLayout,
+    QHeaderView, QLabel, QProgressBar, QPushButton,
+    QSizePolicy, QSpacerItem, QSpinBox, QTableView,
+    QVBoxLayout, QWidget)
 
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
@@ -47,32 +47,47 @@ class Ui_Dialog(object):
 
         self.verticalLayout.addLayout(self.horizontalLayout)
 
-        self.imzml_list_view = QListWidget(Dialog)
+        self.imzml_list_view = QTableView(Dialog)
         self.imzml_list_view.setObjectName(u"imzml_list_view")
-        self.imzml_list_view.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.imzml_list_view.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.imzml_list_view.setProperty(u"showDropIndicator", False)
-        self.imzml_list_view.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
 
         self.verticalLayout.addWidget(self.imzml_list_view)
 
         self.gridLayout = QGridLayout()
         self.gridLayout.setObjectName(u"gridLayout")
         self.gridLayout.setContentsMargins(-1, 0, -1, -1)
-        self.label_4 = QLabel(Dialog)
-        self.label_4.setObjectName(u"label_4")
+        self.ppm_spinbox = QDoubleSpinBox(Dialog)
+        self.ppm_spinbox.setObjectName(u"ppm_spinbox")
+        self.ppm_spinbox.setMinimumSize(QSize(100, 0))
+        self.ppm_spinbox.setBaseSize(QSize(0, 0))
+        self.ppm_spinbox.setMinimum(0.050000000000000)
+        self.ppm_spinbox.setValue(10.000000000000000)
 
-        self.gridLayout.addWidget(self.label_4, 1, 0, 1, 1)
+        self.gridLayout.addWidget(self.ppm_spinbox, 0, 1, 1, 1)
+
+        self.label_5 = QLabel(Dialog)
+        self.label_5.setObjectName(u"label_5")
+
+        self.gridLayout.addWidget(self.label_5, 2, 0, 1, 1)
+
+        self.label_3 = QLabel(Dialog)
+        self.label_3.setObjectName(u"label_3")
+
+        self.gridLayout.addWidget(self.label_3, 0, 0, 1, 1)
 
         self.imputation_checkbox = QCheckBox(Dialog)
         self.imputation_checkbox.setObjectName(u"imputation_checkbox")
 
         self.gridLayout.addWidget(self.imputation_checkbox, 1, 1, 1, 2)
 
-        self.label_5 = QLabel(Dialog)
-        self.label_5.setObjectName(u"label_5")
+        self.label_4 = QLabel(Dialog)
+        self.label_4.setObjectName(u"label_4")
 
-        self.gridLayout.addWidget(self.label_5, 2, 0, 1, 1)
+        self.gridLayout.addWidget(self.label_4, 1, 0, 1, 1)
+
+        self.database_combo_box = QComboBox(Dialog)
+        self.database_combo_box.setObjectName(u"database_combo_box")
+
+        self.gridLayout.addWidget(self.database_combo_box, 2, 1, 1, 3)
 
         self.bin_size_spinbox = QDoubleSpinBox(Dialog)
         self.bin_size_spinbox.setObjectName(u"bin_size_spinbox")
@@ -88,24 +103,9 @@ class Ui_Dialog(object):
 
         self.gridLayout.addWidget(self.label_9, 0, 2, 1, 1)
 
-        self.label_3 = QLabel(Dialog)
-        self.label_3.setObjectName(u"label_3")
+        self.horizontalSpacer_3 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-        self.gridLayout.addWidget(self.label_3, 0, 0, 1, 1)
-
-        self.ppm_spinbox = QDoubleSpinBox(Dialog)
-        self.ppm_spinbox.setObjectName(u"ppm_spinbox")
-        self.ppm_spinbox.setMinimumSize(QSize(100, 0))
-        self.ppm_spinbox.setBaseSize(QSize(0, 0))
-        self.ppm_spinbox.setMinimum(0.050000000000000)
-        self.ppm_spinbox.setValue(10.000000000000000)
-
-        self.gridLayout.addWidget(self.ppm_spinbox, 0, 1, 1, 1)
-
-        self.database_combo_box = QComboBox(Dialog)
-        self.database_combo_box.setObjectName(u"database_combo_box")
-
-        self.gridLayout.addWidget(self.database_combo_box, 2, 1, 1, 3)
+        self.gridLayout.addItem(self.horizontalSpacer_3, 1, 3, 1, 1)
 
 
         self.verticalLayout.addLayout(self.gridLayout)
@@ -187,6 +187,10 @@ class Ui_Dialog(object):
 
         self.gridLayout_2.addWidget(self.calibrant_neg_spinbox, 2, 1, 1, 1)
 
+        self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.gridLayout_2.addItem(self.horizontalSpacer_2, 0, 1, 1, 1)
+
 
         self.verticalLayout_2.addLayout(self.gridLayout_2)
 
@@ -225,19 +229,19 @@ class Ui_Dialog(object):
         Dialog.setWindowTitle(QCoreApplication.translate("Dialog", u"Import imzML files", None))
         self.label.setText(QCoreApplication.translate("Dialog", u"Select imzML files:", None))
         self.open_imzml_button.setText(QCoreApplication.translate("Dialog", u"Open Files", None))
-        self.label_4.setText(QCoreApplication.translate("Dialog", u"Imputation:", None))
+        self.ppm_spinbox.setSuffix(QCoreApplication.translate("Dialog", u" ppm", None))
+        self.label_5.setText(QCoreApplication.translate("Dialog", u"Database:", None))
+        self.label_3.setText(QCoreApplication.translate("Dialog", u"Accuracy:", None))
 #if QT_CONFIG(tooltip)
         self.imputation_checkbox.setToolTip(QCoreApplication.translate("Dialog", u"<html><head/><body><p><span style=\" font-size:14pt;\">Enables median imputation to fill in pixels with no signal, using the values of 3x3 surrounding pixels.</span></p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.imputation_checkbox.setText(QCoreApplication.translate("Dialog", u"Fill in missing pixel values \u24d8", None))
-        self.label_5.setText(QCoreApplication.translate("Dialog", u"Database:", None))
+        self.label_4.setText(QCoreApplication.translate("Dialog", u"Imputation:", None))
 #if QT_CONFIG(tooltip)
         self.bin_size_spinbox.setToolTip(QCoreApplication.translate("Dialog", u"<html><head/><body><p><span style=\" font-size:14pt;\">Width of the bin of the average mz spectrum at mz 1000, in miliDalton. For calculating the average mz spectrum of an image section, a binning algorithm is used. This spectrum averaging algoritm assigns peaks accross the spectra of different pixels to mz bins and then calculates the average intensity for each bin.</span></p><p><span style=\" font-size:14pt;\">The width of the bins is automatically adjusted depending on the mz, by keeping a constant ppm. For example if a bin size of 5 mDa is provided (at mz 1000) this corresponds to a ppm of 5. At for example mz 700, a ppm of 5 corresponds to a bin size of 3.5 mDa, at mz 400 the bin size will be 2 mDa , etc...</span></p><p><span style=\" font-size:14pt;\">This setting only affects the average spectrum that is shown in the spectrum viewer, it has no consequence on the extracted ion images.</span></p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.bin_size_spinbox.setSuffix(QCoreApplication.translate("Dialog", u" mDa", u"miliDalton"))
         self.label_9.setText(QCoreApplication.translate("Dialog", u"Bin size:", None))
-        self.label_3.setText(QCoreApplication.translate("Dialog", u"Accuracy:", None))
-        self.ppm_spinbox.setSuffix(QCoreApplication.translate("Dialog", u" ppm", None))
         self.isotope_group_box.setTitle(QCoreApplication.translate("Dialog", u"Isotopic correction", None))
 #if QT_CONFIG(tooltip)
         self.na_iso_cor_checkbox.setToolTip(QCoreApplication.translate("Dialog", u"<html><head/><body><p><span style=\" font-size:14pt;\">Type II isotopic correction for isobaric overlap between [M+H]+ and [M+Na]+ adduct forms. For protonated lipid ions, the sodiated adduct of species [X:Y] (X number of C atoms and Y number of double bonds in the acyl chains) overlaps with species [X+2:Y+3]. The correction algorith is described in H\u00f6ring at el., </span><span style=\" font-size:14pt; font-style:italic;\">Anal. Chem. 2020, 92, 16, 10966\u201310970. </span></p><p><span style=\" font-size:14pt;\">This correction is relevant for measurements with a mass resolution lower than +/- 600.000 (m/z difference 0.0025).</span></p></body></html>", None))

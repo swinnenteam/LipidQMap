@@ -2,7 +2,9 @@ import copy
 import math
 import os
 import pickle
+import re
 import statistics
+from dataclasses import dataclass
 from enum import Enum
 from functools import cache
 from pathlib import Path
@@ -30,12 +32,112 @@ class ImageType(str, Enum):
     quant = "quant"
 
 
+class SampleIonMode(str, Enum):
+    """
+    Ion mode at the section/sample level. Supports combined datasets.
+    """
+
+    positive = "positive"
+    negative = "negative"
+    combined = "combined"
+
+    @classmethod
+    def from_ion_mode(cls, ion_mode: IonMode) -> "SampleIonMode":
+        """Map a database ion mode to the sample-level mode enumeration."""
+        if ion_mode == IonMode.positive:
+            return cls.positive
+        if ion_mode == IonMode.negative:
+            return cls.negative
+        if ion_mode == IonMode.summed:
+            raise ValueError("Summed ion mode is not valid for sample acquisition.")
+        raise ValueError(f"Unsupported ion mode '{ion_mode}'.")
+
+
+@dataclass(slots=True)
+class SampleFiles:
+    """
+    Grouping of imzML files representing one logical sample across ion modes.
+
+    Attributes:
+        label: Display label used for downstream sample identification.
+        pos_path: Path to the positive ion mode file, if available.
+        neg_path: Path to the negative ion mode file, if available.
+        pos_filename: Basename cached for UI display of the positive mode file.
+        neg_filename: Basename cached for UI display of the negative mode file.
+    """
+
+    _POLARITY_TOKENS = {"pos", "neg", "positive", "negative"}
+
+    label: str
+    pos_path: str | None = None
+    neg_path: str | None = None
+    pos_filename: str | None = None
+    neg_filename: str | None = None
+
+    @staticmethod
+    def _tokenize_filename(filename: str) -> list[str]:
+        """Return alphanumeric tokens extracted from the filename stem."""
+        stem = Path(filename).stem
+        return [token for token in re.split(r"[^0-9A-Za-z]+", stem) if token]
+
+    @classmethod
+    def normalized_key(cls, filename: str) -> str:
+        """Produce a polarity-agnostic key used to group complementary files."""
+        tokens = cls._tokenize_filename(filename)
+        filtered = [token.lower() for token in tokens if token.lower() not in cls._POLARITY_TOKENS]
+        return " ".join(filtered) if filtered else Path(filename).stem.lower()
+
+    @classmethod
+    def derive_label(cls, filename: str) -> str:
+        """Generate a default label for display, removing polarity markers when possible."""
+        tokens = cls._tokenize_filename(filename)
+        filtered = [token for token in tokens if token.lower() not in cls._POLARITY_TOKENS]
+        if filtered:
+            return "_".join(filtered)
+        return Path(filename).stem
+
+    def can_accept(self, mode: IonMode) -> bool:
+        """Return True when the selection still has an empty slot for the given mode."""
+        if mode == IonMode.positive:
+            return self.pos_path is None
+        if mode == IonMode.negative:
+            return self.neg_path is None
+        return False
+
+    def assign(self, mode: IonMode, path: str, filename: str) -> None:
+        """Store the chosen path and filename for the provided ion mode."""
+        if mode == IonMode.positive:
+            self.pos_path = path
+            self.pos_filename = filename
+        elif mode == IonMode.negative:
+            self.neg_path = path
+            self.neg_filename = filename
+        else:
+            raise ValueError("Cannot assign combined ion mode input.")
+
+    def mode_paths(self) -> list[tuple[IonMode, str]]:
+        """Return (mode, path) tuples for each available file in the selection."""
+        paths: list[tuple[IonMode, str]] = []
+        if self.pos_path is not None:
+            paths.append((IonMode.positive, self.pos_path))
+        if self.neg_path is not None:
+            paths.append((IonMode.negative, self.neg_path))
+        return paths
+
+    def normalized_key_value(self) -> str:
+        """Expose the grouping key based on whichever filename is present."""
+        for candidate in (self.pos_filename, self.neg_filename):
+            if candidate:
+                return self.normalized_key(candidate)
+        return self.label.lower()
+
+
 class SectionMsiImage:
     """
     Class for handling collections of sample images with different types (raw, isotope, quant).
 
     Attributes:
-        ion_mode (IonMode): Ionization mode of the sample.
+        ion_mode (SampleIonMode): Ionization mode context of the sample (positive, negative, combined).
         raw (dict[str, npt.NDArray]): Dictionary of raw images.
         isotope (dict[str, npt.NDArray]): Dictionary of isotope corrected images.
         quant (dict[str, npt.NDArray]): Dictionary of quantitated images.
@@ -62,7 +164,8 @@ class SectionMsiImage:
             ion_mode (IonMode): Ionization mode of the sample.
             config (Config): Configuration settings.
         """
-        self.ion_mode = ion_mode
+        self.ion_mode = SampleIonMode.from_ion_mode(ion_mode)
+        self._measurement_mode: IonMode | None = ion_mode
         self.config = config
         self.database = database
         self.raw: dict[str, npt.NDArray]
@@ -88,10 +191,11 @@ class SectionMsiImage:
         detected_polarity = getattr(imzml_parser, "polarity", None)
         if detected_polarity is not None:
             detected_mode = _polarity_to_ion_mode(detected_polarity, imzml_path)
-            if detected_mode != self.ion_mode:
+            if detected_mode != self._measurement_mode:
                 raise ValueError(
                     f"ImzML file '{imzml_path}' reports polarity '{detected_polarity}', "
-                    f"which does not match the detected ion mode '{self.ion_mode.name}'."
+                    f"which does not match the detected ion mode "
+                    f"'{self._measurement_mode.name if self._measurement_mode else 'combined'}'."
                 )
         self.coordinates = np.asarray(imzml_parser.coordinates, dtype=np.int32)
         self.pixel_size_um = self._extract_pixel_size(imzml_parser)
@@ -101,7 +205,7 @@ class SectionMsiImage:
         cal_ppm = self.config.settings.processing_settings.calibration_ppm
         calibrant_mz = (
             self.config.settings.processing_settings.pos_calibrant
-            if self.ion_mode == IonMode.positive
+            if self.ion_mode == SampleIonMode.positive
             else self.config.settings.processing_settings.neg_calibrant
         )
         min_intensity = self.config.settings.processing_settings.calibration_min_intensity
@@ -157,7 +261,7 @@ class SectionMsiImage:
         progress_file_callback.emit(90)
 
         # sum the different adduct forms of the same species
-        neutral_suffix = "(+)" if self.ion_mode == IonMode.positive else "(-)"
+        neutral_suffix = "(+)" if self._measurement_mode == IonMode.positive else "(-)"
         self.raw = sum_adducts(
             database=database, images=self.raw, neutral_suffix=neutral_suffix
         )  # type: ignore
@@ -167,7 +271,7 @@ class SectionMsiImage:
         self.quant = sum_adducts(
             database=database, images=self.quant, neutral_suffix=neutral_suffix
         )
-        progress_file_callback.emit(100)
+        progress_file_callback.emit(95)
 
     @staticmethod
     def _extract_pixel_size(parser: ImzMLParser) -> tuple[float, float] | None:
@@ -584,36 +688,146 @@ def detect_imzml_ion_mode(imzml_path: str) -> IonMode:
     )
 
 
+def _unique_label(base_label: str, existing: set[str]) -> str:
+    """Create a label that is unique within the provided set by appending numeric suffixes."""
+    label = base_label
+    suffix = 2
+    while label in existing:
+        label = f"{base_label}_{suffix}"
+        suffix += 1
+    return label
+
+
+def _merge_average_spectra(
+    primary: npt.NDArray[np.floating], secondary: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
+    """Merge two average spectra arrays, keeping mz values sorted."""
+    if primary.size == 0:
+        return secondary
+    if secondary.size == 0:
+        return primary
+    merged = np.concatenate((primary, secondary), axis=1)
+    order = np.argsort(merged[0])
+    return merged[:, order]
+
+
+def _combine_section_images(
+    images: list[tuple[IonMode, SectionMsiImage]],
+) -> SectionMsiImage:
+    """Combine one or more SectionMsiImage instances into a single multi-mode sample."""
+    if not images:
+        raise ValueError("No SectionMsiImage instances provided for combination.")
+    base_mode, combined = images[0]
+    for mode, image in images[1:]:
+        if combined.raw and image.raw and combined.shape != image.shape:
+            raise ValueError(
+                "Cannot combine samples with differing spatial dimensions."
+            )
+        combined.raw.update(image.raw)
+        combined.isotope.update(image.isotope)
+        combined.quant.update(image.quant)
+        combined.average_spectrum = _merge_average_spectra(
+            combined.average_spectrum, image.average_spectrum
+        )
+        combined.num_spectra += image.num_spectra
+        if combined.pixel_size_um is None and image.pixel_size_um is not None:
+            combined.pixel_size_um = image.pixel_size_um
+        if combined.coordinates.size == 0 and image.coordinates.size > 0:
+            combined.coordinates = image.coordinates
+    if len(images) > 1:
+        combined.ion_mode = SampleIonMode.combined
+        combined._measurement_mode = None
+    else:
+        combined.ion_mode = SampleIonMode.from_ion_mode(base_mode)
+        combined._measurement_mode = base_mode
+    return combined
+
+
+def _normalize_selections(
+    imzml_inputs: Sequence[str | SampleFiles],
+) -> list[SampleFiles]:
+    """Convert raw path inputs into a list of SampleFiles groupings ready for loading."""
+    selections: list[SampleFiles] = []
+    groups_by_key: dict[str, list[SampleFiles]] = {}
+    names_in_use: set[str] = set()
+
+    for item in imzml_inputs:
+        if isinstance(item, SampleFiles):
+            label = _unique_label(item.label, names_in_use)
+            if label != item.label:
+                item.label = label
+            names_in_use.add(item.label)
+            key = item.normalized_key_value()
+            groups_by_key.setdefault(key, []).append(item)
+            selections.append(item)
+            continue
+
+        path = item
+        filename = os.path.basename(path)
+        ion_mode = detect_imzml_ion_mode(path)
+        key = SampleFiles.normalized_key(filename)
+        candidates = groups_by_key.setdefault(key, [])
+        selection = next(
+            (candidate for candidate in candidates if candidate.can_accept(ion_mode)),
+            None,
+        )
+        if selection is None:
+            base_label = SampleFiles.derive_label(filename)
+            label = _unique_label(base_label, names_in_use)
+            selection = SampleFiles(label=label)
+            candidates.append(selection)
+            selections.append(selection)
+            names_in_use.add(selection.label)
+        selection.assign(ion_mode, path, filename)
+
+    return selections
+
+
 def load_database_image_collection(
     progress_file_callback,
     progress_overall_callback,
     database_path: str,
-    imzml_paths: list[str],
+    imzml_paths: Sequence[str | SampleFiles],
     config: Config,
 ) -> tuple[LipidDB, SampleCollection]:
     """
     Load a collection of sample images from multiple imzML files.
     """
+    selections = _normalize_selections(imzml_paths)
     samples: dict[str, SectionMsiImage] = {}
     databases_by_mode: dict[IonMode, LipidDB] = {}
 
-    for idx, path in enumerate(imzml_paths):
-        progress_overall_callback.emit(int(idx / len(imzml_paths) * 100))
-        progress_file_callback.emit(15)
+    total_selections = len(selections)
 
-        ion_mode = detect_imzml_ion_mode(path)
-        if ion_mode not in databases_by_mode:
-            db = DatabaseFactory(database_path, ion_mode).create_database()
-            databases_by_mode[ion_mode] = db
+    for idx, selection in enumerate(selections):
+        if total_selections:
+            progress_overall_callback.emit(int(idx / total_selections * 100))
+        sample_images: list[tuple[IonMode, SectionMsiImage]] = []
 
-        image_collection = SectionMsiImage(
-            progress_file_callback,
-            database=databases_by_mode[ion_mode],
-            imzml_path=path,
-            ion_mode=ion_mode,
-            config=config,
-        )
-        samples[Path(path).stem] = image_collection
+        for ion_mode, path in selection.mode_paths():
+            progress_file_callback.emit(15)
+            if ion_mode not in databases_by_mode:
+                db = DatabaseFactory(database_path, ion_mode).create_database()
+                databases_by_mode[ion_mode] = db
+
+            image_collection = SectionMsiImage(
+                progress_file_callback,
+                database=databases_by_mode[ion_mode],
+                imzml_path=path,
+                ion_mode=ion_mode,
+                config=config,
+            )
+            sample_images.append((ion_mode, image_collection))
+
+        if not sample_images:
+            continue
+
+        combined_image = _combine_section_images(sample_images)
+        progress_file_callback.emit(100)
+        label = _unique_label(selection.label, set(samples.keys()))
+        if label != selection.label:
+            selection.label = label
+        samples[label] = combined_image
     progress_overall_callback.emit(100)
     combined_species: dict[str, LipidSpecies] = {}
     for mode in (IonMode.positive, IonMode.negative):
@@ -850,6 +1064,4 @@ def winsorize_image(image: npt.NDArray | None, upper_percentile: float = 99) -> 
             if winsorized_image[i, j] > upper_bound:
                 winsorized_image[i, j] = upper_bound
 
-    return winsorized_image
-    return winsorized_image
     return winsorized_image

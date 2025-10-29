@@ -12,12 +12,12 @@ from pydantic import BaseModel, ConfigDict
 
 class IonMode(str, Enum):
     """
-    Enum for specifying ion mode.
+    Enum for specifying ion mode of a lipid species.
     """
 
     positive = "+"
     negative = "-"
-    neutral = ""
+    summed = ""
 
 
 def id_adduct(id: str, adduct: str) -> str:
@@ -77,7 +77,7 @@ class LipidSpecies(BaseModel):
         elif self.adduct.endswith("-"):
             return IonMode.negative
         else:
-            return IonMode.neutral
+            return IonMode.summed
 
     def __repr__(self):
         return self.id_adduct
@@ -154,7 +154,7 @@ class LipidDB:
         return [
             s
             for s in self.species.values()
-            if (not s.is_standard) and s.ion_mode != IonMode.neutral
+            if (not s.is_standard) and s.ion_mode != IonMode.summed
         ]
 
     def _species_order_neutral_first(self) -> list[LipidSpecies]:
@@ -186,7 +186,7 @@ class LipidDB:
                         bucket["positive"].append(specie)
                     case IonMode.negative:
                         bucket["negative"].append(specie)
-                    case IonMode.neutral:
+                    case IonMode.summed:
                         bucket["neutral_other"].append(specie)
                     case _:
                         bucket["other"].append(specie)
@@ -224,7 +224,7 @@ class LipidDB:
         Returns:
             list[LipidSpecies]: A list of species IDs sorted by Class_Adduct and m/z.
         """
-        species = [s for s in self.species.values() if s.ion_mode != IonMode.neutral]
+        species = [s for s in self.species.values() if s.ion_mode != IonMode.summed]
         species.sort()
         return species
 
@@ -253,7 +253,7 @@ class LipidDB:
         """
         Returns a list of neutral LipidSpecies
         """
-        return [s for s in self.species.values() if s.ion_mode == IonMode.neutral]
+        return [s for s in self.species.values() if s.ion_mode == IonMode.summed]
 
     def get_adduct_species_for_neutral(self, species: LipidSpecies) -> list[LipidSpecies]:
         """
@@ -289,7 +289,7 @@ class LipidDB:
             species_list = [
                 (specie.id_adduct, specie.mz)
                 for specie in self.species.values()
-                if specie.ion_mode != IonMode.neutral
+                if specie.ion_mode != IonMode.summed
             ]
         ids, mzs = zip(*species_list)
         return list(ids), list(mzs)
@@ -321,7 +321,7 @@ class LipidDB:
             bool: True if the database contains only the specified ion mode, False otherwise.
         """
         return all(
-            (specie.ion_mode == ion_mode or specie.ion_mode == IonMode.neutral)
+            (specie.ion_mode == ion_mode or specie.ion_mode == IonMode.summed)
             for specie in self.species.values()
         )
 

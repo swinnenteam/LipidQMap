@@ -46,30 +46,49 @@
     </layout>
    </item>
    <item>
-    <widget class="QListWidget" name="imzml_list_view">
-     <property name="focusPolicy">
-      <enum>Qt::FocusPolicy::NoFocus</enum>
-     </property>
-     <property name="editTriggers">
-      <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
-     </property>
-     <property name="showDropIndicator" stdset="0">
-      <bool>false</bool>
-     </property>
-     <property name="selectionMode">
-      <enum>QAbstractItemView::SelectionMode::NoSelection</enum>
-     </property>
-    </widget>
+    <widget class="QTableView" name="imzml_list_view"/>
    </item>
    <item>
     <layout class="QGridLayout" name="gridLayout">
      <property name="topMargin">
       <number>0</number>
      </property>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_4">
+     <item row="0" column="1">
+      <widget class="QDoubleSpinBox" name="ppm_spinbox">
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="baseSize">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="suffix">
+        <string> ppm</string>
+       </property>
+       <property name="minimum">
+        <double>0.050000000000000</double>
+       </property>
+       <property name="value">
+        <double>10.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_5">
        <property name="text">
-        <string>Imputation:</string>
+        <string>Database:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>Accuracy:</string>
        </property>
       </widget>
      </item>
@@ -83,12 +102,15 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_5">
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_4">
        <property name="text">
-        <string>Database:</string>
+        <string>Imputation:</string>
        </property>
       </widget>
+     </item>
+     <item row="2" column="1" colspan="3">
+      <widget class="QComboBox" name="database_combo_box"/>
      </item>
      <item row="0" column="3">
       <widget class="QDoubleSpinBox" name="bin_size_spinbox">
@@ -119,40 +141,18 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_3">
-       <property name="text">
-        <string>Accuracy:</string>
+     <item row="1" column="3">
+      <spacer name="horizontalSpacer_3">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
        </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QDoubleSpinBox" name="ppm_spinbox">
-       <property name="minimumSize">
+       <property name="sizeHint" stdset="0">
         <size>
-         <width>100</width>
-         <height>0</height>
+         <width>40</width>
+         <height>20</height>
         </size>
        </property>
-       <property name="baseSize">
-        <size>
-         <width>0</width>
-         <height>0</height>
-        </size>
-       </property>
-       <property name="suffix">
-        <string> ppm</string>
-       </property>
-       <property name="minimum">
-        <double>0.050000000000000</double>
-       </property>
-       <property name="value">
-        <double>10.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1" colspan="3">
-      <widget class="QComboBox" name="database_combo_box"/>
+      </spacer>
      </item>
     </layout>
    </item>
@@ -273,6 +273,19 @@
           </property>
          </widget>
         </item>
+        <item row="0" column="1">
+         <spacer name="horizontalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
        </layout>
       </item>
      </layout>
@@ -307,7 +320,4 @@
  </widget>
  <resources/>
  <connections/>
- <buttongroups>
-  <buttongroup name="button_group"/>
- </buttongroups>
 </ui>

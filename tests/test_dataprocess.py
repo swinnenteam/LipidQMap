@@ -9,6 +9,7 @@ from app.config import Config, Configuration, FilterSettings, ProcessingSettings
 from app.database import DatabaseFactory, IonMode, LipidDB
 from app.dataprocess import (
     ImageType,
+    SampleIonMode,
     SampleCollection,
     SectionMsiImage,
     _add_padding,
@@ -348,20 +349,16 @@ def test_load_database_image_collection_mixed_modes(mock_config) -> None:
 
     assert isinstance(database, LipidDB)
     assert isinstance(sample_collection, SampleCollection)
-    assert len(sample_collection.samples) == len(imzml_paths)
+    assert len(sample_collection.samples) == 1
     assert sample_collection.species_order == database.index
     assert "PC 32:1 [M+H]+" in database.species
     assert "PE 32:1 [M-H]-" in database.species
     assert any(species.endswith("(+)") for species in database.index)
     assert any(species.endswith("(-)") for species in database.index)
-    pos_sample = next(sample for sample in sample_collection.samples.values() if sample.ion_mode == IonMode.positive)
-    neg_sample = next(sample for sample in sample_collection.samples.values() if sample.ion_mode == IonMode.negative)
-    assert set(pos_sample.raw.keys()).issubset(set(sample_collection.species_order))
-    assert set(neg_sample.raw.keys()).issubset(set(sample_collection.species_order))
-    assert {sample.ion_mode for sample in sample_collection.samples.values()} == {
-        IonMode.positive,
-        IonMode.negative,
-    }
+    combined_sample = next(iter(sample_collection.samples.values()))
+    assert combined_sample.ion_mode == SampleIonMode.combined
+    assert any(key.endswith("(+)") for key in combined_sample.raw.keys())
+    assert any(key.endswith("(-)") for key in combined_sample.raw.keys())
     assert len(sample_collection.criteria_check()) == len(database.index)
 
 
