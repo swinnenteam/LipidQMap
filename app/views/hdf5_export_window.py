@@ -6,7 +6,7 @@ from typing import Sequence
 from PySide6.QtCore import Slot
 from PySide6.QtWidgets import QButtonGroup, QDialog, QFileDialog, QMessageBox, QWidget
 
-from app.database import LipidDB
+from app.database import IonMode, LipidDB
 from app.dataprocess import ImageType, SampleCollection
 from app.export import CardinalExportError, export_cardinal_hdf5
 from app.generated.MsiExportHdf5Dialog_ui import Ui_MsiExportHdf5Dialog
@@ -46,6 +46,7 @@ class Hdf5ExportWindow(QDialog, Ui_MsiExportHdf5Dialog):
 
         self.line_edit_output.clear()
         self.radio_quant.setChecked(True)
+        self.include_summed_checkbox.setChecked(True)
 
         if not self.species_ids:
             QMessageBox.information(
@@ -112,12 +113,21 @@ class Hdf5ExportWindow(QDialog, Ui_MsiExportHdf5Dialog):
         output_path = self._ensure_hdf5_suffix(output_path)
         self.line_edit_output.setText(str(output_path))
 
+        species_to_export = self._species_ids_for_export()
+        if not species_to_export:
+            QMessageBox.information(
+                self,
+                "Export Cardinal HDF5",
+                "No species remain to export with the current settings.",
+            )
+            return
+
         try:
             written_path = export_cardinal_hdf5(
                 filepath=output_path,
                 samples=self.samples,
                 database=self.database,
-                species_ids=self.species_ids,
+                species_ids=species_to_export,
                 image_type=self._current_image_type(),
             )
         except CardinalExportError as error:
@@ -139,3 +149,25 @@ class Hdf5ExportWindow(QDialog, Ui_MsiExportHdf5Dialog):
         if path.suffix.lower() not in {".h5", ".hdf5"}:
             return path.with_suffix(".h5")
         return path
+
+    def _species_ids_for_export(self) -> list[str]:
+        if self.database is None:
+            return list(self.species_ids)
+
+        if self.include_summed_checkbox.isChecked():
+            return list(self.species_ids)
+
+        filtered = [
+            species_id
+            for species_id in self.species_ids
+            if not self._is_summed_species(species_id)
+        ]
+        return filtered
+
+    def _is_summed_species(self, species_id: str) -> bool:
+        specie = None
+        if self.database is not None:
+            specie = self.database.species.get(species_id)
+        if specie is not None:
+            return specie.ion_mode == IonMode.summed and specie.adduct in {"(+)", "(-)"}
+        return species_id.endswith(" (+)") or species_id.endswith(" (-)")

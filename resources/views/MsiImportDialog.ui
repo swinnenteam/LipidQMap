@@ -18,8 +18,11 @@
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QLabel" name="label">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-family:'-apple-system','system-ui','sans-serif'; font-size:13px; color:#cccccc; background-color:#181818;&quot;&gt;LipidQMap determines the ion mode of each imzML automatically. When it finds one positive-mode file and one negative-mode file with matching names (differing only by “pos” or “neg”), it merges them into a single image stack.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
-        <string>Select imzML files:</string>
+        <string>Select imzML files ⓘ:</string>
        </property>
       </widget>
      </item>

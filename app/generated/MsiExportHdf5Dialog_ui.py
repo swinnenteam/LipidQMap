@@ -15,15 +15,16 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QDialog, QGroupBox, QHBoxLayout,
-    QLabel, QLineEdit, QPushButton, QRadioButton,
-    QSizePolicy, QSpacerItem, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QGroupBox,
+    QHBoxLayout, QLabel, QLineEdit, QPushButton,
+    QRadioButton, QSizePolicy, QSpacerItem, QVBoxLayout,
+    QWidget)
 
 class Ui_MsiExportHdf5Dialog(object):
     def setupUi(self, MsiExportHdf5Dialog):
         if not MsiExportHdf5Dialog.objectName():
             MsiExportHdf5Dialog.setObjectName(u"MsiExportHdf5Dialog")
-        MsiExportHdf5Dialog.resize(420, 240)
+        MsiExportHdf5Dialog.resize(420, 270)
         self.verticalLayout = QVBoxLayout(MsiExportHdf5Dialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.label_output = QLabel(MsiExportHdf5Dialog)
@@ -69,6 +70,11 @@ class Ui_MsiExportHdf5Dialog(object):
 
         self.verticalLayout.addWidget(self.group_box_image_type)
 
+        self.include_summed_checkbox = QCheckBox(MsiExportHdf5Dialog)
+        self.include_summed_checkbox.setObjectName(u"include_summed_checkbox")
+
+        self.verticalLayout.addWidget(self.include_summed_checkbox)
+
         self.verticalSpacer = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         self.verticalLayout.addItem(self.verticalSpacer)
@@ -106,6 +112,10 @@ class Ui_MsiExportHdf5Dialog(object):
         self.radio_quant.setText(QCoreApplication.translate("MsiExportHdf5Dialog", u"Quantitative images", None))
         self.radio_iso.setText(QCoreApplication.translate("MsiExportHdf5Dialog", u"Isotope corrected images", None))
         self.radio_raw.setText(QCoreApplication.translate("MsiExportHdf5Dialog", u"Raw images", None))
+#if QT_CONFIG(tooltip)
+        self.include_summed_checkbox.setToolTip(QCoreApplication.translate("MsiExportHdf5Dialog", u"<html><head/><body><p>This wil include in the export the ion images that are created by summing the different adducts of the same species. These summed forms will be assigned the neutral mass for their m/z vlaue.</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.include_summed_checkbox.setText(QCoreApplication.translate("MsiExportHdf5Dialog", u"Include ion images of summed adducts \u24d8", None))
         self.button_cancel.setText(QCoreApplication.translate("MsiExportHdf5Dialog", u"Cancel", None))
         self.button_export.setText(QCoreApplication.translate("MsiExportHdf5Dialog", u"Export", None))
     # retranslateUi
