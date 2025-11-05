@@ -26,8 +26,12 @@ def main() -> None:
     parser.add_argument(
         "--sample",
         type=int,
-        default=1,
-        help="1-based index of the sample to display (default: 1)",
+        help="1-based index of the sample to display (defaults to the first sample)",
+    )
+    parser.add_argument(
+        "--sample-id",
+        type=str,
+        help="Sample identifier to display (overrides --sample when provided)",
     )
     parser.add_argument(
         "--tolerance",
@@ -55,19 +59,44 @@ def main() -> None:
         intensity_dataset = h5["spectraData/intensity"]
         intensities = np.asarray(intensity_dataset[feature_idx, :], dtype=np.float32)
 
-        sample_key = str(args.sample)
         samples_group = h5["samples"]
-        if sample_key not in samples_group:
-            raise SystemExit(f"Sample index {args.sample} not found in 'samples' group.")
+        sample_indices_available = sorted(int(key) for key in samples_group.keys())
+        sample_id_map = {
+            int(key): _decode(samples_group[key].attrs.get("sample_id", key))
+            for key in samples_group.keys()
+        }
+
+        target_sample_index: int | None = None
+        if args.sample_id:
+            for index, sample_id in sample_id_map.items():
+                if sample_id == args.sample_id:
+                    target_sample_index = index
+                    break
+            if target_sample_index is None:
+                available = ", ".join(sample_id_map.values())
+                raise SystemExit(
+                    f"Sample id '{args.sample_id}' not found. Available ids: {available}"
+                )
+        elif args.sample is not None:
+            if args.sample not in sample_indices_available:
+                available = ", ".join(str(idx) for idx in sample_indices_available)
+                raise SystemExit(
+                    f"Sample index {args.sample} not found. Available indices: {available}"
+                )
+            target_sample_index = args.sample
+        else:
+            target_sample_index = sample_indices_available[0]
+
+        sample_key = str(target_sample_index)
         sample_meta = samples_group[sample_key].attrs
         height = int(sample_meta["height_px"])
         width = int(sample_meta["width_px"])
 
         pixel_data = h5["pixelData"]
         sample_indices = np.asarray(pixel_data["sample_index"][:], dtype=np.int32)
-        mask = sample_indices == args.sample
+        mask = sample_indices == target_sample_index
         if not np.any(mask):
-            raise SystemExit(f"No pixels recorded for sample index {args.sample}.")
+            raise SystemExit(f"No pixels recorded for sample index {target_sample_index}.")
 
         x_coords = np.asarray(pixel_data["x"][:], dtype=np.int32)[mask]
         y_coords = np.asarray(pixel_data["y"][:], dtype=np.int32)[mask]
@@ -81,7 +110,8 @@ def main() -> None:
 
     fig, ax = plt.subplots()
     im = ax.imshow(image, origin="upper", cmap="magma")
-    ax.set_title(f"{feature_id} @ {mz_values[feature_idx]:.4f} m/z (sample {args.sample})")
+    sample_label = args.sample_id if args.sample_id else sample_key
+    ax.set_title(f"{feature_id} @ {mz_values[feature_idx]:.4f} m/z (sample {sample_label})")
     ax.set_xlabel("x (pixel)")
     ax.set_ylabel("y (pixel)")
     fig.colorbar(im, ax=ax, label="Intensity")
