@@ -56,6 +56,7 @@ ui: ## Converts ui files in resources/views to python
 	./venv/bin/pyside6-uic --from-imports resources/views/MsiSettingsDialog.ui -o app/generated/MsiSettingsDialog_ui.py
 	./venv/bin/pyside6-uic --from-imports resources/views/MsiStandardCalculatorDialog.ui -o app/generated/MsiStandardCalculator_ui.py
 	./venv/bin/pyside6-uic --from-imports resources/views/MsiExportHdf5Dialog.ui -o app/generated/MsiExportHdf5Dialog_ui.py
+	./venv/bin/pyside6-uic --from-imports resources/views/MsiExportScilsDialog.ui -o app/generated/MsiExportScilsDialog_ui.py
 	
 res: ## Generates and compresses resource listed in resources/resources.qrc
 	./venv/bin/pyside6-rcc -compress 9 -o app/generated/resources_rc.py resources/resources.qrc
