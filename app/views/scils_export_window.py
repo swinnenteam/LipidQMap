@@ -3,10 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Sequence
 
-import logging
-import time
-from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Slot
+from PySide6.QtCore import Slot
 from PySide6.QtWidgets import (
+    QApplication,
     QButtonGroup,
     QDialog,
     QFileDialog,
@@ -25,46 +24,6 @@ from app.scils_export import (
     export_score_spot_images,
 )
 
-logger = logging.getLogger(__name__)
-
-
-def _trace(message: str, *args) -> None:
-    if args:
-        message = message % args
-    logger.info(message)
-    _yield_thread()
-
-
-class _ScilsExportWorkerSignals(QObject):
-    finished = Signal()
-    error = Signal(Exception)
-    result = Signal(object)
-    progress = Signal(int, int)
-
-
-class _ScilsExportWorker(QRunnable):
-    def __init__(self, *, fn, kwargs) -> None:
-        super().__init__()
-        self.fn = fn
-        self.kwargs = kwargs
-        self.signals = _ScilsExportWorkerSignals()
-
-    def _progress_callback(self, current: int, total: int) -> None:
-        self.signals.progress.emit(current, total)
-
-    @Slot()
-    def run(self) -> None:
-        _trace("[SCILS EXPORT] Worker thread started")
-        try:
-            result = self.fn(progress_callback=self._progress_callback, **self.kwargs)
-        except Exception as exc:  # pragma: no cover - ensures UI feedback
-            self.signals.error.emit(exc)
-        else:
-            self.signals.result.emit(result)
-        finally:
-            _trace("[SCILS EXPORT] Worker emitting finished signal")
-            self.signals.finished.emit()
-
 
 class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
     """Dialog that manages exporting processed ion images into SCiLS."""
@@ -76,7 +35,6 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         self.species_ids: list[str] = []
         self.all_species_ids: list[str] = []
         self._last_sample_id: str | None = None
-        self.threadpool = QThreadPool(self)
         self.setupUi(self)
         self.button_group = QButtonGroup(self)
         self.button_group.addButton(self.radio_quant)
@@ -168,41 +126,33 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         if dataset_path is None:
             return
 
-        self._set_busy_state(True, len(species_to_export))
+        total_steps = len(species_to_export)
+        self._set_busy_state(True, total_steps)
 
-        worker = _ScilsExportWorker(
-            fn=export_score_spot_images,
-            kwargs={
-                "dataset_path": dataset_path,
-                "samples": self.samples,
-                "sample_id": sample_id,
-                "species_ids": species_to_export,
-                "image_type": self._current_image_type(),
-                "database": self.database,
-            },
-        )
-        worker.signals.progress.connect(self._update_progress)
+        def progress_callback(current: int, total: int) -> None:
+            self._update_progress(current, total)
+            QApplication.processEvents()
 
-        def handle_result(report: ScilsExportReport) -> None:
-            _trace("[SCILS EXPORT] Worker result received")
+        try:
+            report = export_score_spot_images(
+                dataset_path=dataset_path,
+                samples=self.samples,
+                sample_id=sample_id,
+                species_ids=species_to_export,
+                image_type=self._current_image_type(),
+                database=self.database,
+                progress_callback=progress_callback,
+            )
+        except ScilsExportUnavailableError as error:
+            QMessageBox.critical(self, "Export to SCiLS", str(error))
+        except ScilsExportError as error:
+            QMessageBox.critical(self, "Export to SCiLS", str(error))
+        else:
             self._last_sample_id = sample_id
             self._show_summary(report)
-            self._set_busy_state(False)
             self.close()
-
-        def handle_error(exc: Exception) -> None:
-            _trace("[SCILS EXPORT] Worker error received: %s", exc)
-            message = str(exc)
-            if isinstance(exc, (ScilsExportUnavailableError, ScilsExportError)):
-                message = str(exc)
-            QMessageBox.critical(self, "Export to SCiLS", message)
+        finally:
             self._set_busy_state(False)
-
-        worker.signals.result.connect(handle_result)
-        worker.signals.error.connect(handle_error)
-        worker.signals.finished.connect(lambda: self._set_busy_state(False, keep_message=True))
-
-        self.threadpool.start(worker)
 
     def _species_ids_for_export(self) -> list[str]:
         base_ids = self._base_species_ids()
@@ -328,7 +278,3 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         if self.scils_progressbar.maximum() != total:
             self.scils_progressbar.setRange(0, total)
         self.scils_progressbar.setValue(min(current, total))
-
-
-def _yield_thread() -> None:
-    time.sleep(0)
