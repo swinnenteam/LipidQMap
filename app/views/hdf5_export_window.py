@@ -20,6 +20,7 @@ class Hdf5ExportWindow(QDialog, Ui_MsiExportHdf5Dialog):
         self.samples: SampleCollection | None = None
         self.database: LipidDB | None = None
         self.species_ids: list[str] = []
+        self.all_species_ids: list[str] = []
         self.setupUi(self)
         self.button_group = QButtonGroup(self)
         self.button_group.addButton(self.radio_quant)
@@ -38,21 +39,26 @@ class Hdf5ExportWindow(QDialog, Ui_MsiExportHdf5Dialog):
         samples: SampleCollection,
         database: LipidDB,
         species_ids: Sequence[str],
+        all_species_ids: Sequence[str] | None = None,
     ) -> bool:
         """Populate the dialog with the data required for exporting."""
         self.samples = samples
         self.database = database
         self.species_ids = list(species_ids)
+        self.all_species_ids = (
+            list(all_species_ids) if all_species_ids is not None else list(self.species_ids)
+        )
 
         self.line_edit_output.clear()
         self.radio_quant.setChecked(True)
         self.include_summed_checkbox.setChecked(True)
+        self.selected_only_checkbox.setChecked(True)
 
-        if not self.species_ids:
+        if not self.all_species_ids:
             QMessageBox.information(
                 self.parentWidget() or self,
                 "Export Cardinal HDF5",
-                "No species are marked for export.",
+                "No species are available for export.",
             )
             return False
         return True
@@ -92,14 +98,6 @@ class Hdf5ExportWindow(QDialog, Ui_MsiExportHdf5Dialog):
             )
             return
 
-        if not self.species_ids:
-            QMessageBox.information(
-                self.parentWidget() or self,
-                "Export Cardinal HDF5",
-                "No species are marked for export.",
-            )
-            return
-
         output_text = self.line_edit_output.text().strip()
         if not output_text:
             QMessageBox.warning(
@@ -118,7 +116,8 @@ class Hdf5ExportWindow(QDialog, Ui_MsiExportHdf5Dialog):
             QMessageBox.information(
                 self,
                 "Export Cardinal HDF5",
-                "No species remain to export with the current settings.",
+                "No species remain to export with the current settings. "
+                "Select features in the table or disable the 'Only export selected' option.",
             )
             return
 
@@ -151,18 +150,20 @@ class Hdf5ExportWindow(QDialog, Ui_MsiExportHdf5Dialog):
         return path
 
     def _species_ids_for_export(self) -> list[str]:
+        base_ids = self._base_species_ids()
         if self.database is None:
-            return list(self.species_ids)
+            return base_ids
 
         if self.include_summed_checkbox.isChecked():
-            return list(self.species_ids)
+            return base_ids
 
-        filtered = [
-            species_id
-            for species_id in self.species_ids
-            if not self._is_summed_species(species_id)
-        ]
+        filtered = [species_id for species_id in base_ids if not self._is_summed_species(species_id)]
         return filtered
+
+    def _base_species_ids(self) -> list[str]:
+        if not self.selected_only_checkbox.isChecked() and self.all_species_ids:
+            return list(self.all_species_ids)
+        return list(self.species_ids)
 
     def _is_summed_species(self, species_id: str) -> bool:
         specie = None

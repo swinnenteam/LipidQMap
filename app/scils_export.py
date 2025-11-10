@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import logging
+import time
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Sequence
+import threading
+from typing import Any, Callable, Sequence
 
 import numpy as np
 import pandas as pd
@@ -13,6 +16,13 @@ from app.dataprocess import ImageType, SampleCollection, SectionMsiImage
 
 logger = logging.getLogger(__name__)
 ImageFrame = pd.DataFrame
+
+
+def _scils_trace(message: str, *args: Any) -> None:
+    if args:
+        message = message % args
+    logger.info(message)
+    _yield_thread()
 
 
 class ScilsExportError(RuntimeError):
@@ -40,6 +50,7 @@ def export_score_spot_images(
     species_ids: Sequence[str],
     image_type: ImageType,
     database: LipidDB | None = None,
+    progress_callback: Callable[[int, int], None] | None = None,
 ) -> ScilsExportReport:
     """Write processed ion images to a SCiLS dataset as score spot images."""
 
@@ -49,6 +60,7 @@ def export_score_spot_images(
     skipped: list[str] = []
     exported = 0
     dataset_path = dataset_path.expanduser().resolve()
+    total_species = len(species_ids)
 
     logger.info(
         "Exporting %s species from sample '%s' into SCiLS dataset %s as %s images",
@@ -58,17 +70,28 @@ def export_score_spot_images(
         image_type.value,
     )
 
-    with LocalSession(filename=str(dataset_path)) as session:
+    session: Any | None = None
+    _scils_trace(
+        "[SCILS EXPORT] Starting export of %s species from '%s' into %s",
+        total_species,
+        sample_id,
+        dataset_path,
+    )
+    try:
+        session = LocalSession(filename=str(dataset_path))
+        _scils_trace("[SCILS EXPORT] LocalSession opened")
         dataset = session.dataset_proxy
         region_spots = dataset.get_region_spots("Regions")
         frame = _select_spot_frame(region_spots, section, preferred_sample_label=sample_id)
         spot_ids = _spot_ids_from_frame(frame)
         value_sampler = _prepare_value_sampler(frame, section)
 
-        for species_id in species_ids:
+        for index, species_id in enumerate(species_ids, start=1):
             image = section.get(image_type, species_id)
             if image is None:
                 skipped.append(species_id)
+                if progress_callback:
+                    progress_callback(index, total_species or 1)
                 continue
 
             try:
@@ -108,6 +131,11 @@ def export_score_spot_images(
                 len(values),
                 group_name,
             )
+            if progress_callback:
+                progress_callback(index, total_species or 1)
+    finally:
+        _scils_trace("[SCILS EXPORT] Finished writing all species, shutting down SCiLS session...")
+        _shutdown_session_async(session)
 
     return ScilsExportReport(
         exported_images=exported,
@@ -368,3 +396,53 @@ def _measurement_label(group_key: Any, frame: ImageFrame) -> str:
         if column in frame.columns and frame[column].notna().any():
             return str(frame[column].iloc[0])
     return "<unnamed measurement>"
+
+
+def _shutdown_session_async(session: Any | None) -> None:
+    if session is None:
+        return
+
+    def _run() -> None:
+        _scils_trace("[SCILS EXPORT] Session shutdown thread started")
+        try:
+            session.close()
+            _scils_trace("[SCILS EXPORT] Session closed cleanly")
+        except Exception as exc:  # pragma: no cover - depends on SCiLS runtime
+            logger.warning("SCILS session reported an error while closing: %s", exc)
+            _force_terminate_session(session)
+        finally:
+            _scils_trace("[SCILS EXPORT] Session shutdown thread finished")
+
+    threading.Thread(
+        target=_run,
+        name="ScilsSessionShutdown",
+        daemon=True,
+    ).start()
+
+def _force_terminate_session(session: Any) -> None:
+    process = getattr(session, "process", None)
+    if process is not None and process.poll() is None:
+        with suppress(Exception):
+            process.kill()
+
+    finalizer = getattr(session, "_finalizer", None)
+    if finalizer is not None:
+        with suppress(Exception):
+            finalizer.detach()
+        with suppress(Exception):
+            session._finalizer = None  # type: ignore[attr-defined]
+
+    for handle_name in ("_stdout_readhandle", "_stdout_writehandle"):
+        handle = getattr(session, handle_name, None)
+        if handle is not None:
+            with suppress(Exception):
+                handle.close()
+
+    temp_dir = getattr(session, "_temp_dir", None)
+    if temp_dir is not None:
+        with suppress(Exception):
+            temp_dir.cleanup()
+
+
+def _yield_thread() -> None:
+    time.sleep(0)

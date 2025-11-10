@@ -76,6 +76,10 @@ class ImzMLParser:
         self.intensityLengths: list[int] = []
         # list of all (x,y,z) coordinates as tuples.
         self.coordinates: list[tuple[int, int, int]] = []
+        # optional registered/stage coordinates exported by acquisition software
+        self.stage_coordinates: list[tuple[float, float, float] | None] = []
+        # optional spot identifiers per spectrum (if provided)
+        self.spot_ids: list[int | None] = []
         self.root: _Element
         self.metadata: Metadata | None = None
         self.polarity: str
@@ -228,6 +232,24 @@ class ImzMLParser:
         else:
             self.coordinates.append((int(x), int(y), 1))
 
+        spot_id_attr = elem.attrib.get("spotID") or elem.attrib.get("spotid")
+        if spot_id_attr is not None:
+            try:
+                self.spot_ids.append(int(spot_id_attr))
+            except ValueError:
+                self.spot_ids.append(None)
+        else:
+            self.spot_ids.append(None)
+
+        stage_x = self._get_user_param(scan_elem, "3DPositionX")
+        stage_y = self._get_user_param(scan_elem, "3DPositionY")
+        stage_z = self._get_user_param(scan_elem, "3DPositionZ")
+        if stage_x is not None and stage_y is not None:
+            z_value = float(stage_z) if stage_z is not None else 0.0
+            self.stage_coordinates.append((float(stage_x), float(stage_y), z_value))
+        else:
+            self.stage_coordinates.append(None)
+
         if include_spectra_metadata == "full":
             self.spectrum_full_metadata.append(
                 SpectrumData(elem, self.metadata.referenceable_param_groups)
@@ -236,6 +258,14 @@ class ImzMLParser:
             for param in include_spectra_metadata:
                 value = _get_cv_param(elem, param, deep=True, convert=True)
                 self.spectrum_metadata_fields[param].append(value)
+
+    def _get_user_param(self, elem, name):
+        if elem is None:
+            return None
+        for param in elem.findall(f"{self.sl}userParam"):
+            if param.attrib.get("name") == name:
+                return param.attrib.get("value")
+        return None
 
     def __read_polarity(self, elem):
         # It's too slow to always check all spectra, so first check the referenceable_param_groups

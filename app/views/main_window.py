@@ -1,3 +1,4 @@
+import sys
 from typing import cast
 
 from PySide6.QtCore import Qt
@@ -15,6 +16,7 @@ from app.views.about_window import AboutWindow
 from app.views.calculator_window import CalculatorWindow
 from app.views.file_save_window import FileSaveWindow
 from app.views.imzml_import_window import ImzmlImportWindow
+from app.views.scils_export_window import ScilsExportWindow
 from app.views.settings_window import SettingsWindow
 from app.views.hdf5_export_window import Hdf5ExportWindow
 
@@ -45,6 +47,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.settings_window = SettingsWindow(config=self.config)
         self.calculator_window = CalculatorWindow(config=self.config)
         self.hdf5_export_window = Hdf5ExportWindow(parent=self)
+        self._scils_supported = sys.platform.startswith("win")
+        self.scils_export_window: ScilsExportWindow | None = (
+            ScilsExportWindow(parent=self) if self._scils_supported else None
+        )
         self.boolean_delegate = BooleanDelegate()
 
         self.setupUi(self)
@@ -143,6 +149,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_open_save_dialog.triggered.connect(self.open_save_dialog)
         self.action_export_python_pickle.triggered.connect(self.open_export_pickle_dialog)
         self.action_export_cardinal_HDF5.triggered.connect(self.open_export_cardinal_hdf5_dialog)
+        if self._scils_supported and self.scils_export_window is not None:
+            self.action_export_scils.triggered.connect(self.open_export_scils_dialog)
+        else:
+            self.action_export_scils.setEnabled(False)
+            self.action_export_scils.setToolTip("SCiLS export is only available on Windows.")
         self.action_show_database_location.triggered.connect(self.open_database_location)
         self.action_open_about_dialog.triggered.connect(self.open_about_dialog)
         self.action_open_settings_window.triggered.connect(self.open_settings_dialog)
@@ -201,16 +212,42 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return
 
         model = cast(PandasModelEditable, model_obj)
+        checked_species = model.get_checked_list()
+        all_species = model.get_all_ids()
         if not self.hdf5_export_window.set_context(
             samples=self.samples,
             database=self.database,
-            species_ids=model.get_checked_list(),
+            species_ids=checked_species,
+            all_species_ids=all_species,
         ):
             return
 
         self.hdf5_export_window.show()
         self.hdf5_export_window.activateWindow()
         self.hdf5_export_window.raise_()
+
+    def open_export_scils_dialog(self) -> None:
+        """Launch the SCiLS export dialog."""
+        if self.scils_export_window is None or self.samples is None:
+            return
+        model_obj = self.species_table.model()
+        if model_obj is None:
+            return
+
+        model = cast(PandasModelEditable, model_obj)
+        checked_species = model.get_checked_list()
+        all_species = model.get_all_ids()
+        if not self.scils_export_window.set_context(
+            samples=self.samples,
+            database=self.database,
+            species_ids=checked_species,
+            all_species_ids=all_species,
+        ):
+            return
+
+        self.scils_export_window.show()
+        self.scils_export_window.activateWindow()
+        self.scils_export_window.raise_()
 
     def open_database_location(self) -> None:
         """Open the folder containing the database files."""

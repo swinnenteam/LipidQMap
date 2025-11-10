@@ -50,6 +50,10 @@ class PandasModelEditable(QAbstractTableModel):
         df = self._data[self._data["Export"]]
         return df.index.tolist()
 
+    def get_all_ids(self) -> list[str]:
+        """Return all species IDs regardless of export checkbox."""
+        return self._data.index.tolist()
+
     def data(self, index, role: int = Qt.ItemDataRole.DisplayRole):
         if index.isValid():
             if role == Qt.ItemDataRole.CheckStateRole and index.column() in self.checkableColumns:

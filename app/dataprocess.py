@@ -175,6 +175,9 @@ class SectionMsiImage:
         self.num_spectra: int = 0
         self.coordinates: npt.NDArray = np.empty((0, 3), dtype=int)
         self.pixel_size_um: tuple[float, float] | None = None
+        self.stage_coordinates: npt.NDArray | None = None
+        self.spot_ids: np.ndarray | None = None
+        self._spot_index_lookup: dict[int, int] | None = None
         self.load_data(progress_file_callback, database=database, imzml_path=imzml_path)
 
     def load_data(self, progress_file_callback, database: LipidDB, imzml_path: str) -> None:
@@ -198,6 +201,8 @@ class SectionMsiImage:
                     f"'{self._measurement_mode.name if self._measurement_mode else 'combined'}'."
                 )
         self.coordinates = np.asarray(imzml_parser.coordinates, dtype=np.int32)
+        self.stage_coordinates = self._extract_stage_coordinates(imzml_parser)
+        self._initialize_spot_ids(imzml_parser)
         self.pixel_size_um = self._extract_pixel_size(imzml_parser)
         progress_file_callback.emit(20)
 
@@ -272,6 +277,35 @@ class SectionMsiImage:
             database=database, images=self.quant, neutral_suffix=neutral_suffix
         )
         progress_file_callback.emit(95)
+
+    def _extract_stage_coordinates(self, parser: ImzMLParser) -> npt.NDArray | None:
+        stage_coords = getattr(parser, "stage_coordinates", None)
+        if not stage_coords:
+            return None
+        if not any(coord is not None for coord in stage_coords):
+            return None
+        arr = np.full((len(stage_coords), 3), np.nan, dtype=np.float64)
+        for idx, coord in enumerate(stage_coords):
+            if coord is not None:
+                arr[idx] = coord
+        return arr
+
+    def _initialize_spot_ids(self, parser: ImzMLParser) -> None:
+        parsed_ids = getattr(parser, "spot_ids", None)
+        if not parsed_ids or not any(value is not None for value in parsed_ids):
+            self.spot_ids = None
+            self._spot_index_lookup = None
+            return
+        arr = np.full(len(parsed_ids), -1, dtype=np.int64)
+        lookup: dict[int, int] = {}
+        for idx, value in enumerate(parsed_ids):
+            if value is None:
+                continue
+            spot_id = int(value)
+            arr[idx] = spot_id
+            lookup[spot_id] = idx
+        self.spot_ids = arr
+        self._spot_index_lookup = lookup if lookup else None
 
     @staticmethod
     def _extract_pixel_size(parser: ImzMLParser) -> tuple[float, float] | None:
@@ -734,6 +768,13 @@ def _combine_section_images(
             combined.pixel_size_um = image.pixel_size_um
         if combined.coordinates.size == 0 and image.coordinates.size > 0:
             combined.coordinates = image.coordinates
+        if combined.stage_coordinates is None and image.stage_coordinates is not None:
+            combined.stage_coordinates = np.copy(image.stage_coordinates)
+        if combined.spot_ids is None and image.spot_ids is not None:
+            combined.spot_ids = np.copy(image.spot_ids)
+            combined._spot_index_lookup = (
+                dict(image._spot_index_lookup) if image._spot_index_lookup is not None else None
+            )
     if len(images) > 1:
         combined.ion_mode = SampleIonMode.combined
         combined._measurement_mode = None
