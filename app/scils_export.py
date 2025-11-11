@@ -37,7 +37,7 @@ class ScilsExportUnavailableError(ScilsExportError):
 class ScilsExportReport:
     """Summary of a SCiLS export run."""
 
-    exported_images: int
+    exported_features: int
     skipped_species: list[str]
     dataset_path: Path
 
@@ -63,7 +63,7 @@ def export_score_spot_images(
     total_species = len(species_ids)
 
     logger.info(
-        "Exporting %s species from sample '%s' into SCiLS dataset %s as %s images",
+        "Exporting %s species from sample '%s' into SCiLS dataset %s as %s features",
         len(species_ids),
         sample_id,
         dataset_path,
@@ -85,6 +85,13 @@ def export_score_spot_images(
         frame = _select_spot_frame(region_spots, section, preferred_sample_label=sample_id)
         spot_ids = _spot_ids_from_frame(frame)
         value_sampler = _prepare_value_sampler(frame, section)
+        feature_table = dataset.feature_table
+        feature_list_name = f"LipidQMap - {sample_id} ({_image_type_label(image_type)})"
+        feature_list_id = feature_table.create_empty_feature_list(
+            feature_list_name,
+            allow_duplicate_name=True,
+        )
+        scils_spot_ids = spot_ids.astype(np.int64, copy=False).tolist()
 
         for index, species_id in enumerate(species_ids, start=1):
             image = section.get(image_type, species_id)
@@ -101,35 +108,24 @@ def export_score_spot_images(
             except Exception as exc:  # pragma: no cover - defensive
                 raise ScilsExportError(str(exc)) from exc
 
-            value_range = _recommended_value_range(values)
-
             species_name = _species_display_name(database, species_id)
-            scils_image_name = f"{species_name} [{sample_id}]"
-            group_name = f"LipidQMap - {sample_id} ({_image_type_label(image_type)})"
-            user_info = {
-                "Sample": sample_id,
-                "Species": species_name,
-                "ImageType": image_type.value,
-            }
 
             try:
-                dataset.write_score_spot_image(
-                    scils_image_name,
-                    group_name,
-                    spot_ids=spot_ids,
-                    values=values,
-                    value_range=value_range,
-                    user_info=user_info,
+                feature_table.write_external_feature(
+                    feature_list_id,
+                    scils_spot_ids,
+                    values.tolist(),
+                    species_name,
                 )
             except Exception as exc:  # pragma: no cover - relies on SCiLS runtime
                 raise ScilsExportError(str(exc)) from exc
 
             exported += 1
             logger.debug(
-                "Exported species '%s' with %s spot values to SCiLS group '%s'",
+                "Exported species '%s' with %s spot values to SCiLS feature list '%s'",
                 species_name,
                 len(values),
-                group_name,
+                feature_list_name,
             )
             if progress_callback:
                 progress_callback(index, total_species or 1)
@@ -138,7 +134,7 @@ def export_score_spot_images(
         _shutdown_session_async(session)
 
     return ScilsExportReport(
-        exported_images=exported,
+        exported_features=exported,
         skipped_species=skipped,
         dataset_path=dataset_path,
     )
@@ -350,17 +346,6 @@ def _sanitize_values(values: np.ndarray) -> np.ndarray:
     # Replace NaN and infinities with zero to satisfy SCiLS constraints
     np.nan_to_num(arr, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
     return arr
-
-
-def _recommended_value_range(values: np.ndarray) -> tuple[float, float] | None:
-    if values.size == 0:
-        return None
-    min_val = float(values.min())
-    max_val = float(values.max())
-    if min_val < max_val:
-        return (min_val, max_val)
-    epsilon = max(1.0, abs(min_val) * 0.01)
-    return (min_val, min_val + epsilon)
 
 
 def _species_display_name(database: LipidDB | None, species_id: str) -> str:

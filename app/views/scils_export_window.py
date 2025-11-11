@@ -224,21 +224,21 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         return path
 
     def _show_summary(self, report: ScilsExportReport) -> None:
-        if report.exported_images == 0:
+        if report.exported_features == 0:
             QMessageBox.information(
                 self,
                 "Export to SCiLS",
-                "None of the selected ion images contained values to export.",
+                "None of the selected features contained values to export.",
             )
             return
 
         message = (
-            f"Exported {report.exported_images} ion images to:\n{report.dataset_path}"
+            f"Exported {report.exported_features} external features to:\n{report.dataset_path}"
         )
         if report.skipped_species:
             message += (
                 f"\nSkipped {len(report.skipped_species)} species "
-                "that were not available in the current images."
+                "that were not available in the current dataset."
             )
 
         QMessageBox.information(self, "Export to SCiLS", message)
