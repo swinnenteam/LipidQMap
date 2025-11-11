@@ -94,6 +94,10 @@ function Task-UI {
     (Join-Path $RepoRoot 'resources/views/MsiSettingsDialog.ui')        -o (Join-Path $RepoRoot 'app/generated/MsiSettingsDialog_ui.py')
   & $PythonExe -m PySide6.scripts.pyside_tool uic --from-imports `
     (Join-Path $RepoRoot 'resources/views/MsiStandardCalculatorDialog.ui') -o (Join-Path $RepoRoot 'app/generated/MsiStandardCalculator_ui.py')
+  & $PythonExe -m PySide6.scripts.pyside_tool uic --from-imports `
+    (Join-Path $RepoRoot 'resources/views/MsiExportHdf5Dialog.ui') -o (Join-Path $RepoRoot 'app/generated/MsiExportHdf5Dialog_ui.py')
+  & $PythonExe -m PySide6.scripts.pyside_tool uic --from-imports `
+    (Join-Path $RepoRoot 'resources/views/MsiExportScilsDialog.ui') -o (Join-Path $RepoRoot 'app/generated/MsiExportScilsDialog_ui.py')
 }
 
 function Task-Res {

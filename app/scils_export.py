@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import logging
-import time
+import threading
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
-import threading
 from typing import Any, Callable, Sequence
 
 import numpy as np
@@ -16,13 +15,6 @@ from app.dataprocess import ImageType, SampleCollection, SectionMsiImage
 
 logger = logging.getLogger(__name__)
 ImageFrame = pd.DataFrame
-
-
-def _scils_trace(message: str, *args: Any) -> None:
-    if args:
-        message = message % args
-    logger.info(message)
-    _yield_thread()
 
 
 class ScilsExportError(RuntimeError):
@@ -71,15 +63,13 @@ def export_score_spot_images(
     )
 
     session: Any | None = None
-    _scils_trace(
-        "[SCILS EXPORT] Starting export of %s species from '%s' into %s",
-        total_species,
-        sample_id,
-        dataset_path,
-    )
+
     try:
-        session = LocalSession(filename=str(dataset_path))
-        _scils_trace("[SCILS EXPORT] LocalSession opened")
+        try:
+            session = LocalSession(filename=str(dataset_path))
+        except RuntimeError as exc:  # dataset locked / server launch failure
+            raise ScilsExportError(str(exc)) from exc
+
         dataset = session.dataset_proxy
         region_spots = dataset.get_region_spots("Regions")
         frame = _select_spot_frame(region_spots, section, preferred_sample_label=sample_id)
@@ -130,7 +120,6 @@ def export_score_spot_images(
             if progress_callback:
                 progress_callback(index, total_species or 1)
     finally:
-        _scils_trace("[SCILS EXPORT] Finished writing all species, shutting down SCiLS session...")
         _shutdown_session_async(session)
 
     return ScilsExportReport(
@@ -388,15 +377,11 @@ def _shutdown_session_async(session: Any | None) -> None:
         return
 
     def _run() -> None:
-        _scils_trace("[SCILS EXPORT] Session shutdown thread started")
         try:
             session.close()
-            _scils_trace("[SCILS EXPORT] Session closed cleanly")
         except Exception as exc:  # pragma: no cover - depends on SCiLS runtime
             logger.warning("SCILS session reported an error while closing: %s", exc)
             _force_terminate_session(session)
-        finally:
-            _scils_trace("[SCILS EXPORT] Session shutdown thread finished")
 
     threading.Thread(
         target=_run,
@@ -427,7 +412,3 @@ def _force_terminate_session(session: Any) -> None:
     if temp_dir is not None:
         with suppress(Exception):
             temp_dir.cleanup()
-
-
-def _yield_thread() -> None:
-    time.sleep(0)

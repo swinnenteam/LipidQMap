@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'MsiImportDialog.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.1
+## Created by: Qt User Interface Compiler version 6.10.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -228,7 +228,7 @@ class Ui_Dialog(object):
     def retranslateUi(self, Dialog):
         Dialog.setWindowTitle(QCoreApplication.translate("Dialog", u"Import imzML files", None))
 #if QT_CONFIG(tooltip)
-        self.label.setToolTip(QCoreApplication.translate("Dialog", u"<html><head/><body><p><span style=\" font-family:'-apple-system','system-ui','sans-serif'; font-size:13px; color:#cccccc; background-color:#181818;\">LipidQMap determines the ion mode of each imzML automatically. When it finds one positive-mode file and one negative-mode file with matching names (differing only by \u201cpos\u201d or \u201cneg\u201d), it merges them into a single image stack.</span></p></body></html>", None))
+        self.label.setToolTip(QCoreApplication.translate("Dialog", u"<html><head/><body><p><span style=\"font-size:14px;\">LipidQMap determines the ion mode of each imzML automatically. When it finds one positive-mode file and one negative-mode file with matching names (differing only by \u201cpos\u201d or \u201cneg\u201d), it merges them into a single image stack.</span></p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.label.setText(QCoreApplication.translate("Dialog", u"Select imzML files \u24d8:", None))
         self.open_imzml_button.setText(QCoreApplication.translate("Dialog", u"Open Files", None))

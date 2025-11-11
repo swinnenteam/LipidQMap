@@ -6,7 +6,6 @@ from typing import Sequence
 from PySide6.QtCore import Slot
 from PySide6.QtWidgets import (
     QApplication,
-    QButtonGroup,
     QDialog,
     QFileDialog,
     QInputDialog,
@@ -21,6 +20,7 @@ from app.scils_export import (
     ScilsExportError,
     ScilsExportReport,
     ScilsExportUnavailableError,
+    _image_type_label,
     export_score_spot_images,
 )
 
@@ -36,13 +36,9 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         self.all_species_ids: list[str] = []
         self._last_sample_id: str | None = None
         self.setupUi(self)
-        self.button_group = QButtonGroup(self)
-        self.button_group.addButton(self.radio_quant)
-        self.button_group.addButton(self.radio_iso)
-        self.button_group.addButton(self.radio_raw)
         self.scils_progressbar.setRange(0, 1)
         self.scils_progressbar.setValue(0)
-        self.scils_progressbar.setVisible(False)
+        self.scils_progressbar.setVisible(True)
         self.connect_signals_slots()
 
     def connect_signals_slots(self) -> None:
@@ -66,7 +62,9 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
             list(all_species_ids) if all_species_ids is not None else list(self.species_ids)
         )
 
-        self.radio_quant.setChecked(True)
+        self.quant_checkbox.setChecked(True)
+        self.iso_checkbox.setChecked(False)
+        self.raw_checkbox.setChecked(False)
         self.include_summed_checkbox.setChecked(True)
         self.selected_only_checkbox.setChecked(True)
         self.lineEdit.clear()
@@ -80,12 +78,15 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
             return False
         return True
 
-    def _current_image_type(self) -> ImageType:
-        if self.radio_raw.isChecked():
-            return ImageType.raw
-        if self.radio_iso.isChecked():
-            return ImageType.isotope
-        return ImageType.quant
+    def _selected_image_types(self) -> list[ImageType]:
+        types: list[ImageType] = []
+        if self.quant_checkbox.isChecked():
+            types.append(ImageType.quant)
+        if self.iso_checkbox.isChecked():
+            types.append(ImageType.isotope)
+        if self.raw_checkbox.isChecked():
+            types.append(ImageType.raw)
+        return types
 
     @Slot()
     def select_output_file(self) -> None:
@@ -126,33 +127,53 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         if dataset_path is None:
             return
 
-        total_steps = len(species_to_export)
+        selected_types = self._selected_image_types()
+        if not selected_types:
+            QMessageBox.information(
+                self,
+                "Export to SCiLS",
+                "Please select at least one image type to export.",
+            )
+            return
+
+        total_steps = len(species_to_export) * len(selected_types)
         self._set_busy_state(True, total_steps)
 
-        def progress_callback(current: int, total: int) -> None:
-            self._update_progress(current, total)
-            QApplication.processEvents()
+        reports: list[tuple[ImageType, ScilsExportReport]] = []
+        progress_offset = 0
 
-        try:
-            report = export_score_spot_images(
-                dataset_path=dataset_path,
-                samples=self.samples,
-                sample_id=sample_id,
-                species_ids=species_to_export,
-                image_type=self._current_image_type(),
-                database=self.database,
-                progress_callback=progress_callback,
-            )
-        except ScilsExportUnavailableError as error:
-            QMessageBox.critical(self, "Export to SCiLS", str(error))
-        except ScilsExportError as error:
-            QMessageBox.critical(self, "Export to SCiLS", str(error))
+        for image_type in selected_types:
+            def progress_callback(current: int, total: int, *, _offset: int = progress_offset) -> None:
+                absolute = _offset + max(0, min(current, len(species_to_export)))
+                self._update_progress(absolute, total_steps)
+                QApplication.processEvents()
+
+            try:
+                report = export_score_spot_images(
+                    dataset_path=dataset_path,
+                    samples=self.samples,
+                    sample_id=sample_id,
+                    species_ids=species_to_export,
+                    image_type=image_type,
+                    database=self.database,
+                    progress_callback=progress_callback,
+                )
+            except ScilsExportUnavailableError as error:
+                QMessageBox.critical(self, "Export to SCiLS", str(error))
+                break
+            except ScilsExportError as error:
+                QMessageBox.critical(self, "Export to SCiLS", str(error))
+                break
+            else:
+                reports.append((image_type, report))
+                progress_offset += len(species_to_export)
         else:
-            self._last_sample_id = sample_id
-            self._show_summary(report)
-            self.close()
-        finally:
-            self._set_busy_state(False)
+            if reports:
+                self._last_sample_id = sample_id
+                self._show_summary(reports, dataset_path)
+                self.close()
+
+        self._set_busy_state(False)
 
     def _species_ids_for_export(self) -> list[str]:
         base_ids = self._base_species_ids()
@@ -223,8 +244,15 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
             return None
         return path
 
-    def _show_summary(self, report: ScilsExportReport) -> None:
-        if report.exported_features == 0:
+    def _show_summary(
+        self,
+        reports: list[tuple[ImageType, ScilsExportReport]],
+        dataset_path: Path,
+    ) -> None:
+        total_exported = sum(report.exported_features for _, report in reports)
+        total_skipped = sum(len(report.skipped_species) for _, report in reports)
+
+        if total_exported == 0:
             QMessageBox.information(
                 self,
                 "Export to SCiLS",
@@ -232,25 +260,26 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
             )
             return
 
-        message = (
-            f"Exported {report.exported_features} external features to:\n{report.dataset_path}"
-        )
-        if report.skipped_species:
-            message += (
-                f"\nSkipped {len(report.skipped_species)} species "
-                "that were not available in the current dataset."
+        message = [f"Exported {total_exported} external features to:\n{dataset_path}"]
+        for image_type, report in reports:
+            label = _image_type_label(image_type)
+            message.append(
+                f" - {label}: {report.exported_features} features "
+                f"(skipped {len(report.skipped_species)})"
             )
+        if total_skipped:
+            message.append(f"Skipped {total_skipped} species without computed images.")
 
-        QMessageBox.information(self, "Export to SCiLS", message)
+        QMessageBox.information(self, "Export to SCiLS", "\n".join(message))
 
     def _set_busy_state(self, busy: bool, total_steps: int | None = None, keep_message: bool = False) -> None:
         controls = [
             self.button_export,
             self.button_cancel,
             self.button_choose_file,
-            self.radio_quant,
-            self.radio_iso,
-            self.radio_raw,
+            self.quant_checkbox,
+            self.iso_checkbox,
+            self.raw_checkbox,
             self.include_summed_checkbox,
             self.selected_only_checkbox,
             self.lineEdit,
@@ -270,7 +299,7 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
     def _reset_progress(self) -> None:
         self.scils_progressbar.setRange(0, 1)
         self.scils_progressbar.setValue(0)
-        self.scils_progressbar.setVisible(False)
+        self.scils_progressbar.setVisible(True)
 
     def _update_progress(self, current: int, total: int) -> None:
         if total <= 0:

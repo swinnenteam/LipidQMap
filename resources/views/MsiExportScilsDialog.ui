@@ -42,7 +42,7 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
-       <widget class="QRadioButton" name="radio_quant">
+       <widget class="QCheckBox" name="quant_checkbox">
         <property name="text">
          <string>Quantitative images</string>
         </property>
@@ -52,14 +52,14 @@
        </widget>
       </item>
       <item>
-       <widget class="QRadioButton" name="radio_iso">
+       <widget class="QCheckBox" name="iso_checkbox">
         <property name="text">
          <string>Isotope corrected images</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QRadioButton" name="radio_raw">
+       <widget class="QCheckBox" name="raw_checkbox">
         <property name="text">
          <string>Raw images</string>
         </property>
