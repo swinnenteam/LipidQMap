@@ -202,7 +202,7 @@ class Ui_MainWindow(object):
         sizePolicy1.setVerticalStretch(0)
         sizePolicy1.setHeightForWidth(self.frame_2.sizePolicy().hasHeightForWidth())
         self.frame_2.setSizePolicy(sizePolicy1)
-        self.frame_2.setMaximumSize(QSize(420, 16777215))
+        self.frame_2.setMaximumSize(QSize(415, 16777215))
         self.frame_2.setBaseSize(QSize(0, 0))
         self.frame_2.setFrameShape(QFrame.Shape.StyledPanel)
         self.frame_2.setFrameShadow(QFrame.Shadow.Raised)
