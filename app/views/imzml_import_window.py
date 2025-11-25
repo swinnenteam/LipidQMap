@@ -4,9 +4,14 @@ from PySide6.QtCore import Qt, QThreadPool, Signal, Slot
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QDialog,
     QFileDialog,
     QHeaderView,
+    QHBoxLayout,
+    QLabel,
     QMessageBox,
+    QPushButton,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -141,23 +146,21 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         if not selected_paths:
             return
         groups_by_key: dict[str, list[SampleFiles]] = {}
-        try:
-            for path in selected_paths:
-                filename = os.path.basename(path)
-                ion_mode = detect_imzml_ion_mode(path)
-                key = SampleFiles.normalized_key(filename)
-                candidate_groups = groups_by_key.setdefault(key, [])
-                group = self._find_or_create_group(
-                    candidate_groups, ion_mode, filename
-                )
-                group.assign(ion_mode, path, filename)
-                if group not in self.sample_groups:
-                    self.sample_groups.append(group)
-        except ValueError as exc:
-            QMessageBox.warning(self, "Ion mode detection failed", str(exc))
-            self.sample_groups = []
-            self._clear_imzml_table()
-            return
+        for path in selected_paths:
+            filename = os.path.basename(path)
+            ion_mode = self._resolve_ion_mode(path, filename)
+            if ion_mode is None:
+                self.sample_groups = []
+                self._clear_imzml_table()
+                return
+            key = SampleFiles.normalized_key(filename)
+            candidate_groups = groups_by_key.setdefault(key, [])
+            group = self._find_or_create_group(
+                candidate_groups, ion_mode, filename
+            )
+            group.assign(ion_mode, path, filename)
+            if group not in self.sample_groups:
+                self.sample_groups.append(group)
 
         for index, group in enumerate(self.sample_groups, start=1):
             self._add_imzml_row(index, group.pos_filename, group.neg_filename)
@@ -182,6 +185,60 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         group = SampleFiles(label=label)
         candidates.append(group)
         return group
+
+    def _resolve_ion_mode(self, path: str, filename: str) -> IonMode | None:
+        try:
+            return detect_imzml_ion_mode(path)
+        except ValueError as exc:
+            if self._missing_ion_mode_metadata(exc):
+                return self._prompt_for_ion_mode(filename)
+            QMessageBox.warning(self, "Ion mode detection failed", str(exc))
+            return None
+
+    @staticmethod
+    def _missing_ion_mode_metadata(error: ValueError) -> bool:
+        message = str(error).lower()
+        return "does not specify" in message and "ion mode" in message
+
+    def _prompt_for_ion_mode(self, filename: str) -> IonMode | None:
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Select ion mode")
+        dialog.setModal(True)
+
+        layout = QVBoxLayout(dialog)
+        label = QLabel(
+            f"ImzML file '{filename}' does not include ion mode metadata.\n"
+            "Select the ionization mode for this file to continue."
+        )
+        label.setWordWrap(True)
+        layout.addWidget(label)
+
+        button_row = QHBoxLayout()
+        layout.addLayout(button_row)
+
+        neg_button = QPushButton("Negative")
+        pos_button = QPushButton("Positive")
+        cancel_button = QPushButton("Cancel")
+
+        button_row.addWidget(neg_button)
+        button_row.addWidget(pos_button)
+        button_row.addWidget(cancel_button)
+
+        selected: IonMode | None = None
+
+        def choose(mode: IonMode) -> None:
+            nonlocal selected
+            selected = mode
+            dialog.accept()
+
+        neg_button.clicked.connect(lambda: choose(IonMode.negative))
+        pos_button.clicked.connect(lambda: choose(IonMode.positive))
+        cancel_button.clicked.connect(dialog.reject)
+        dialog.setMinimumWidth(360)
+
+        if dialog.exec() == QDialog.Accepted:
+            return selected
+        return None
 
     def toggle_cal_checked_value(self, is_checked: bool):
         """Enables or disables calibration-related widgets."""

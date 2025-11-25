@@ -34,3 +34,40 @@ QLabel#label_surface_conc_result {{
     font-weight: 1000;
 }}
 
+/* Improve scrollability for the species table */
+QTableView#species_table QScrollBar:vertical {{
+    width: 9px;
+    background: transparent;
+    margin: 8px 0 8px 0;
+}}
+
+QTableView#species_table QScrollBar:horizontal {{
+    height: 9px;
+    background: transparent;
+    margin: 0 8px 0 8px;
+}}
+
+QTableView#species_table QScrollBar::groove:vertical,
+QTableView#species_table QScrollBar::groove:horizontal {{
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+}}
+
+QTableView#species_table QScrollBar::handle:vertical,
+QTableView#species_table QScrollBar::handle:horizontal {{
+    background-color: #1de9b6;
+    border-radius: 8px;
+    min-height: 40px;
+    min-width: 40px;
+}}
+
+QTableView#species_table QScrollBar::handle:vertical:hover,
+QTableView#species_table QScrollBar::handle:horizontal:hover {{
+    background-color: #4dd0e1;
+}}
+
+QTableView#species_table QScrollBar::add-line,
+QTableView#species_table QScrollBar::sub-line {{
+    background: none;
+    border: none;
+}}

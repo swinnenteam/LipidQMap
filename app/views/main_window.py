@@ -15,10 +15,10 @@ from app.utils import BooleanDelegate, PandasModelEditable, open_folder
 from app.views.about_window import AboutWindow
 from app.views.calculator_window import CalculatorWindow
 from app.views.file_save_window import FileSaveWindow
+from app.views.hdf5_export_window import Hdf5ExportWindow
 from app.views.imzml_import_window import ImzmlImportWindow
 from app.views.scils_export_window import ScilsExportWindow
 from app.views.settings_window import SettingsWindow
-from app.views.hdf5_export_window import Hdf5ExportWindow
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
