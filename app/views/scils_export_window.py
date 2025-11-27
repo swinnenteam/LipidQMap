@@ -4,14 +4,7 @@ from pathlib import Path
 from typing import Sequence
 
 from PySide6.QtCore import Slot
-from PySide6.QtWidgets import (
-    QApplication,
-    QDialog,
-    QFileDialog,
-    QInputDialog,
-    QMessageBox,
-    QWidget,
-)
+from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QWidget
 
 from app.database import IonMode, LipidDB
 from app.dataprocess import ImageType, SampleCollection
@@ -22,6 +15,7 @@ from app.scils_export import (
     ScilsExportUnavailableError,
     _image_type_label,
     export_score_spot_images,
+    write_aggregated_features,
 )
 
 
@@ -34,7 +28,6 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         self.database: LipidDB | None = None
         self.species_ids: list[str] = []
         self.all_species_ids: list[str] = []
-        self._last_sample_id: str | None = None
         self.setupUi(self)
         self.scils_progressbar.setRange(0, 1)
         self.scils_progressbar.setValue(0)
@@ -116,11 +109,7 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
                 "Export to SCiLS",
                 "No species remain to export with the current settings. "
                 "Select features in the table or disable the 'Only export selected' option.",
-            )
-            return
-
-        sample_id = self._select_sample_id()
-        if sample_id is None:
+                )
             return
 
         dataset_path = self._select_dataset()
@@ -136,40 +125,72 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
             )
             return
 
-        total_steps = len(species_to_export) * len(selected_types)
+        sample_ids = list(self.samples.samples.keys())
+        if not sample_ids:
+            QMessageBox.warning(self, "Export to SCiLS", "No samples are available.")
+            return
+
+        per_sample_steps = len(species_to_export)
+        total_steps = (
+            per_sample_steps * len(sample_ids) * len(selected_types) + len(selected_types)
+            if per_sample_steps and selected_types
+            else len(selected_types)
+        )
         self._set_busy_state(True, total_steps)
 
         reports: list[tuple[ImageType, ScilsExportReport]] = []
-        progress_offset = 0
+        progress_completed = 0
+        had_error = False
 
         for image_type in selected_types:
-            def progress_callback(current: int, total: int, *, _offset: int = progress_offset) -> None:
-                absolute = _offset + max(0, min(current, len(species_to_export)))
-                self._update_progress(absolute, total_steps)
-                QApplication.processEvents()
+            aggregate: dict[str, list[tuple[list[int], list[float]]]] = {}
+            skipped_species: list[str] = []
 
-            try:
-                report = export_score_spot_images(
-                    dataset_path=dataset_path,
-                    samples=self.samples,
-                    sample_id=sample_id,
-                    species_ids=species_to_export,
-                    image_type=image_type,
-                    database=self.database,
-                    progress_callback=progress_callback,
-                )
-            except ScilsExportUnavailableError as error:
-                QMessageBox.critical(self, "Export to SCiLS", str(error))
+            for sample_id in sample_ids:
+                def progress_callback(current: int, total: int, *, _offset: int = progress_completed) -> None:
+                    absolute = _offset + max(0, min(current, per_sample_steps))
+                    self._update_progress(absolute, total_steps)
+                    QApplication.processEvents()
+
+                try:
+                    report = export_score_spot_images(
+                        dataset_path=dataset_path,
+                        samples=self.samples,
+                        sample_id=sample_id,
+                        species_ids=species_to_export,
+                        image_type=image_type,
+                        database=self.database,
+                        progress_callback=progress_callback,
+                        feature_aggregate=aggregate,
+                    )
+                except ScilsExportUnavailableError as error:
+                    QMessageBox.critical(self, "Export to SCiLS", str(error))
+                    had_error = True
+                    break
+                except ScilsExportError as error:
+                    QMessageBox.critical(self, "Export to SCiLS", str(error))
+                    had_error = True
+                    break
+                else:
+                    skipped_species.extend(report.skipped_species)
+                    progress_completed += per_sample_steps
+                    self._update_progress(progress_completed, total_steps)
+
+            if had_error:
                 break
-            except ScilsExportError as error:
-                QMessageBox.critical(self, "Export to SCiLS", str(error))
-                break
-            else:
-                reports.append((image_type, report))
-                progress_offset += len(species_to_export)
+
+            report = write_aggregated_features(
+                dataset_path=dataset_path,
+                feature_list_label=self._feature_list_label(sample_ids, image_type),
+                image_type=image_type,
+                aggregate=aggregate,
+                skipped_species=skipped_species,
+            )
+            reports.append((image_type, report))
+            progress_completed += 1
+            self._update_progress(progress_completed, total_steps)
         else:
             if reports:
-                self._last_sample_id = sample_id
                 self._show_summary(reports, dataset_path)
                 self.close()
 
@@ -195,32 +216,6 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         if specie is not None:
             return specie.ion_mode == IonMode.summed and specie.adduct in {"(+)", "(-)", ""}
         return species_id.endswith(" (+)") or species_id.endswith(" (-)")
-
-    def _select_sample_id(self) -> str | None:
-        if self.samples is None:
-            return None
-        sample_ids = list(self.samples.samples.keys())
-        if not sample_ids:
-            QMessageBox.warning(self, "Export to SCiLS", "No samples are available.")
-            return None
-        if len(sample_ids) == 1:
-            return sample_ids[0]
-
-        default_index = 0
-        if self._last_sample_id and self._last_sample_id in sample_ids:
-            default_index = sample_ids.index(self._last_sample_id)
-
-        selection, ok = QInputDialog.getItem(
-            self,
-            "Select Sample",
-            "Choose which loaded sample should be exported to SCiLS:",
-            sample_ids,
-            current=default_index,
-            editable=False,
-        )
-        if not ok:
-            return None
-        return selection
 
     def _select_dataset(self) -> Path | None:
         text = self.lineEdit.text().strip()
@@ -264,13 +259,22 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         for image_type, report in reports:
             label = _image_type_label(image_type)
             message.append(
-                f" - {label}: {report.exported_features} features "
+                f"{label}: {report.exported_features} features "
                 f"(skipped {len(report.skipped_species)})"
             )
         if total_skipped:
             message.append(f"Skipped {total_skipped} species without computed images.")
 
         QMessageBox.information(self, "Export to SCiLS", "\n".join(message))
+
+    def _feature_list_label(self, sample_ids: list[str], image_type: ImageType) -> str:
+        if not sample_ids:
+            base = "LipidQMap"
+        elif len(sample_ids) == 1:
+            base = f"LipidQMap - {sample_ids[0]}"
+        else:
+            base = f"LipidQMap - {sample_ids[0]} +{len(sample_ids) - 1}"
+        return f"{base} ({_image_type_label(image_type)})"
 
     def _set_busy_state(self, busy: bool, total_steps: int | None = None, keep_message: bool = False) -> None:
         controls = [

@@ -32,6 +32,7 @@ class ScilsExportReport:
     exported_features: int
     skipped_species: list[str]
     dataset_path: Path
+    feature_list_id: int
 
 
 def export_score_spot_images(
@@ -43,6 +44,7 @@ def export_score_spot_images(
     image_type: ImageType,
     database: LipidDB | None = None,
     progress_callback: Callable[[int, int], None] | None = None,
+    feature_aggregate: dict[str, list[tuple[list[int], list[float]]]] | None = None,
 ) -> ScilsExportReport:
     """Write processed ion images to a SCiLS dataset as score spot images."""
 
@@ -54,7 +56,7 @@ def export_score_spot_images(
     dataset_path = dataset_path.expanduser().resolve()
     total_species = len(species_ids)
 
-    logger.info(
+    logger.debug(
         "Exporting %s species from sample '%s' into SCiLS dataset %s as %s features",
         len(species_ids),
         sample_id,
@@ -73,14 +75,17 @@ def export_score_spot_images(
         dataset = session.dataset_proxy
         region_spots = dataset.get_region_spots("Regions")
         frame = _select_spot_frame(region_spots, section, preferred_sample_label=sample_id)
+        coord_transform = _fit_coordinate_transform(frame, section)
         spot_ids = _spot_ids_from_frame(frame)
-        value_sampler = _prepare_value_sampler(frame, section)
+        value_sampler = _prepare_value_sampler(frame, section, coord_transform=coord_transform)
         feature_table = dataset.feature_table
         feature_list_name = f"LipidQMap - {sample_id} ({_image_type_label(image_type)})"
-        feature_list_id = feature_table.create_empty_feature_list(
-            feature_list_name,
-            allow_duplicate_name=True,
-        )
+        feature_list_id: int | None = None
+        if feature_aggregate is None:
+            feature_list_id = feature_table.create_empty_feature_list(
+                feature_list_name,
+                allow_duplicate_name=True,
+            )
         scils_spot_ids = spot_ids.astype(np.int64, copy=False).tolist()
 
         for index, species_id in enumerate(species_ids, start=1):
@@ -100,15 +105,20 @@ def export_score_spot_images(
 
             species_name = _species_display_name(database, species_id)
 
-            try:
-                feature_table.write_external_feature(
-                    feature_list_id,
-                    scils_spot_ids,
-                    values.tolist(),
-                    species_name,
+            if feature_aggregate is None:
+                try:
+                    feature_table.write_external_feature(
+                        feature_list_id,
+                        scils_spot_ids,
+                        values.tolist(),
+                        species_name,
+                    )
+                except Exception as exc:  # pragma: no cover - relies on SCiLS runtime
+                    raise ScilsExportError(str(exc)) from exc
+            else:
+                feature_aggregate.setdefault(species_name, []).append(
+                    (scils_spot_ids.copy(), values.tolist())
                 )
-            except Exception as exc:  # pragma: no cover - relies on SCiLS runtime
-                raise ScilsExportError(str(exc)) from exc
 
             exported += 1
             logger.debug(
@@ -126,6 +136,7 @@ def export_score_spot_images(
         exported_features=exported,
         skipped_species=skipped,
         dataset_path=dataset_path,
+        feature_list_id=feature_list_id or -1,
     )
 
 
@@ -162,41 +173,72 @@ def _select_spot_frame(
         )
 
     candidate_groups = _candidate_frames(df, preferred_sample_label)
-    sample_coords = _normalized_coords(section.coordinates, section.shape)
+    sample_coords = _section_match_coords(section)
     coord_set = _coords_set(sample_coords)
-    logger.debug(
-        "Sample '%s' contains %s pixels (shape=%s)",
-        preferred_sample_label or "<unknown>",
-        len(sample_coords),
-        section.shape,
-    )
+    sample_spot_ids = _normalized_spot_ids(getattr(section, "spot_ids", None))
+    best_candidate: tuple[str, ImageFrame, np.ndarray, float] | None = None
+    best_score = float("inf")
 
     for key, frame in candidate_groups:
+        label = _measurement_label(key, frame)
         frame_coords = _frame_coords(frame)
         if frame_coords.shape[0] != sample_coords.shape[0]:
             logger.debug(
                 "Skipping SCiLS measurement '%s' because spot counts differ (SCiLS=%s vs sample=%s)",
-                _measurement_label(key, frame),
+                label,
                 frame_coords.shape[0],
                 sample_coords.shape[0],
             )
             continue
-        if _coords_set(frame_coords) == coord_set:
-            logger.info(
-                "Matched SCiLS measurement '%s' with %s spots",
-                _measurement_label(key, frame),
-                frame_coords.shape[0],
-            )
-            return frame
 
+        if sample_spot_ids is not None:
+            frame_spot_ids = _sorted_spot_ids_from_frame(frame)
+            if frame_spot_ids.shape == sample_spot_ids.shape and np.array_equal(
+                frame_spot_ids, sample_spot_ids
+            ):
+                logger.debug(
+                    "Matched SCiLS measurement '%s' using spot identifiers (%s spots)",
+                    label,
+                    frame_coords.shape[0],
+                )
+                return frame
+        if sample_spot_ids is None:
+            coords_match = _coords_set(frame_coords) == coord_set
+            if coords_match:
+                logger.debug(
+                    "Matched SCiLS measurement '%s' with %s spots",
+                    label,
+                    frame_coords.shape[0],
+                )
+                return frame
+
+        score = _coordinate_distance(frame_coords, sample_coords)
+        if score < best_score:
+            best_score = score
+            best_candidate = (label, frame, frame_coords, score)
+
+    if best_candidate is not None:
+        label, frame, frame_coords, score = best_candidate
+        logger.debug(
+            "Matched SCiLS measurement '%s' with %s spots based on closest coordinate arrangement "
+            "(avg delta=%.2f)",
+            label,
+            frame_coords.shape[0],
+            score,
+        )
+        return frame
+
+    if candidate_groups:
+        label = _measurement_label(candidate_groups[0][0], candidate_groups[0][1])
+        frame_coords = _frame_coords(candidate_groups[0][1])
         logger.warning(
             "Coordinate mismatch for measurement '%s'; first SCiLS coord=%s, sample coord=%s. "
             "Proceeding with export despite mismatch.",
-            _measurement_label(key, frame),
+            label,
             frame_coords[:1].tolist(),
             sample_coords[:1].tolist(),
         )
-        return frame
+        return candidate_groups[0][1]
 
     raise ScilsExportError(
         "Could not find a measurement in the SCiLS dataset that matches the loaded imzML file.\n"
@@ -227,10 +269,20 @@ def _candidate_frames(
     if preferred_sample_label is None:
         return groups
 
+    matches: list[tuple[Any, ImageFrame]] = []
+    others: list[tuple[Any, ImageFrame]] = []
     for key, frame in groups:
         if str(key).lower() == preferred_sample_label.lower():
-            logger.debug("Preferencing SCiLS measurement '%s' based on sample label match", key)
-            return [(key, frame)]
+            matches.append((key, frame))
+        else:
+            others.append((key, frame))
+
+    if matches:
+        logger.debug(
+            "Preferencing SCiLS measurement '%s' based on sample label match",
+            matches[0][0],
+        )
+        return matches + others
     return groups
 
 
@@ -249,6 +301,59 @@ def _normalized_coords(coords: np.ndarray, shape: tuple[int, int]) -> np.ndarray
     return coords[:, :3]
 
 
+def _section_match_coords(section: SectionMsiImage) -> np.ndarray:
+    stage_coords = getattr(section, "stage_coordinates", None)
+    stage_normalized = _normalized_stage_coords(stage_coords)
+    if stage_normalized is not None:
+        return stage_normalized
+    return _normalized_coords(section.coordinates, section.shape)
+
+
+def _normalized_stage_coords(stage_coords: np.ndarray | None) -> np.ndarray | None:
+    if stage_coords is None:
+        return None
+    arr = np.asarray(stage_coords, dtype=np.float64)
+    if arr.size == 0:
+        return None
+    if arr.ndim != 2:
+        return None
+    arr = arr[:, :3]
+    if not np.isfinite(arr).all():
+        return None
+    rounded = np.rint(arr).astype(np.int64)
+    return rounded
+
+
+def _coordinate_distance(a: np.ndarray, b: np.ndarray) -> float:
+    if a.shape != b.shape or a.size == 0:
+        return float("inf")
+    a_sorted = _sorted_coords(a)
+    b_sorted = _sorted_coords(b)
+    diff = np.abs(a_sorted.astype(np.float64) - b_sorted.astype(np.float64))
+    return float(diff.mean())
+
+
+def _sorted_coords(coords: np.ndarray) -> np.ndarray:
+    if coords.ndim != 2 or coords.shape[1] < 3:
+        return coords
+    order = np.lexsort((coords[:, 2], coords[:, 1], coords[:, 0]))
+    return coords[order]
+
+
+def _normalized_spot_ids(spot_ids: np.ndarray | None) -> np.ndarray | None:
+    if spot_ids is None:
+        return None
+    arr = np.asarray(spot_ids, dtype=np.int64)
+    if arr.size == 0:
+        return None
+    valid = arr >= 0
+    normalized = arr[valid]
+    if normalized.size == 0:
+        return None
+    normalized.sort()
+    return normalized
+
+
 def _frame_coords(frame: ImageFrame) -> np.ndarray:
     x = frame["x"].to_numpy(dtype=np.int32, copy=False)
     y = frame["y"].to_numpy(dtype=np.int32, copy=False)
@@ -263,6 +368,122 @@ def _coords_set(coords: np.ndarray) -> set[tuple[int, int, int]]:
     return set(map(tuple, coords.tolist()))
 
 
+def _fit_coordinate_transform(
+    frame: ImageFrame,
+    section: SectionMsiImage,
+) -> tuple[np.ndarray, np.ndarray] | None:
+    try:
+        scils_coords = _frame_coords(frame)[:, :2].astype(np.float64, copy=False)
+        pixel_coords = np.asarray(section.coordinates[:, :2], dtype=np.float64)
+    except Exception:
+        return None
+    if scils_coords.shape[0] != pixel_coords.shape[0] or scils_coords.shape[0] < 3:
+        return None
+
+    design = np.column_stack(
+        [
+            scils_coords[:, 0],
+            scils_coords[:, 1],
+            np.ones(scils_coords.shape[0], dtype=np.float64),
+        ]
+    )
+    try:
+        coeff_x, *_ = np.linalg.lstsq(design, pixel_coords[:, 0], rcond=None)
+        coeff_y, *_ = np.linalg.lstsq(design, pixel_coords[:, 1], rcond=None)
+    except np.linalg.LinAlgError:
+        return None
+
+    return coeff_x, coeff_y
+
+
+def _apply_coordinate_transform(
+    x_coords: np.ndarray,
+    y_coords: np.ndarray,
+    transform: tuple[np.ndarray, np.ndarray],
+    shape: tuple[int, int],
+) -> tuple[np.ndarray, np.ndarray]:
+    coeff_x, coeff_y = transform
+    coords = np.column_stack(
+        [x_coords.astype(np.float64, copy=False), y_coords.astype(np.float64, copy=False), np.ones_like(x_coords, dtype=np.float64)]
+    )
+    px = coords @ coeff_x
+    py = coords @ coeff_y
+    px = np.rint(px).astype(np.int32, copy=False)
+    py = np.rint(py).astype(np.int32, copy=False)
+    width = shape[1]
+    height = shape[0]
+    px = np.clip(px, 1, width)
+    py = np.clip(py, 1, height)
+    return px, py
+
+
+def write_aggregated_features(
+    *,
+    dataset_path: Path,
+    feature_list_label: str,
+    image_type: ImageType,
+    aggregate: dict[str, list[tuple[list[int], list[float]]]],
+    skipped_species: list[str] | None = None,
+) -> ScilsExportReport:
+    if not aggregate:
+        return ScilsExportReport(
+            exported_features=0,
+            skipped_species=skipped_species or [],
+            dataset_path=dataset_path,
+            feature_list_id=-1,
+        )
+
+    LocalSession = _load_local_session()
+    session: Any | None = None
+    exported = 0
+
+    try:
+        session = LocalSession(filename=str(dataset_path))
+        feature_table = session.dataset_proxy.feature_table
+        feature_list_id = feature_table.create_empty_feature_list(
+            feature_list_label,
+            allow_duplicate_name=True,
+        )
+        for species_name, batches in aggregate.items():
+            spot_ids, values = _merge_feature_batches(batches)
+            if not spot_ids:
+                continue
+            try:
+                feature_table.write_external_feature(
+                    feature_list_id,
+                    spot_ids,
+                    values,
+                    species_name,
+                )
+            except Exception as exc:  # pragma: no cover - relies on SCiLS runtime
+                raise ScilsExportError(str(exc)) from exc
+            exported += 1
+    finally:
+        _shutdown_session_async(session)
+
+    return ScilsExportReport(
+        exported_features=exported,
+        skipped_species=skipped_species or [],
+        dataset_path=dataset_path,
+        feature_list_id=feature_list_id,
+    )
+
+
+def _merge_feature_batches(
+    batches: list[tuple[list[int], list[float]]],
+) -> tuple[list[int], list[float]]:
+    if not batches:
+        return [], []
+    merged: list[tuple[int, float]] = []
+    for batch_spots, batch_values in batches:
+        merged.extend((int(s), float(v)) for s, v in zip(batch_spots, batch_values))
+    merged.sort(key=lambda item: item[0])
+    if not merged:
+        return [], []
+    spot_ids, values = zip(*merged)
+    return list(spot_ids), list(values)
+
+
 def _spot_ids_from_frame(frame: ImageFrame) -> np.ndarray:
     try:
         return frame["spot_id"].to_numpy(dtype=np.uint64, copy=True)
@@ -270,23 +491,62 @@ def _spot_ids_from_frame(frame: ImageFrame) -> np.ndarray:
         raise ScilsExportError("SCiLS spot identifiers must be numeric.") from exc
 
 
-def _prepare_value_sampler(frame: ImageFrame, section: SectionMsiImage):
+def _sorted_spot_ids_from_frame(frame: ImageFrame) -> np.ndarray:
+    spot_ids = _spot_ids_from_frame(frame)
+    if spot_ids.dtype != np.int64:
+        spot_ids = spot_ids.astype(np.int64, copy=False)
+    spot_ids.sort()
+    return spot_ids
+
+
+def _first_missing_spot_id(scils_spot_ids: np.ndarray, lookup: dict[int, int]) -> int | None:
+    for spot_id in scils_spot_ids:
+        if lookup.get(int(spot_id)) is None:
+            return int(spot_id)
+    return None
+
+
+def _prepare_value_sampler(
+    frame: ImageFrame,
+    section: SectionMsiImage,
+    *,
+    coord_transform: tuple[np.ndarray, np.ndarray] | None = None,
+):
     spot_lookup = getattr(section, "_spot_index_lookup", None)
     if spot_lookup and "spot_id" in frame.columns:
         scils_spot_ids = frame["spot_id"].to_numpy(copy=False)
         if scils_spot_ids.dtype.kind not in {"i", "u"}:
             scils_spot_ids = scils_spot_ids.astype(np.int64, copy=False)
 
-        def sampler(image: np.ndarray) -> np.ndarray:
-            return _sample_by_spot_ids(image, section, scils_spot_ids, spot_lookup)
+        missing = _first_missing_spot_id(scils_spot_ids, spot_lookup)
+        if missing is None:
 
-        return sampler
+            def sampler(image: np.ndarray) -> np.ndarray:
+                return _sample_by_spot_ids(image, section, scils_spot_ids, spot_lookup)
+
+            return sampler
+
+        logger.debug(
+            "SCiLS spot identifiers do not match the loaded imzML; falling back to coordinate sampling "
+            "(first missing spot id=%s)",
+            missing,
+        )
 
     if not {"x", "y"}.issubset(frame.columns):
         raise ScilsExportError("SCiLS dataset is missing required coordinate columns.")
 
-    x_coords = frame["x"].to_numpy(dtype=np.int32, copy=False)
-    y_coords = frame["y"].to_numpy(dtype=np.int32, copy=False)
+    x_coords = frame["x"].to_numpy(dtype=np.float64, copy=False)
+    y_coords = frame["y"].to_numpy(dtype=np.float64, copy=False)
+    if coord_transform is not None:
+        x_coords, y_coords = _apply_coordinate_transform(
+            x_coords,
+            y_coords,
+            coord_transform,
+            section.shape,
+        )
+    else:
+        x_coords = x_coords.astype(np.int32, copy=False)
+        y_coords = y_coords.astype(np.int32, copy=False)
 
     def sampler(image: np.ndarray) -> np.ndarray:
         return _sample_by_coords(image, x_coords, y_coords)
@@ -300,6 +560,16 @@ def _sample_by_coords(image: np.ndarray, x_coords: np.ndarray, y_coords: np.ndar
     try:
         values = image[y_coords - 1, x_coords - 1]
     except IndexError as exc:
+        height, width = image.shape
+        logger.error(
+            "Image sampling failed: image_shape=(%s,%s), requested x range [%s,%s], y range [%s,%s]",
+            height,
+            width,
+            int(np.min(x_coords)),
+            int(np.max(x_coords)),
+            int(np.min(y_coords)),
+            int(np.max(y_coords)),
+        )
         raise ScilsExportError("Image dimensions do not match SCiLS dataset coordinates.") from exc
     return np.ascontiguousarray(np.asarray(values, dtype=np.float32))
 
@@ -327,6 +597,14 @@ def _sample_pixel(image: np.ndarray, x: int, y: int) -> float:
     try:
         return float(image[int(y) - 1, int(x) - 1])
     except IndexError as exc:
+        height, width = image.shape
+        logger.error(
+            "Pixel sampling failed: image_shape=(%s,%s), requested x=%s, y=%s",
+            height,
+            width,
+            x,
+            y,
+        )
         raise ScilsExportError("Image dimensions do not match SCiLS dataset coordinates.") from exc
 
 
