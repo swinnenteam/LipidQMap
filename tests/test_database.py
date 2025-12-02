@@ -375,3 +375,15 @@ def test_unsupported_adduct():
     with pytest.raises(ValueError) as exc_info:
         adduct_formula("C6H12O6", "[M+Unsupported]+")
     assert str(exc_info.value) == "Unsupported adduct in database: [M+Unsupported]+"
+
+
+def test_get_neutral_from_adduct_positive(database: LipidDB) -> None:
+    neutral = database.get_neutral_from_adduct("PC 33:1 d7 [M+H]+")
+    assert neutral is not None
+    assert neutral.id == "PC 33:1 d7"
+    assert neutral.adduct in {"", "(+)"}
+
+
+def test_get_neutral_from_adduct_none(database: LipidDB) -> None:
+    assert database.get_neutral_from_adduct("PC 33:1 d7") is None
+    assert database.get_neutral_from_adduct("nonexistent") is None

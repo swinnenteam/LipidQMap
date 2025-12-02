@@ -52,6 +52,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             ScilsExportWindow(parent=self) if self._scils_supported else None
         )
         self.boolean_delegate = BooleanDelegate()
+        self._suspend_checkbox_updates = False
 
         self.setupUi(self)
         self.image_canvas_raw = MplCanvas(
@@ -280,6 +281,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.species_table_data = self.database.get_table()
         self.species_table.setModel(PandasModelEditable(self.species_table_data))
         self.species_table.setItemDelegateForColumn(2, self.boolean_delegate)
+        model = cast(PandasModelEditable, self.species_table.model())
+        model.dataChanged.connect(self._on_species_checkbox_changed)
         species_selection = self.species_table.selectionModel()
         species_selection.selectionChanged.connect(self.update_plots)
 
@@ -373,9 +376,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         in the settings
         """
         if self.samples:
-            model = self.species_table.model()
-            for i, species_check in enumerate(self.samples.criteria_check()):
-                model.setData(model.index(i, 2), species_check)
+            model_obj = self.species_table.model()
+            if model_obj is None:
+                return
+            model = cast(PandasModelEditable, model_obj)
+            self._suspend_checkbox_updates = True
+            try:
+                for i, species_check in enumerate(self.samples.criteria_check()):
+                    model.setData(model.index(i, 2), species_check)
+            finally:
+                self._suspend_checkbox_updates = False
+            self._refresh_all_summed_images()
 
     def select_all_species(self) -> None:
         """Mark every species row for export."""
@@ -383,13 +394,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if model is None:
             return
         editable_model = cast(PandasModelEditable, model)
-        for row in range(editable_model.rowCount()):
-            if not editable_model.get_is_checked(row):
-                editable_model.setData(
-                    editable_model.index(row, 2),
-                    Qt.CheckState.Checked,
-                    Qt.ItemDataRole.CheckStateRole,
-                )
+        self._suspend_checkbox_updates = True
+        try:
+            for row in range(editable_model.rowCount()):
+                if not editable_model.get_is_checked(row):
+                    editable_model.setData(
+                        editable_model.index(row, 2),
+                        Qt.CheckState.Checked,
+                        Qt.ItemDataRole.CheckStateRole,
+                    )
+        finally:
+            self._suspend_checkbox_updates = False
+        self._refresh_all_summed_images()
 
     def deselect_all_species(self) -> None:
         """Clear the export flag on every species row."""
@@ -397,13 +413,72 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if model is None:
             return
         editable_model = cast(PandasModelEditable, model)
-        for row in range(editable_model.rowCount()):
-            if editable_model.get_is_checked(row):
-                editable_model.setData(
-                    editable_model.index(row, 2),
-                    Qt.CheckState.Unchecked,
-                    Qt.ItemDataRole.CheckStateRole,
-                )
+        self._suspend_checkbox_updates = True
+        try:
+            for row in range(editable_model.rowCount()):
+                if editable_model.get_is_checked(row):
+                    editable_model.setData(
+                        editable_model.index(row, 2),
+                        Qt.CheckState.Unchecked,
+                        Qt.ItemDataRole.CheckStateRole,
+                    )
+        finally:
+            self._suspend_checkbox_updates = False
+        self._refresh_all_summed_images()
+
+    def _refresh_all_summed_images(self) -> None:
+        """Recompute all neutral summed images based on the currently checked adducts."""
+        if self.database is None or self.samples is None:
+            return
+        model_obj = self.species_table.model()
+        if model_obj is None:
+            return
+        model = cast(PandasModelEditable, model_obj)
+        updated = self.samples.recompute_summed_images(
+            database=self.database,
+            allowed_adduct_ids=set(model.get_checked_list()),
+            changed_adduct_ids=None,
+        )
+        self._refresh_plots_if_selected(updated)
+
+    def _refresh_plots_if_selected(self, neutral_ids: set[str] | None = None) -> None:
+        """Update plots if the currently selected species is among the impacted neutrals."""
+        if self.database is None or self.samples is None:
+            return
+        selection_model = self.species_table.selectionModel()
+        if selection_model is None or not selection_model.selectedRows():
+            return
+        selected_row = selection_model.selectedRows()[0].row()
+        selected_id = self.database.get_id(selected_row)
+        if neutral_ids is None or selected_id in neutral_ids:
+            self.update_plots()
+
+    def _on_species_checkbox_changed(self, top_left, bottom_right, roles=None) -> None:
+        """Handle checkbox edits by recalculating affected summed images only."""
+        if (
+            self._suspend_checkbox_updates
+            or self.database is None
+            or self.samples is None
+        ):
+            return
+        if roles and Qt.ItemDataRole.CheckStateRole not in roles:
+            return
+        if top_left.column() > 2 or bottom_right.column() < 2:
+            return
+        model_obj = self.species_table.model()
+        if model_obj is None:
+            return
+        model = cast(PandasModelEditable, model_obj)
+        changed_adduct_ids = {
+            self.database.get_id(row) for row in range(top_left.row(), bottom_right.row() + 1)
+        }
+        updated_neutral_ids = self.samples.recompute_summed_images(
+            database=self.database,
+            allowed_adduct_ids=set(model.get_checked_list()),
+            changed_adduct_ids=changed_adduct_ids,
+        )
+        if updated_neutral_ids:
+            self._refresh_plots_if_selected(updated_neutral_ids)
 
     def select_image(self, image_id: str) -> None:
         """

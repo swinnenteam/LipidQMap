@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import cache
 from pathlib import Path
-from typing import Callable, ItemsView, Sequence
+from typing import Callable, Iterable, ItemsView, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -445,10 +445,43 @@ class SectionMsiImage:
             )
         return result
 
+    def update_summed_image(
+        self,
+        database: LipidDB,
+        neutral_specie: LipidSpecies,
+        allowed_adduct_ids: set[str] | None,
+    ) -> None:
+        """
+        Recompute the summed neutral image for a single specie using the provided
+        set of allowed adduct IDs.
+        """
+        target_key = neutral_specie.id_adduct
+        self.raw[target_key] = _sum_images_for_neutral(
+            database=database,
+            neutral_specie=neutral_specie,
+            images=self.raw,
+            allowed_adduct_ids=allowed_adduct_ids,
+        )
+        self.isotope[target_key] = _sum_images_for_neutral(
+            database=database,
+            neutral_specie=neutral_specie,
+            images=self.isotope,
+            allowed_adduct_ids=allowed_adduct_ids,
+        )
+        self.quant[target_key] = _sum_images_for_neutral(
+            database=database,
+            neutral_specie=neutral_specie,
+            images=self.quant,
+            allowed_adduct_ids=allowed_adduct_ids,
+        )
+
     @property
     def shape(self) -> tuple[int, int]:
-        x, y = self.raw[next(iter(self.raw))].shape
-        return (x, y)
+        for image in self.raw.values():
+            if image is not None:
+                x, y = image.shape
+                return (x, y)
+        raise ValueError("No non-empty images available to determine shape.")
 
     @staticmethod
     def _transform_coordinates(
@@ -601,6 +634,56 @@ class SampleCollection:
                     aggregated[species_id] = aggregated[species_id] or check
 
         return [aggregated.get(species_id, False) for species_id in self.species_order]
+
+    def update_summed_images(
+        self,
+        database: LipidDB,
+        neutral_species_ids: Iterable[str],
+        allowed_adduct_ids: set[str] | None,
+    ) -> None:
+        """
+        Refresh the summed neutral images for the provided neutral species IDs.
+        """
+        for neutral_id in neutral_species_ids:
+            neutral_specie = database.species.get(neutral_id)
+            if neutral_specie is None:
+                continue
+            for sample in self.samples.values():
+                sample.update_summed_image(
+                    database=database,
+                    neutral_specie=neutral_specie,
+                    allowed_adduct_ids=allowed_adduct_ids,
+                )
+
+    def recompute_summed_images(
+        self,
+        database: LipidDB,
+        allowed_adduct_ids: set[str],
+        changed_adduct_ids: Iterable[str] | None = None,
+    ) -> set[str]:
+        """
+        Recompute summed images using the allowed adduct IDs. If a subset of adducts
+        changed, only their neutral counterparts are recomputed.
+        Returns the set of neutral IDs that were updated.
+        """
+        neutral_ids: set[str] = set()
+        if changed_adduct_ids is None:
+            neutral_ids = {s.id_adduct for s in database.get_neutral_species()}
+        else:
+            for adduct_id in changed_adduct_ids:
+                neutral_specie = database.get_neutral_from_adduct(adduct_id)
+                if neutral_specie is not None:
+                    neutral_ids.add(neutral_specie.id_adduct)
+
+        if not neutral_ids:
+            return set()
+
+        self.update_summed_images(
+            database=database,
+            neutral_species_ids=neutral_ids,
+            allowed_adduct_ids=allowed_adduct_ids,
+        )
+        return neutral_ids
 
     def get_spectrum(self, sample_id: str) -> npt.NDArray:
         return self.samples[sample_id].average_spectrum
@@ -1005,10 +1088,43 @@ def quantitaton(database: LipidDB, images: dict[str, npt.NDArray]) -> dict[str, 
     return quant_images
 
 
+def _sum_images_for_neutral(
+    database: LipidDB,
+    neutral_specie: LipidSpecies,
+    images: dict[str, npt.NDArray | None],
+    allowed_adduct_ids: set[str] | None = None,
+) -> npt.NDArray | None:
+    """
+    Return the summed image for a neutral specie using the provided adduct images.
+    """
+    adduct_forms = database.get_adduct_species_for_neutral(neutral_specie)
+    adduct_images: list[npt.NDArray] = []
+    for specie in adduct_forms:
+        if allowed_adduct_ids is not None and specie.id_adduct not in allowed_adduct_ids:
+            continue
+        candidate = images.get(specie.id_adduct)
+        if candidate is not None:
+            adduct_images.append(candidate)
+
+    if len(adduct_images) == 0:
+        image: npt.NDArray | None = None
+    elif len(adduct_images) == 1:
+        image = adduct_images[0]
+    else:
+        stacked = np.stack(adduct_images, axis=0).astype(np.float64, copy=False)
+        all_nan_mask = np.all(np.isnan(stacked), axis=0)
+        np.nan_to_num(stacked, copy=False, nan=0.0)
+        image = np.sum(stacked, axis=0)
+        image[all_nan_mask] = np.nan
+
+    return image
+
+
 def sum_adducts(
     database: LipidDB,
     images: dict[str, npt.NDArray | None],
     neutral_suffix: str | None = None,
+    allowed_adduct_ids: set[str] | None = None,
 ) -> dict[str, npt.NDArray | None]:
     """
     Sum together the different adduct forms of each species.
@@ -1018,6 +1134,8 @@ def sum_adducts(
         images: Mapping from species ID (with adduct) to image data.
         neutral_suffix: Optional suffix used to rename neutral species keys. When
             provided, neutral entries are emitted as ``<id> <neutral_suffix>``.
+        allowed_adduct_ids: Optional set of adduct IDs that are permitted to
+            contribute to the summed neutral image.
     """
 
     result: dict[str, npt.NDArray | None] = {}
@@ -1028,23 +1146,12 @@ def sum_adducts(
         specie = database.species[species_id]
         if species_id in neutral_lookup:
             neutral_specie = neutral_lookup[species_id]
-            adduct_forms = database.get_adduct_species_for_neutral(neutral_specie)
-            adduct_images: list[npt.NDArray] = [
-                images[s.id_adduct]
-                for s in adduct_forms
-                if s.id_adduct in images and images[s.id_adduct] is not None
-            ]
-
-            if len(adduct_images) == 0:
-                image: npt.NDArray | None = None
-            elif len(adduct_images) == 1:
-                image = adduct_images[0]
-            else:
-                stacked = np.stack(adduct_images, axis=0).astype(np.float64, copy=False)
-                all_nan_mask = np.all(np.isnan(stacked), axis=0)
-                np.nan_to_num(stacked, copy=False, nan=0.0)
-                image = np.sum(stacked, axis=0)
-                image[all_nan_mask] = np.nan
+            image = _sum_images_for_neutral(
+                database=database,
+                neutral_specie=neutral_specie,
+                images=images,
+                allowed_adduct_ids=allowed_adduct_ids,
+            )
 
             key = neutral_specie.id_adduct
             if neutral_suffix is not None:

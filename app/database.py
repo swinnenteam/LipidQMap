@@ -277,6 +277,21 @@ class LipidDB:
                 adducts.append(candidate)
         return adducts
 
+    def get_neutral_from_adduct(self, adduct_id: str) -> LipidSpecies | None:
+        """
+        Given an adduct species ID, return the corresponding neutral LipidSpecies.
+        """
+        specie = self.species.get(adduct_id)
+        if specie is None or specie.adduct in {"", "(+)", "(-)"}:
+            return None
+
+        for candidate in self.species.values():
+            if candidate.id != specie.id:
+                continue
+            if candidate.ion_mode == IonMode.summed or candidate.adduct in {"", "(+)", "(-)"}:
+                return candidate
+        return None
+
     def get_all_species(self, neutral=False) -> tuple[list[str], list[float]]:
         """
         Get all species IDs and their m/z values.
