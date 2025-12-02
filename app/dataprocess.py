@@ -440,6 +440,9 @@ class SectionMsiImage:
         winsor = self.config.settings.filter_settings.raw_image_winsorizing_percentile
         result = []
         for id, image in self.raw.items():
+            if image is None:
+                result.append(False)
+                continue
             result.append(
                 threshold_check(winsorize_image(image, winsor), min_intensity, min_pixels)
             )

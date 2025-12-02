@@ -22,6 +22,7 @@ from app.dataprocess import (
     threshold_check,
     winsorize_image,
 )
+from types import SimpleNamespace
 
 
 @pytest.fixture(name="database")
@@ -516,3 +517,15 @@ def test_sum_adducts_respects_checked(database: LipidDB) -> None:
     result = sum_adducts(database=database, images=images, allowed_adduct_ids=allowed)
     expected = np.array([[1.0, np.nan], [np.nan, np.nan]])
     nptest.assert_allclose(result[neutral_specie.id_adduct], expected, equal_nan=True)
+
+
+def test_criteria_check_handles_none_image() -> None:
+    stub = object.__new__(SectionMsiImage)
+    stub.raw = {"a": None}
+    stub.config = SimpleNamespace(
+        settings=SimpleNamespace(
+            selection_settings=SimpleNamespace(minimum_intensity=1, minimum_pixels=1),
+            filter_settings=SimpleNamespace(raw_image_winsorizing_percentile=99.0),
+        )
+    )
+    assert stub.criteria_check() == [False]
