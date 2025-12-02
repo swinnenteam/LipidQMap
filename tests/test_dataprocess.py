@@ -529,3 +529,17 @@ def test_criteria_check_handles_none_image() -> None:
         )
     )
     assert stub.criteria_check() == [False]
+
+
+def test_transform_skips_none_images() -> None:
+    stub = object.__new__(SectionMsiImage)
+    stub.coordinates = np.array([], dtype=np.int32)
+    stub.pixel_size_um = (1.0, 2.0)
+    img = np.array([[1, 2], [3, 4]])
+    stub.raw = {"a": img}
+    stub.isotope = {"a": None}
+    stub.quant = {"a": None}
+    stub.transform("rotate_left")
+    np.testing.assert_array_equal(stub.raw["a"], np.rot90(img, 1))
+    assert stub.isotope["a"] is None
+    assert stub.quant["a"] is None

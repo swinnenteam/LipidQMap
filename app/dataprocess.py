@@ -425,7 +425,10 @@ class SectionMsiImage:
             key: func(value, param) if value is not None else value
             for (key, value) in self.raw.items()
         }
-        self.isotope = {key: func(value, param) for (key, value) in self.isotope.items()}
+        self.isotope = {
+            key: func(value, param) if value is not None else value
+            for (key, value) in self.isotope.items()
+        }
         self.quant = {
             key: func(value, param) if value is not None else value
             for (key, value) in self.quant.items()
