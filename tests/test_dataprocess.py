@@ -18,6 +18,7 @@ from app.dataprocess import (
     na_isotope_correction,
     ppm_to_tolerance,
     replace_nan_with_median,
+    sum_adducts,
     threshold_check,
     winsorize_image,
 )
@@ -492,3 +493,14 @@ def test_na_isotope_correction(database: LipidDB, images: dict[str, npt.NDArray]
             result_image,
             expected_output[id],
         )
+
+
+def test_sum_adducts_nan_safe(database: LipidDB) -> None:
+    neutral_specie = next(s for s in database.get_neutral_species() if s.id == "PC 33:1 d7")
+    images = {
+        "PC 33:1 d7 [M+H]+": np.array([[1.0, np.nan], [np.nan, np.nan]]),
+        "PC 33:1 d7 [M+Na]+": np.array([[np.nan, 2.0], [3.0, np.nan]]),
+    }
+    result = sum_adducts(database=database, images=images)
+    expected = np.array([[1.0, 2.0], [3.0, np.nan]])
+    nptest.assert_allclose(result[neutral_specie.id_adduct], expected, equal_nan=True)

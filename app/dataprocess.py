@@ -1040,9 +1040,10 @@ def sum_adducts(
             elif len(adduct_images) == 1:
                 image = adduct_images[0]
             else:
-                stacked = np.stack(adduct_images, axis=0)
-                image = np.nansum(stacked, axis=0)
+                stacked = np.stack(adduct_images, axis=0).astype(np.float64, copy=False)
                 all_nan_mask = np.all(np.isnan(stacked), axis=0)
+                np.nan_to_num(stacked, copy=False, nan=0.0)
+                image = np.sum(stacked, axis=0)
                 image[all_nan_mask] = np.nan
 
             key = neutral_specie.id_adduct
