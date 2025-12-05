@@ -15,10 +15,10 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QGroupBox,
-    QHBoxLayout, QLabel, QLineEdit, QProgressBar,
-    QPushButton, QSizePolicy, QSpacerItem, QVBoxLayout,
-    QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
+    QGroupBox, QHBoxLayout, QLabel, QLineEdit,
+    QProgressBar, QPushButton, QSizePolicy, QSpacerItem,
+    QVBoxLayout, QWidget)
 
 class Ui_MsiExportScilsDialog(object):
     def setupUi(self, MsiExportScilsDialog):
@@ -75,6 +75,11 @@ class Ui_MsiExportScilsDialog(object):
         self.selected_only_checkbox.setChecked(True)
 
         self.verticalLayout.addWidget(self.selected_only_checkbox)
+
+        self.combo_box_adducts = QComboBox(MsiExportScilsDialog)
+        self.combo_box_adducts.setObjectName(u"combo_box_adducts")
+
+        self.verticalLayout.addWidget(self.combo_box_adducts)
 
         self.verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
