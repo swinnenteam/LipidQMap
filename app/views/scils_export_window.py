@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from enum import Enum
 from pathlib import Path
-from typing import Sequence
+from typing import Callable, Sequence
 
 from PySide6.QtCore import Slot
 from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QWidget
@@ -19,6 +20,40 @@ from app.scils_export import (
 )
 
 
+class AdductSelection(str, Enum):
+    """Adduct export choices exposed in the SCiLS dialog."""
+
+    adducts_and_summed = "adducts_and_summed"
+    adducts_only = "adducts_only"
+    summed_only = "summed_only"
+
+
+ADDUCT_SELECTION_OPTIONS: list[tuple[str, AdductSelection]] = [
+    ("Adducts + summed adducts", AdductSelection.adducts_and_summed),
+    ("Adducts", AdductSelection.adducts_only),
+    ("Summed", AdductSelection.summed_only),
+]
+
+
+def filter_species_by_adduct_selection(
+    species_ids: Sequence[str],
+    selection: AdductSelection,
+    is_summed_fn: Callable[[str], bool],
+) -> list[str]:
+    """Return species filtered according to the adduct selection option."""
+    if selection == AdductSelection.adducts_and_summed:
+        return list(species_ids)
+
+    filtered: list[str] = []
+    for species_id in species_ids:
+        is_summed = is_summed_fn(species_id)
+        if selection == AdductSelection.adducts_only and not is_summed:
+            filtered.append(species_id)
+        elif selection == AdductSelection.summed_only and is_summed:
+            filtered.append(species_id)
+    return filtered
+
+
 class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
     """Dialog that manages exporting processed ion images into SCiLS."""
 
@@ -29,6 +64,7 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         self.species_ids: list[str] = []
         self.all_species_ids: list[str] = []
         self.setupUi(self)
+        self._populate_adduct_options()
         self.scils_progressbar.setRange(0, 1)
         self.scils_progressbar.setValue(0)
         self.scils_progressbar.setVisible(True)
@@ -38,6 +74,20 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         self.button_choose_file.clicked.connect(self.select_output_file)
         self.button_cancel.clicked.connect(self.close)
         self.button_export.clicked.connect(self.export)
+
+    def _populate_adduct_options(self) -> None:
+        """Fill the adduct selection combo box with the available options."""
+        self.combo_box_adducts.clear()
+        for label, option in ADDUCT_SELECTION_OPTIONS:
+            self.combo_box_adducts.addItem(label, option.value)
+        self.combo_box_adducts.setCurrentIndex(0)
+
+    def _reset_adduct_selection(self) -> None:
+        """Reset the adduct filter to its default state."""
+        if self.combo_box_adducts.count() != len(ADDUCT_SELECTION_OPTIONS):
+            self._populate_adduct_options()
+        else:
+            self.combo_box_adducts.setCurrentIndex(0)
 
     def set_context(
         self,
@@ -58,8 +108,8 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         self.quant_checkbox.setChecked(True)
         self.iso_checkbox.setChecked(False)
         self.raw_checkbox.setChecked(False)
-        self.include_summed_checkbox.setChecked(True)
         self.selected_only_checkbox.setChecked(True)
+        self._reset_adduct_selection()
         self.lineEdit.clear()
 
         if not self.all_species_ids:
@@ -109,7 +159,7 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
                 "Export to SCiLS",
                 "No species remain to export with the current settings. "
                 "Select features in the table or disable the 'Only export selected' option.",
-                )
+            )
             return
 
         dataset_path = self._select_dataset()
@@ -198,16 +248,27 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
 
     def _species_ids_for_export(self) -> list[str]:
         base_ids = self._base_species_ids()
-        if self.database is None or self.include_summed_checkbox.isChecked():
-            return base_ids
-
-        filtered = [species_id for species_id in base_ids if not self._is_summed_species(species_id)]
-        return filtered
+        return self._filter_species_by_adduct_selection(base_ids)
 
     def _base_species_ids(self) -> list[str]:
         if not self.selected_only_checkbox.isChecked() and self.all_species_ids:
             return list(self.all_species_ids)
         return list(self.species_ids)
+
+    def _current_adduct_selection(self) -> AdductSelection:
+        data = self.combo_box_adducts.currentData()
+        try:
+            return AdductSelection(str(data))
+        except Exception:
+            return AdductSelection.adducts_and_summed
+
+    def _filter_species_by_adduct_selection(self, species_ids: list[str]) -> list[str]:
+        selection = self._current_adduct_selection()
+        return filter_species_by_adduct_selection(
+            species_ids,
+            selection,
+            self._is_summed_species,
+        )
 
     def _is_summed_species(self, species_id: str) -> bool:
         specie = None
@@ -284,8 +345,8 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
             self.quant_checkbox,
             self.iso_checkbox,
             self.raw_checkbox,
-            self.include_summed_checkbox,
             self.selected_only_checkbox,
+            self.combo_box_adducts,
             self.lineEdit,
         ]
         for widget in controls:

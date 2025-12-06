@@ -78,6 +78,9 @@ class Ui_MsiExportScilsDialog(object):
 
         self.combo_box_adducts = QComboBox(MsiExportScilsDialog)
         self.combo_box_adducts.setObjectName(u"combo_box_adducts")
+        self.combo_box_adducts.addItem(u"")
+        self.combo_box_adducts.addItem(u"")
+        self.combo_box_adducts.addItem(u"")
 
         self.verticalLayout.addWidget(self.combo_box_adducts)
 
@@ -125,6 +128,9 @@ class Ui_MsiExportScilsDialog(object):
         self.iso_checkbox.setText(QCoreApplication.translate("MsiExportScilsDialog", u"Isotope corrected images", None))
         self.raw_checkbox.setText(QCoreApplication.translate("MsiExportScilsDialog", u"Raw images", None))
         self.selected_only_checkbox.setText(QCoreApplication.translate("MsiExportScilsDialog", u"Only export selected (checked) features", None))
+        self.combo_box_adducts.setItemText(0, QCoreApplication.translate("MsiExportScilsDialog", u"Adducts + summed adducts", None))
+        self.combo_box_adducts.setItemText(1, QCoreApplication.translate("MsiExportScilsDialog", u"Adducts", None))
+        self.combo_box_adducts.setItemText(2, QCoreApplication.translate("MsiExportScilsDialog", u"Summed", None))
         self.button_cancel.setText(QCoreApplication.translate("MsiExportScilsDialog", u"Cancel", None))
         self.button_export.setText(QCoreApplication.translate("MsiExportScilsDialog", u"Export", None))
     # retranslateUi

@@ -76,12 +76,28 @@
      <property name="checked">
       <bool>true</bool>
      </property>
+   </widget>
+  </item>
+  <item>
+    <widget class="QComboBox" name="combo_box_adducts">
+     <item>
+      <property name="text">
+       <string>Adducts + summed adducts</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Adducts</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Summed</string>
+      </property>
+     </item>
     </widget>
-   </item>
-   <item>
-    <widget class="QComboBox" name="combo_box_adducts"/>
-   </item>
-   <item>
+  </item>
+  <item>
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Orientation::Vertical</enum>

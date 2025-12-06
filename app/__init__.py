@@ -1,4 +1,4 @@
-__version__ = "0.2.0-beta.6"
+__version__ = "0.2.0-beta.7"
 __appname__ = "LipidQMap"
 __appauthor__ = "Swinnenlab"
 __description__ = (
