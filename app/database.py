@@ -152,10 +152,19 @@ class LipidDB:
             list[LipidSpecies]: A list of non-standard species IDs.
         """
         return [
-            s
-            for s in self.species.values()
-            if (not s.is_standard) and s.ion_mode != IonMode.summed
+            s for s in self.species.values() if (not s.is_standard) and s.ion_mode != IonMode.summed
         ]
+
+    def get_standards_missing_amounts(self) -> list[str]:
+        """
+        Get standard IDs that are missing a standard amount.
+        """
+        missing_ids = {
+            specie.id
+            for specie in self.species.values()
+            if specie.is_standard and pd.isna(specie.amount)
+        }
+        return sorted(missing_ids)
 
     def _species_order_neutral_first(self) -> list[LipidSpecies]:
         """
@@ -549,7 +558,7 @@ class DatabaseFactory:
                 mz=formula.monoisotopic_mass,
                 m2_rel_abundance=[i for (_, i) in formula.spectrum().items()][2].intensity / 100,
                 m4_rel_abundance=[i for (_, i) in formula.spectrum().items()][4].intensity / 100,
-                amount=self.none_if_nan(getattr(row, S_AMOUNT_COL)),
+                amount=getattr(row, S_AMOUNT_COL),
                 m2_isotope=None,
                 m4_isotope=None,
                 na_isotope=None,
@@ -561,21 +570,67 @@ class DatabaseFactory:
             else:
                 species[adduct_id] = LipidSpecies(**attributes)
 
+        id_to_adducts: dict[str, set[str]] = {}
+        id_to_standard: dict[str, LipidStandard] = {}
+        id_to_species: dict[str, LipidSpecies] = {}
+        for specie in species.values():
+            id_to_adducts.setdefault(specie.id, set()).add(specie.adduct)
+            if isinstance(specie, LipidStandard):
+                id_to_standard.setdefault(specie.id, specie)
+            id_to_species.setdefault(specie.id, specie)
+
+        def create_adduct_specie(base_specie: LipidSpecies, adduct: str) -> LipidSpecies:
+            neutral_formula = base_specie.neutral_formula
+            neutral_formula_str = getattr(neutral_formula, "formula", str(neutral_formula))
+            formula = adduct_formula(neutral_formula_str, adduct)
+            spectrum = [i for (_, i) in formula.spectrum().items()]
+            attributes = dict(
+                adduct=adduct,
+                id=base_specie.id,
+                lipid_class=base_specie.lipid_class,
+                neutral_formula=neutral_formula,
+                formula=formula,
+                mz=formula.monoisotopic_mass,
+                m2_rel_abundance=spectrum[2].intensity / 100,
+                m4_rel_abundance=spectrum[4].intensity / 100,
+                amount=base_specie.amount if isinstance(base_specie, LipidStandard) else None,
+                m2_isotope=None,
+                m4_isotope=None,
+                na_isotope=None,
+                standard=None,
+            )
+            if isinstance(base_specie, LipidStandard):
+                return LipidStandard(**attributes)
+            return LipidSpecies(**attributes)
+
         for i, row in enumerate(self.df.itertuples()):
             adduct = getattr(row, S_ADDUCTS)
             id = getattr(row, S_ID)
             specie = species[id_adduct(id, adduct)]
-            standard = self.none_if_nan(getattr(row, S_IS))
+            standard_id = self.none_if_nan(getattr(row, S_IS))
 
-            try:
-                standard = species[id_adduct(standard, adduct)] if standard is not None else None
-            except Exception:
-                raise (
-                    ValueError(
-                        f"Value '{standard}' found in column 'IS' on row {i+2} is not a species defined \
-                        in column 'ID'. Check for typos in the IDs."
-                    )
-                )
+            if standard_id is None:
+                standard = None
+            else:
+                standard_key = id_adduct(standard_id, adduct)
+                standard = species.get(standard_key)
+                if standard is None:
+                    available_adducts = id_to_adducts.get(standard_id)
+                    if not available_adducts:
+                        raise ValueError(
+                            f"Value '{standard_id}' found in column 'IS' on row {i+2} is not a species defined "
+                            "in column 'ID'. Check for typos in the IDs."
+                        )
+                    base_standard = id_to_standard.get(standard_id)
+                    if base_standard is None:
+                        raise ValueError(
+                            f"On row {i+2} of column 'IS' the species '{standard_id}' has not been properly defined "
+                            f"in the database as a standard. Check that '{standard_id}' has a value for 'IS amount "
+                            "(pmol / mm2)'."
+                        )
+                    standard = create_adduct_specie(base_standard, adduct)
+                    species[standard_key] = standard
+                    id_to_adducts[standard_id].add(adduct)
             if standard is not None and not isinstance(standard, LipidStandard):
                 raise (
                     ValueError(
@@ -586,32 +641,40 @@ class DatabaseFactory:
                 )
             specie.standard = standard
 
-            m2_isotope = self.none_if_nan(getattr(row, S_M2_ISOTOPE))
-            try:
-                m2_isotope = (
-                    species[id_adduct(m2_isotope, adduct)] if m2_isotope is not None else None
-                )
-            except Exception:
-                raise (
-                    ValueError(
-                        f"Value '{m2_isotope}' found in column 'M-2 Isotope' on row {i+2} is not a species defined \
-                        in column 'ID'. Check for typos in the IDs."
-                    )
-                )
+            m2_isotope_id = self.none_if_nan(getattr(row, S_M2_ISOTOPE))
+            if m2_isotope_id is None:
+                m2_isotope = None
+            else:
+                m2_key = id_adduct(m2_isotope_id, adduct)
+                m2_isotope = species.get(m2_key)
+                if m2_isotope is None:
+                    base_specie = id_to_species.get(m2_isotope_id)
+                    if base_specie is None:
+                        raise ValueError(
+                            f"Value '{m2_isotope_id}' found in column 'M-2 Isotope' on row {i+2} is not a species defined "
+                            "in column 'ID'. Check for typos in the IDs."
+                        )
+                    m2_isotope = create_adduct_specie(base_specie, adduct)
+                    species[m2_key] = m2_isotope
+                    id_to_adducts.setdefault(m2_isotope_id, set()).add(adduct)
             specie.m2_isotope = m2_isotope
 
-            m4_isotope = self.none_if_nan(getattr(row, S_M4_ISOTOPE))
-            try:
-                m4_isotope = (
-                    species[id_adduct(m4_isotope, adduct)] if m4_isotope is not None else None
-                )
-            except Exception:
-                raise (
-                    ValueError(
-                        f"Value '{m4_isotope}' found in column 'M-4 Isotope' on row {i+2} is not a species defined \
-                        in column 'ID'. Check for typos in the IDs."
-                    )
-                )
+            m4_isotope_id = self.none_if_nan(getattr(row, S_M4_ISOTOPE))
+            if m4_isotope_id is None:
+                m4_isotope = None
+            else:
+                m4_key = id_adduct(m4_isotope_id, adduct)
+                m4_isotope = species.get(m4_key)
+                if m4_isotope is None:
+                    base_specie = id_to_species.get(m4_isotope_id)
+                    if base_specie is None:
+                        raise ValueError(
+                            f"Value '{m4_isotope_id}' found in column 'M-4 Isotope' on row {i+2} is not a species defined "
+                            "in column 'ID'. Check for typos in the IDs."
+                        )
+                    m4_isotope = create_adduct_specie(base_specie, adduct)
+                    species[m4_key] = m4_isotope
+                    id_to_adducts.setdefault(m4_isotope_id, set()).add(adduct)
             specie.m4_isotope = m4_isotope
 
             na_isotope_id = self.none_if_nan(getattr(row, S_NA_ISOTOPE))

@@ -133,6 +133,16 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         """Emit results to main window"""
         self.samples = samples
         self.database = database
+        missing_standards = database.get_standards_missing_amounts()
+        if missing_standards:
+            QMessageBox.warning(
+                self,
+                "Database warning",
+                "Standard amount values are missing for the following standards:\n"
+                f"{', '.join(missing_standards)}\n\n"
+                "Please populate 'Standard amount (pmol / mm2)' in the Excel database or use the built-in "
+                "standard calculator.",
+            )
         self.finished_imzml_loading.emit()
         self.close()
 

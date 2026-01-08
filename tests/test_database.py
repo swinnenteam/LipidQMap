@@ -2,7 +2,13 @@ import pandas as pd
 import pytest
 from molmass import Formula
 
-from app.database import DatabaseFactory, IonMode, LipidDB, adduct_formula
+from app.database import (
+    DatabaseFactory,
+    IonMode,
+    LipidDB,
+    LipidStandard,
+    adduct_formula,
+)
 
 
 @pytest.fixture(name="database")
@@ -54,6 +60,18 @@ def test_load_database_no_std_amount() -> None:
         DatabaseFactory(
             "tests/database/test_database_no_std_amount.xlsx", ion_mode=IonMode.positive
         ).create_database()
+
+
+def test_load_database_missing_standard_adduct() -> None:
+    database = DatabaseFactory(
+        "tests/database/test_database_missing_adduct.xlsx", ion_mode=IonMode.positive
+    ).create_database()
+    standard = database.species["PC 33:1 d7 [M+2K]2+"]
+    assert isinstance(standard, LipidStandard)
+    assert pytest.approx(1.5, rel=1e-3) == standard.amount
+    specie = database.species["PC 32:0 [M+2K]2+"]
+    assert specie.standard is not None
+    assert specie.standard.id_adduct == "PC 33:1 d7 [M+2K]2+"
 
 
 def test_load_database_invalid_isotope_id() -> None:
