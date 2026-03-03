@@ -135,6 +135,17 @@ def test_load_data(section_msi_image) -> None:
     assert section_msi_image.average_spectrum is not None
 
 
+def test_load_data_uses_float32_images(section_msi_image) -> None:
+    """The in-memory image pipeline should keep image stacks in float32."""
+    raw_image = next(image for image in section_msi_image.raw.values() if image is not None)
+    isotope_image = next(image for image in section_msi_image.isotope.values() if image is not None)
+    quant_image = next(image for image in section_msi_image.quant.values() if image is not None)
+
+    assert raw_image.dtype == np.float32
+    assert isotope_image.dtype == np.float32
+    assert quant_image.dtype == np.float32
+
+
 def test_image_shape(section_msi_image) -> None:
     """Test shape if the image."""
     assert section_msi_image.shape == (3, 3)

@@ -1,4 +1,3 @@
-import copy
 import math
 import os
 import pickle
@@ -367,17 +366,17 @@ class SectionMsiImage:
                 image = self.raw.get(species_id)
                 if image is None:
                     return 0
-                return np.nanmean(image, axis=(0, 1))
+                return float(np.nanmean(image, axis=(0, 1)))
             case ImageType.isotope:
                 image = self.isotope.get(species_id)
                 if image is None:
                     return 0
-                return np.nanmean(image, axis=(0, 1))
+                return float(np.nanmean(image, axis=(0, 1)))
             case ImageType.quant:
                 image = self.quant.get(species_id)
                 if image is None:
                     return 0
-                return np.nanmean(image, axis=(0, 1))
+                return float(np.nanmean(image, axis=(0, 1)))
 
     def transform(self, transformation: str) -> None:
         """
@@ -1015,7 +1014,8 @@ def db_isotope_correction(
     unsaturated species and subtracts them from the measured intensity of the
     less unsaturated species.
     """
-    corrected_images: dict[str, npt.NDArray] = copy.deepcopy(images)
+    # Reuse unchanged arrays and only allocate new arrays for corrected species.
+    corrected_images: dict[str, npt.NDArray] = dict(images)
     for s in database.get_species_sorted_for_isotope():
         if s.id_adduct not in images.keys():
             continue
@@ -1029,8 +1029,6 @@ def db_isotope_correction(
                     corrected_images[s.id_adduct]
                     - s.m4_isotope.m4_rel_abundance * corrected_images[s.m4_isotope.id_adduct]
                 ).clip(min=0)
-        else:
-            corrected_images[s.id_adduct] = np.copy(images[s.id_adduct])
 
     return corrected_images
 
@@ -1043,7 +1041,8 @@ def na_isotope_correction(
     According to Höring et al. Anal. Chem. 2020, 92, 16, 10966–10970
     https://pubs.acs.org/doi/10.1021/acs.analchem.0c02408
     """
-    corrected_images: dict[str, npt.NDArray] = copy.deepcopy(images)
+    # Reuse unchanged arrays and only allocate new arrays for corrected species.
+    corrected_images: dict[str, npt.NDArray] = dict(images)
     h_na_ratio_ims = dict()
 
     for h_id, na_id in database.get_hydrogen_sodium_std_pairs():
@@ -1117,7 +1116,9 @@ def _sum_images_for_neutral(
     elif len(adduct_images) == 1:
         image = adduct_images[0]
     else:
-        stacked = np.stack(adduct_images, axis=0).astype(np.float64, copy=False)
+        stacked = np.stack(adduct_images, axis=0)
+        if not np.issubdtype(stacked.dtype, np.floating):
+            stacked = stacked.astype(np.float32, copy=False)
         all_nan_mask = np.all(np.isnan(stacked), axis=0)
         np.nan_to_num(stacked, copy=False, nan=0.0)
         image = np.sum(stacked, axis=0)

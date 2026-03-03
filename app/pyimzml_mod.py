@@ -547,12 +547,12 @@ def get_ion_images_numba(
         pixel.
     """
     mzs_array = np.array(mzs)
-    ims = np.full((len(mzs), img_shape[1], img_shape[0]), np.nan)
+    ims = np.full((len(mzs), img_shape[1], img_shape[0]), np.nan, dtype=np.float32)
     for i in prange(len(coordinates)):
         (x, y, z_) = coordinates[i]
         spec_mzs, spec_ints = spectra[i]
         indices = _bisect_spectrum_multi(spec_mzs, mzs_array, np.array(tolerances))
-        values = np.zeros(len(indices))
+        values = np.zeros(len(indices), dtype=np.float32)
         for j, index in enumerate(indices):
             if len(spec_ints[index]) > 0:
                 values[j] = np.max(spec_ints[index])
