@@ -77,6 +77,17 @@ def _attach_scale_bar(
     return scalebar
 
 
+def _pixel_display_aspect(pixel_size_um: tuple[float, float] | None) -> float:
+    """Return y/x display scaling based on physical pixel spacing."""
+    if pixel_size_um is None:
+        return 1.0
+    pixel_size_x = float(pixel_size_um[0])
+    pixel_size_y = float(pixel_size_um[1])
+    if pixel_size_x <= 0 or pixel_size_y <= 0:
+        return 1.0
+    return pixel_size_y / pixel_size_x
+
+
 class BarplotCanvas(FigureCanvasQTAgg):
     """
     A custom matplotlib canvas for displaying a barplot.
@@ -268,6 +279,7 @@ class MplCanvas(FigureCanvasQTAgg):
             self.ims[i].autoscale()
             self.ims[i].set_interpolation(filter)
             self.ims[i].set_clim(vmin=0, vmax=max_value)
+            ax.set_aspect(_pixel_display_aspect(image_collection.pixel_size_um))
             color = "white"
             if key == active_sample_id:
                 color = cyan
@@ -338,6 +350,7 @@ def save_individual_image(
     ax.set_title(label=species_id, size=24)
     img = ax.imshow(image, interpolation="gaussian", origin="upper")
     img.set_clim(vmin=0, vmax=max_scale)
+    ax.set_aspect(_pixel_display_aspect(pixel_size_um))
     cbar = plt.colorbar(img, cax=cax)
     if image_type == ImageType.quant:
         cbar.set_label(label="pmol / mm²", size=18)
@@ -437,7 +450,7 @@ def save_panel_image(
             cb = plt.colorbar(im, ax=ax, cax=cax)
             ax.set_axis_off()
             ax.set(adjustable="datalim")
-            ax.apply_aspect()
+            ax.set_aspect(_pixel_display_aspect(image_collection.pixel_size_um))
 
             _attach_scale_bar(
                 ax=ax,
