@@ -307,8 +307,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if active_sample is None:
             return
         nsamples = len(self.samples)
-        if nsamples == 1:
-            self.ncols = 1
+        if nsamples < 1:
+            return
+        # Never reserve empty subplot columns. A single sample should always use one column.
+        self.ncols = max(1, min(self.ncols, nsamples))
         dimensions = self.samples.dimensions()
 
         self.nrows = nsamples // self.ncols + (nsamples % self.ncols > 0)
@@ -564,6 +566,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         Zoom out by increasing the number of columns and adjusting the layout.
         """
+        if self.samples is None:
+            return
+        nsamples = len(self.samples)
+        if self.ncols >= nsamples:
+            return
         self.ncols += 1
         self.reset_canvas()
         self.setup_plots()

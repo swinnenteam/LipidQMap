@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,7 @@ plt.rcParams.update(
 )
 
 cyan = "#1de9b6"
+logger = logging.getLogger(__name__)
 
 
 def _remove_scalebar(artist: Any | None) -> None:
@@ -83,9 +85,15 @@ def _pixel_display_aspect(pixel_size_um: tuple[float, float] | None) -> float:
         return 1.0
     pixel_size_x = float(pixel_size_um[0])
     pixel_size_y = float(pixel_size_um[1])
-    if pixel_size_x <= 0 or pixel_size_y <= 0:
+    if (
+        pixel_size_x <= 0
+        or pixel_size_y <= 0
+        or not np.isfinite(pixel_size_x)
+        or not np.isfinite(pixel_size_y)
+    ):
         return 1.0
-    return pixel_size_y / pixel_size_x
+    ratio = pixel_size_y / pixel_size_x
+    return ratio if np.isfinite(ratio) and ratio > 0 else 1.0
 
 
 class BarplotCanvas(FigureCanvasQTAgg):
@@ -187,6 +195,7 @@ class MplCanvas(FigureCanvasQTAgg):
         self.ncols: int = 2
         self.ims: list = []
         self.scale_bars: list[Any | None] = []
+        self.cbars: list[Any] = []
         self.fig: matplotlib.figure.Figure = plt.figure()
         super(MplCanvas, self).__init__(self.fig)
         self.mpl_connect("button_press_event", self.on_press)
@@ -196,50 +205,65 @@ class MplCanvas(FigureCanvasQTAgg):
             self.image_clicked.emit(event.inaxes.get_title())
 
     def setup(self, nrows: int, ncols: int, dimensions: list[tuple[int, int]]) -> None:
-        """
-        Set up the grid layout for displaying images.
-
-        Args:
-            nrows (int): Number of rows in the grid.
-            ncols (int): Number of columns in the grid.
-            nsamples (int): Number of samples to display.
-            dimensions list[tuple[int,int]]: list of x and y dimensions of the images
-        """
-
         self.ims = []
         self.scale_bars = []
+        self.cbars = []
+        nsamples = len(dimensions)
+        if nsamples == 0:
+            return
+        ncols_eff = max(1, min(ncols, nsamples))
+        nrows_eff = nsamples // ncols_eff + (nsamples % ncols_eff > 0)
         cmap = colormaps.get_cmap("viridis")
         fg_color = "white"
 
         filter = "gaussian" if self.config.settings.filter_settings.gaussian_filter else "nearest"
+
+        col_widths = []
+        for _ in range(ncols_eff):
+            col_widths.append(20)
+            col_widths.append(1)
+        gs = self.fig.add_gridspec(
+            nrows_eff,
+            ncols_eff * 2,
+            width_ratios=col_widths,
+            left=0.01,
+            right=0.94,
+            bottom=0.01,
+            top=0.93,
+            wspace=0.04,
+            hspace=0.15,
+        )
+
         for sample_idx, (x, y) in enumerate(dimensions):
-            ax = self.fig.add_subplot(nrows, ncols, sample_idx + 1)
+            row = sample_idx // ncols_eff
+            col = sample_idx % ncols_eff
+            ax = self.fig.add_subplot(gs[row, col * 2])
+            cax_container = self.fig.add_subplot(gs[row, col * 2 + 1])
+            cax_container.set_axis_off()
+            cax = cax_container.inset_axes([0.0, 0.25, 1.0, 0.5])
             im = ax.imshow(
                 np.full([x, y], np.nan),
                 origin="upper",
                 interpolation=filter,
                 cmap=cmap,
                 vmin=0,
-                aspect="equal",
+                aspect="auto",
             )
             self.ims.append(im)
             self.scale_bars.append(None)
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="3%", pad=0.2)
-            cb = plt.colorbar(im, ax=ax, cax=cax)
+            cb = plt.colorbar(im, cax=cax)
+            self.cbars.append(cb)
             ax.set_axis_off()
 
             # set colorbar colors
             cb.ax.yaxis.set_tick_params(color=fg_color)
             cb.outline.set_edgecolor(fg_color)  # type: ignore [operator]
             plt.setp(plt.getp(cb.ax.axes, "yticklabels"), color=fg_color)
+            cb.ax.patch.set_visible(False)
+            cb.ax.tick_params(labelcolor=fg_color, labelsize=8)
 
             if self.canvas_type == ImageType.quant:
                 cb.set_label("pmol / mm2", color=fg_color)
-
-        self.fig.subplots_adjust(
-            left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.2, hspace=0.2
-        )
 
     def update_figure(
         self,
@@ -264,6 +288,12 @@ class MplCanvas(FigureCanvasQTAgg):
             )
         else:
             max_value = None
+        logger.debug(
+            "update_figure: species_id=%s max_value=%s canvas_type=%s",
+            species_id,
+            max_value,
+            self.canvas_type,
+        )
         filter = "gaussian" if self.config.settings.filter_settings.gaussian_filter else "nearest"
         scale_bar_length_um = samples.get_scalebar_length_um(self.config)
         for i, (key, image_collection) in enumerate(samples.items()):
@@ -276,10 +306,17 @@ class MplCanvas(FigureCanvasQTAgg):
             ax = self.ims[i].axes
             self.ims[i].set_data(image)
             self.ims[i].set_extent((0, y, 0, x))
-            self.ims[i].autoscale()
             self.ims[i].set_interpolation(filter)
-            self.ims[i].set_clim(vmin=0, vmax=max_value)
-            ax.set_aspect(_pixel_display_aspect(image_collection.pixel_size_um))
+            has_data = np.isfinite(image).any() and np.nanmax(image) > 0
+            if max_value is not None and max_value > 0:
+                self.ims[i].set_clim(vmin=0, vmax=max_value)
+            elif has_data:
+                self.ims[i].set_clim(vmin=0, vmax=None)
+                self.ims[i].autoscale()
+            else:
+                self.ims[i].set_clim(vmin=0, vmax=1)
+            aspect = _pixel_display_aspect(image_collection.pixel_size_um)
+            ax.set_aspect(aspect, adjustable="box")
             color = "white"
             if key == active_sample_id:
                 color = cyan
@@ -317,6 +354,7 @@ class MplCanvas(FigureCanvasQTAgg):
             ax.cla()
             ax.remove()
         self.scale_bars = []
+        self.cbars = []
 
 
 def save_individual_image(
