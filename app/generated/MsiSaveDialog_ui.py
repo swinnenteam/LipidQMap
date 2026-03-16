@@ -152,11 +152,10 @@ class Ui_MsiSaveDialog(object):
         self.check_box_save_iso.setText(QCoreApplication.translate("MsiSaveDialog", u"Isotope corrected images", None))
         self.check_box_save_quant.setText(QCoreApplication.translate("MsiSaveDialog", u"Quantitative images", None))
         self.groupBox_2.setTitle(QCoreApplication.translate("MsiSaveDialog", u"Image saving options", None))
-        self.check_box_save_individual.setText(QCoreApplication.translate("MsiSaveDialog", u"Save individual unfiltered 1:1 pixel images", None))
+        self.check_box_save_individual.setText(QCoreApplication.translate("MsiSaveDialog", u"Save individual unfiltered 1:1 pixel TIFF images", None))
         self.check_box_save_filtered.setText(QCoreApplication.translate("MsiSaveDialog", u"Save individual scaled and filtered images", None))
         self.check_box_save_multi.setText(QCoreApplication.translate("MsiSaveDialog", u"Save images as one panel, scaled and filtered", None))
         self.label.setText(QCoreApplication.translate("MsiSaveDialog", u"Note: saving the images may take several minutes and the program may appear unresponsive.", None))
         self.button_cancel.setText(QCoreApplication.translate("MsiSaveDialog", u"Cancel", None))
         self.button_save.setText(QCoreApplication.translate("MsiSaveDialog", u"Save", None))
     # retranslateUi
-

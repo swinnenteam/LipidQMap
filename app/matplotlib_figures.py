@@ -10,10 +10,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+from PIL import Image, TiffImagePlugin
 from matplotlib import colormaps
 from matplotlib.axes import Axes
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from PySide6.QtCore import Signal
 from matplotlib_scalebar.scalebar import ScaleBar
 
@@ -94,6 +94,126 @@ def _pixel_display_aspect(pixel_size_um: tuple[float, float] | None) -> float:
         return 1.0
     ratio = pixel_size_y / pixel_size_x
     return ratio if np.isfinite(ratio) and ratio > 0 else 1.0
+
+
+def _physical_image_aspect(
+    image_shape: tuple[int, int], pixel_size_um: tuple[float, float] | None
+) -> float:
+    """Return the physical height/width aspect ratio for an image."""
+    height_px, width_px = image_shape
+    if height_px <= 0 or width_px <= 0:
+        return 1.0
+    physical_aspect = (height_px / width_px) * _pixel_display_aspect(pixel_size_um)
+    return physical_aspect if np.isfinite(physical_aspect) and physical_aspect > 0 else 1.0
+
+
+def _scaled_box_dimensions(
+    box_aspect: float,
+    *,
+    target_area_in2: float,
+    min_dim_in: float,
+    max_dim_in: float,
+) -> tuple[float, float]:
+    """Return width/height in inches for a box with a given aspect."""
+    safe_aspect = box_aspect if np.isfinite(box_aspect) and box_aspect > 0 else 1.0
+    width_in = float(np.sqrt(target_area_in2 / safe_aspect))
+    height_in = width_in * safe_aspect
+
+    scale_up = max(min_dim_in / width_in, min_dim_in / height_in, 1.0)
+    width_in *= scale_up
+    height_in *= scale_up
+
+    scale_down = min(max_dim_in / width_in, max_dim_in / height_in, 1.0)
+    width_in *= scale_down
+    height_in *= scale_down
+    return width_in, height_in
+
+
+def _individual_export_figure_size(
+    image_shape: tuple[int, int], pixel_size_um: tuple[float, float] | None
+) -> tuple[float, float]:
+    """Return a figure size that keeps anisotropic images visually prominent."""
+    image_width_in, image_height_in = _scaled_box_dimensions(
+        _physical_image_aspect(image_shape, pixel_size_um),
+        target_area_in2=36.0,
+        min_dim_in=4.0,
+        max_dim_in=10.0,
+    )
+    return image_width_in + 1.0, image_height_in + 0.8
+
+
+def _panel_export_figure_size(
+    image_shapes: list[tuple[int, int]],
+    pixel_sizes_um: list[tuple[float, float] | None],
+    nrows: int,
+    ncols: int,
+) -> tuple[float, float]:
+    """Return a panel figure size derived from the most demanding sample aspect."""
+    aspects = [
+        _physical_image_aspect(image_shape, pixel_size_um)
+        for image_shape, pixel_size_um in zip(image_shapes, pixel_sizes_um, strict=False)
+    ]
+    max_aspect = max(aspects, default=1.0)
+    cell_width_in, cell_height_in = _scaled_box_dimensions(
+        max_aspect,
+        target_area_in2=14.0,
+        min_dim_in=2.4,
+        max_dim_in=5.0,
+    )
+    figure_width_in = ncols * (cell_width_in + 0.3) + 0.5
+    figure_height_in = nrows * cell_height_in + 0.4
+    return figure_width_in, figure_height_in
+
+
+def _add_export_image(
+    ax: Axes,
+    image: npt.NDArray,
+    *,
+    interpolation: str,
+    pixel_size_um: tuple[float, float] | None,
+    cmap: Any,
+) -> Any:
+    """Render an image on an axis using the same aspect logic as the UI."""
+    height_px, width_px = image.shape
+    img = ax.imshow(image, origin="upper", interpolation=interpolation, cmap=cmap, vmin=0)
+    img.set_extent((0, width_px, 0, height_px))
+    ax.set_aspect(_pixel_display_aspect(pixel_size_um), adjustable="box")
+    ax.set_xlim(0, width_px)
+    ax.set_ylim(0, height_px)
+    ax.margins(0)
+    return img
+
+
+def _tiff_resolution_metadata(
+    pixel_size_um: tuple[float, float] | None,
+) -> TiffImagePlugin.ImageFileDirectory_v2 | None:
+    """Build TIFF metadata for physical pixel size if available."""
+    if pixel_size_um is None:
+        return None
+    pixel_size_x, pixel_size_y = (float(pixel_size_um[0]), float(pixel_size_um[1]))
+    if (
+        pixel_size_x <= 0
+        or pixel_size_y <= 0
+        or not np.isfinite(pixel_size_x)
+        or not np.isfinite(pixel_size_y)
+    ):
+        return None
+
+    pixel_size_cm_x = pixel_size_x / 10000.0
+    pixel_size_cm_y = pixel_size_y / 10000.0
+    pixels_per_cm_x = 1.0 / pixel_size_cm_x
+    pixels_per_cm_y = 1.0 / pixel_size_cm_y
+
+    ifd = TiffImagePlugin.ImageFileDirectory_v2()
+    ifd[270] = (
+        f"LipidQMap 1:1 pixel export; pixel_size_um_x={pixel_size_x:.6f}; "
+        f"pixel_size_um_y={pixel_size_y:.6f}"
+    )
+    ifd[282] = pixels_per_cm_x
+    ifd[283] = pixels_per_cm_y
+    ifd[296] = 3
+    ifd[305] = "LipidQMap"
+    return ifd
 
 
 class BarplotCanvas(FigureCanvasQTAgg):
@@ -381,28 +501,41 @@ def save_individual_image(
 
     # image with colorbar
     full_path = os.path.join(path, re.sub(r"[\/\\?%*:|\"<>]", "_", species_id))
-    fig = plt.figure(figsize=(8, 8))
-    ax = fig.add_axes(rect=(0.0, 0.0, 1.0, 1.0), frameon=False, xticks=[], yticks=[])
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.1)
-    ax.set_title(label=species_id, size=24)
-    img = ax.imshow(image, interpolation="gaussian", origin="upper")
+    fig = plt.figure(
+        figsize=_individual_export_figure_size(image.shape, pixel_size_um), layout="constrained"
+    )
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 0.06])
+    ax = fig.add_subplot(gs[0, 0])
+    cax = fig.add_subplot(gs[0, 1])
+    ax.set_title(label=species_id, size=20)
+    img = _add_export_image(
+        ax,
+        image,
+        interpolation="gaussian",
+        pixel_size_um=pixel_size_um,
+        cmap=colormaps.get_cmap("viridis"),
+    )
     img.set_clim(vmin=0, vmax=max_scale)
-    ax.set_aspect(_pixel_display_aspect(pixel_size_um))
     cbar = plt.colorbar(img, cax=cax)
     if image_type == ImageType.quant:
-        cbar.set_label(label="pmol / mm²", size=18)
+        cbar.set_label(label="pmol / mm²", size=14)
     else:
-        cbar.set_label(label="Intensity", size=18)
-    cbar.ax.tick_params(labelsize=18)
+        cbar.set_label(label="Intensity", size=14)
+    cbar.ax.tick_params(labelsize=12)
+    ax.set_axis_off()
     _attach_scale_bar(
         ax=ax, pixel_size_um=pixel_size_um, scale_length_um=scale_bar_length_um, color="black"
     )
-    plt.savefig(full_path, bbox_inches="tight", pad_inches=0)
-    plt.close()
+    fig.savefig(full_path, bbox_inches="tight", pad_inches=0)
+    plt.close(fig)
 
 
-def save_individual_unfiltered_image(species_id: str, image: npt.NDArray, path: str) -> None:
+def save_individual_unfiltered_image(
+    species_id: str,
+    image: npt.NDArray,
+    path: str,
+    pixel_size_um: tuple[float, float] | None = None,
+) -> None:
     """
     Save a 1 to 1 pixel representation of the image to a PNG file.
 
@@ -410,6 +543,7 @@ def save_individual_unfiltered_image(species_id: str, image: npt.NDArray, path: 
         species (str): The species name.
         image (npt.NDArray): The image data array.
         path (str): The directory path to save the image.
+        pixel_size_um (tuple[float, float] | None): Pixel size metadata for TIFF export.
     """
 
     # 1 to 1 pixel image
@@ -431,8 +565,11 @@ def save_individual_unfiltered_image(species_id: str, image: npt.NDArray, path: 
     # matplotlib bug workaround, equivalent to setting origin to upper in imsave
     result = np.ascontiguousarray(result[::-1])
     full_path = os.path.join(path, re.sub(r"[\/\\?%*:|\"<>]", "_", species_id))
-    plt.imsave(fname=f"{full_path}_1to1_pixel.png", arr=result, format="png", origin="upper")
-    plt.close()
+    save_kwargs: dict[str, Any] = {"format": "TIFF"}
+    metadata = _tiff_resolution_metadata(pixel_size_um)
+    if metadata is not None:
+        save_kwargs["tiffinfo"] = metadata
+    Image.fromarray(result, mode="RGBA").save(f"{full_path}_1to1_pixel.tiff", **save_kwargs)
 
 
 def save_panel_image(
@@ -456,39 +593,62 @@ def save_panel_image(
     """
     base_path = os.path.join(path, image_type, "combined")
     Path(base_path).mkdir(parents=True, exist_ok=True)
+    filter_name = "gaussian"
+    cmap = colormaps.get_cmap("viridis")
     for species_id in species_selection:
-        fig: matplotlib.figure.Figure = plt.figure(figsize=(6 * ncols, 4 * nrows))
-        is_none = []
+        rendered_shapes: list[tuple[int, int]] = []
+        rendered_pixel_sizes: list[tuple[float, float] | None] = []
         max_value: int | None
         if global_scale:
             max_value = samples.get_max_intensity(species_id=species_id, image_type=image_type)
         else:
             max_value = None
-        for sample_idx, (sample_id, image_collection) in enumerate(samples.items()):
+
+        for _, image_collection in samples.items():
             image = image_collection.get(image_type=image_type, species_id=species_id)
             if image is not None:
-                is_none.append(False)
-            else:
-                is_none.append(True)
-                continue
-            ax = fig.add_subplot(nrows, ncols, sample_idx + 1)
-            im = ax.imshow(
-                image,
-                origin="upper",
-                interpolation="gaussian",
-                cmap=colormaps.get_cmap("viridis"),
-                vmin=0,
-            )
+                rendered_shapes.append(image.shape)
+                rendered_pixel_sizes.append(image_collection.pixel_size_um)
 
+        if not rendered_shapes:
+            continue
+
+        fig = plt.figure(
+            figsize=_panel_export_figure_size(
+                rendered_shapes,
+                rendered_pixel_sizes,
+                nrows=nrows,
+                ncols=ncols,
+            ),
+            layout="constrained",
+        )
+        gs = fig.add_gridspec(
+            nrows,
+            ncols * 2,
+            width_ratios=[ratio for _ in range(ncols) for ratio in (1.0, 0.06)],
+        )
+
+        for sample_idx, (sample_id, image_collection) in enumerate(samples.items()):
+            image = image_collection.get(image_type=image_type, species_id=species_id)
+            if image is None:
+                continue
+
+            row = sample_idx // ncols
+            col = sample_idx % ncols
+            ax = fig.add_subplot(gs[row, col * 2])
+            cax = fig.add_subplot(gs[row, col * 2 + 1])
+            im = _add_export_image(
+                ax,
+                image,
+                interpolation=filter_name,
+                pixel_size_um=image_collection.pixel_size_um,
+                cmap=cmap,
+            )
             im.set_clim(vmin=0, vmax=max_value)
 
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="3%", pad=0.2)
             ax.set_title(sample_id)
-            cb = plt.colorbar(im, ax=ax, cax=cax)
+            cb = plt.colorbar(im, cax=cax)
             ax.set_axis_off()
-            ax.set(adjustable="datalim")
-            ax.set_aspect(_pixel_display_aspect(image_collection.pixel_size_um))
 
             _attach_scale_bar(
                 ax=ax,
@@ -499,17 +659,12 @@ def save_panel_image(
 
             if image_type == ImageType.quant:
                 cb.set_label("pmol / mm2")
-        if all(is_none):
-            continue
-        fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.2, hspace=0.2)
-        full_path = os.path.join(base_path, re.sub(r"[\/\\?%*:|\"<>]", "_", species_id))
-        plt.draw()
-        fig.tight_layout()
 
-        plt.savefig(
+        full_path = os.path.join(base_path, re.sub(r"[\/\\?%*:|\"<>]", "_", species_id))
+        fig.savefig(
             fname=f"{full_path}.png", bbox_inches="tight", pad_inches=0, format="png", dpi=200
         )
-        plt.close()
+        plt.close(fig)
 
 
 def save_image_collection(
@@ -557,7 +712,12 @@ def save_image_collection(
                     )
                 if config.settings.save_settings.save_individual_unfiltered:
                     Path(path).mkdir(parents=True, exist_ok=True)
-                    save_individual_unfiltered_image(species_id=species, image=image, path=path)
+                    save_individual_unfiltered_image(
+                        species_id=species,
+                        image=image,
+                        path=path,
+                        pixel_size_um=sample.pixel_size_um,
+                    )
         if config.settings.save_settings.save_panel_filtered_scaled:
             save_panel_image(
                 samples=samples,

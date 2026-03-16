@@ -117,7 +117,7 @@
         <item>
          <widget class="QCheckBox" name="check_box_save_individual">
           <property name="text">
-           <string>Save individual unfiltered 1:1 pixel images</string>
+           <string>Save individual unfiltered 1:1 pixel TIFF images</string>
           </property>
          </widget>
         </item>
