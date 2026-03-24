@@ -177,6 +177,7 @@ class SectionMsiImage:
         self.stage_coordinates: npt.NDArray | None = None
         self.spot_ids: np.ndarray | None = None
         self._spot_index_lookup: dict[int, int] | None = None
+        self.na_isotope_correction_skipped_classes: list[str] = []
         self.load_data(progress_file_callback, database=database, imzml_path=imzml_path)
 
     def load_data(self, progress_file_callback, database: LipidDB, imzml_path: str) -> None:
@@ -237,7 +238,13 @@ class SectionMsiImage:
         # perform isotope correction
         self.isotope = dict()
         if self.config.settings.processing_settings.na_isotope_correction:
-            self.isotope = na_isotope_correction(database=database, images=self.raw)
+            skipped_classes: set[str] = set()
+            self.isotope = na_isotope_correction(
+                database=database,
+                images=self.raw,
+                skipped_classes=skipped_classes,
+            )
+            self.na_isotope_correction_skipped_classes = sorted(skipped_classes)
         if self.config.settings.processing_settings.db_isotope_correction:
             if self.isotope:
                 self.isotope = db_isotope_correction(database=database, images=self.isotope)
@@ -842,9 +849,7 @@ def _combine_section_images(
     base_mode, combined = images[0]
     for mode, image in images[1:]:
         if combined.raw and image.raw and combined.shape != image.shape:
-            raise ValueError(
-                "Cannot combine samples with differing spatial dimensions."
-            )
+            raise ValueError("Cannot combine samples with differing spatial dimensions.")
         combined.raw.update(image.raw)
         combined.isotope.update(image.isotope)
         combined.quant.update(image.quant)
@@ -925,6 +930,7 @@ def load_database_image_collection(
     selections = _normalize_selections(imzml_paths)
     samples: dict[str, SectionMsiImage] = {}
     databases_by_mode: dict[IonMode, LipidDB] = {}
+    skipped_na_correction_classes: set[str] = set()
 
     total_selections = len(selections)
 
@@ -945,6 +951,9 @@ def load_database_image_collection(
                 imzml_path=path,
                 ion_mode=ion_mode,
                 config=config,
+            )
+            skipped_na_correction_classes.update(
+                image_collection.na_isotope_correction_skipped_classes
             )
             sample_images.append((ion_mode, image_collection))
 
@@ -982,6 +991,7 @@ def load_database_image_collection(
     combined_database = LipidDB(combined_species)
     species_order = combined_database.species_ids_neutral_first()
     combined_database.index = species_order
+    combined_database.na_isotope_correction_skipped_classes = sorted(skipped_na_correction_classes)
     return combined_database, SampleCollection(samples, species_order=species_order)
 
 
@@ -1034,7 +1044,9 @@ def db_isotope_correction(
 
 
 def na_isotope_correction(
-    database: LipidDB, images: dict[str, npt.NDArray]
+    database: LipidDB,
+    images: dict[str, npt.NDArray],
+    skipped_classes: set[str] | None = None,
 ) -> dict[str, npt.NDArray]:
     """
     Isotopic correction for [M+H]+ species with overlap from [M+Na]+ species.
@@ -1054,10 +1066,17 @@ def na_isotope_correction(
     for s in database.get_species_sorted_for_isotope():
         if "[M+H]+" != s.adduct:
             continue
+        if s.id_adduct not in images:
+            continue
         if s.na_isotope is not None and s.standard is not None:
+            ratio_image = h_na_ratio_ims.get(s.standard.id_adduct)
+            overlap_image = corrected_images.get(s.na_isotope.id_adduct)
+            if ratio_image is None or overlap_image is None:
+                if skipped_classes is not None:
+                    skipped_classes.add(s.lipid_class)
+                continue
             corrected_images[s.id_adduct] = (
-                images[s.id_adduct]
-                - h_na_ratio_ims[s.standard.id_adduct] * corrected_images[s.na_isotope.id_adduct]
+                images[s.id_adduct] - ratio_image * overlap_image
             ).clip(min=0)
 
     # correct the [M+Na]+
@@ -1065,9 +1084,18 @@ def na_isotope_correction(
     for s in database.get_species_sorted_for_isotope():
         if "[M+Na]+" != s.adduct:
             continue
+        if s.id_adduct not in images:
+            continue
         if s.na_isotope is not None:
             h_species_id_adduct = s.id + " [M+H]+"
             na_species_id_adduct = s.na_isotope.id + " [M+Na]+"
+            if (
+                h_species_id_adduct not in corrected_images
+                or na_species_id_adduct not in corrected_images
+            ):
+                if skipped_classes is not None:
+                    skipped_classes.add(s.lipid_class)
+                continue
             corrected_images[na_species_id_adduct] = (
                 corrected_images[na_species_id_adduct] - corrected_images[h_species_id_adduct]
             ).clip(min=0)

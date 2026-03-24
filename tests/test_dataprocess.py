@@ -507,6 +507,28 @@ def test_na_isotope_correction(database: LipidDB, images: dict[str, npt.NDArray]
         )
 
 
+def test_na_isotope_correction_skips_classes_missing_na_adducts(
+    database: LipidDB, images: dict[str, npt.NDArray]
+) -> None:
+    filtered_species = {
+        specie_id: specie.model_copy(deep=True)
+        for specie_id, specie in database.species.items()
+        if "[M+Na]+" not in specie_id
+    }
+    filtered_database = LipidDB(filtered_species)
+    skipped_classes: set[str] = set()
+
+    result = na_isotope_correction(
+        database=filtered_database,
+        images={k: v for k, v in images.items() if "[M+Na]+" not in k},
+        skipped_classes=skipped_classes,
+    )
+
+    assert skipped_classes == {"PC"}
+    for specie_id, image in result.items():
+        nptest.assert_allclose(image, images[specie_id])
+
+
 def test_sum_adducts_nan_safe(database: LipidDB) -> None:
     neutral_specie = next(s for s in database.get_neutral_species() if s.id == "PC 33:1 d7")
     images = {

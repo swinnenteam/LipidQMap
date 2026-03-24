@@ -17,7 +17,12 @@ from PySide6.QtWidgets import (
 
 from app.config import Config, config_paths
 from app.database import IonMode, LipidDB
-from app.dataprocess import SampleCollection, SampleFiles, detect_imzml_ion_mode, load_database_image_collection
+from app.dataprocess import (
+    SampleCollection,
+    SampleFiles,
+    detect_imzml_ion_mode,
+    load_database_image_collection,
+)
 from app.generated.MsiImportDialog_ui import Ui_Dialog
 from app.multithreading import Worker
 
@@ -143,6 +148,16 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
                 "Please populate 'Standard amount (pmol / mm2)' in the Excel database or use the built-in "
                 "standard calculator.",
             )
+        skipped_classes = getattr(database, "na_isotope_correction_skipped_classes", [])
+        if self.config.settings.processing_settings.na_isotope_correction and skipped_classes:
+            QMessageBox.warning(
+                self,
+                "Database warning",
+                "H/Na overlap correction was skipped for the following lipid classes because the "
+                "database does not define the required [M+H]+/[M+Na]+ adduct forms for them:\n"
+                f"{', '.join(skipped_classes)}\n\n"
+                "Processing continued for all other supported classes.",
+            )
         self.finished_imzml_loading.emit()
         self.close()
 
@@ -165,9 +180,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
                 return
             key = SampleFiles.normalized_key(filename)
             candidate_groups = groups_by_key.setdefault(key, [])
-            group = self._find_or_create_group(
-                candidate_groups, ion_mode, filename
-            )
+            group = self._find_or_create_group(candidate_groups, ion_mode, filename)
             group.assign(ion_mode, path, filename)
             if group not in self.sample_groups:
                 self.sample_groups.append(group)

@@ -111,6 +111,7 @@ class LipidDB:
     def __init__(self, species: dict[str, LipidSpecies]):
         self.species = species
         self.index: list[str] = list(species.keys())
+        self.na_isotope_correction_skipped_classes: list[str] = []
 
     def get(self, index: int) -> LipidSpecies:
         """
