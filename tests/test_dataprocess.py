@@ -13,6 +13,7 @@ from app.dataprocess import (
     SampleCollection,
     SectionMsiImage,
     _add_padding,
+    _merge_average_spectra,
     db_isotope_correction,
     load_database_image_collection,
     na_isotope_correction,
@@ -22,6 +23,7 @@ from app.dataprocess import (
     threshold_check,
     winsorize_image,
 )
+from app.pyimzml_mod import get_average_spectrum_numba
 from types import SimpleNamespace
 
 
@@ -338,6 +340,44 @@ def test_load_database_image_collection(mock_config) -> None:
     assert len(sample_collection.samples) == len(imzml_paths)
     assert sample_collection.species_order == database.index
     assert any(species.endswith("(+)") for species in database.index)
+
+
+def test_load_database_image_collection_dual_mode_average_spectrum_not_empty(mock_config) -> None:
+    progress_file_callback, progress_overall_callback = Mock(), Mock()
+
+    _, sample_collection = load_database_image_collection(
+        progress_file_callback=progress_file_callback,
+        progress_overall_callback=progress_overall_callback,
+        database_path="tests/database/test_database.xlsx",
+        imzml_paths=["tests/data/example.imzML", "tests/data/example_negative.imzML"],
+        config=mock_config,
+    )
+
+    combined_sample = next(iter(sample_collection.samples.values()))
+    assert combined_sample.ion_mode == SampleIonMode.combined
+    assert combined_sample.average_spectrum.shape[1] > 0
+    assert combined_sample.get_average_spectrum_for_mode(IonMode.positive).shape[1] > 0
+    assert combined_sample.get_average_spectrum_for_mode(IonMode.negative).shape[1] > 0
+
+
+def test_sample_collection_get_spectrum_returns_requested_ion_mode(mock_config) -> None:
+    progress_file_callback, progress_overall_callback = Mock(), Mock()
+
+    _, sample_collection = load_database_image_collection(
+        progress_file_callback=progress_file_callback,
+        progress_overall_callback=progress_overall_callback,
+        database_path="tests/database/test_database.xlsx",
+        imzml_paths=["tests/data/example.imzML", "tests/data/example_negative.imzML"],
+        config=mock_config,
+    )
+
+    sample_id = next(iter(sample_collection.samples))
+    positive = sample_collection.get_spectrum(sample_id, ion_mode=IonMode.positive)
+    negative = sample_collection.get_spectrum(sample_id, ion_mode=IonMode.negative)
+
+    assert positive.shape[1] > 0
+    assert negative.shape[1] > 0
+    assert not np.array_equal(positive, negative)
     pos_sample = next(iter(sample_collection.samples.values()))
     assert set(pos_sample.raw.keys()).issubset(set(sample_collection.species_order))
 
@@ -550,6 +590,27 @@ def test_sum_adducts_respects_checked(database: LipidDB) -> None:
     result = sum_adducts(database=database, images=images, allowed_adduct_ids=allowed)
     expected = np.array([[1.0, np.nan], [np.nan, np.nan]])
     nptest.assert_allclose(result[neutral_specie.id_adduct], expected, equal_nan=True)
+
+
+def test_get_average_spectrum_numba_falls_back_when_threshold_would_empty_spectrum() -> None:
+    spectra = np.array([[100.0, 100.05, 100.1], [10.0, 20.0, 30.0]])
+
+    result = get_average_spectrum_numba(spectra=spectra, bin_size=5.0)
+
+    assert result.shape[1] > 0
+    assert np.max(result[1]) > 0
+    assert np.isclose(result[0, 0], 100.0)
+    assert result[0, -1] >= 100.1
+
+
+def test_merge_average_spectra_collapses_duplicate_mz_bins() -> None:
+    primary = np.array([[100.0, 101.0], [10.0, 20.0]])
+    secondary = np.array([[101.0, 102.0], [30.0, 40.0]])
+
+    result = _merge_average_spectra(primary, secondary)
+
+    nptest.assert_allclose(result[0], np.array([100.0, 101.0, 102.0]))
+    nptest.assert_allclose(result[1], np.array([10.0, 25.0, 40.0]))
 
 
 def test_criteria_check_handles_none_image() -> None:

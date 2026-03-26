@@ -171,6 +171,7 @@ class SectionMsiImage:
         self.isotope: dict[str, npt.NDArray]
         self.quant: dict[str, npt.NDArray | None]
         self.average_spectrum: npt.NDArray
+        self.average_spectra_by_mode: dict[IonMode, npt.NDArray]
         self.num_spectra: int = 0
         self.coordinates: npt.NDArray = np.empty((0, 3), dtype=int)
         self.pixel_size_um: tuple[float, float] | None = None
@@ -233,6 +234,7 @@ class SectionMsiImage:
         self.average_spectrum = get_average_spectrum(
             p=imzml_parser, bin_size=bin_size, n_pixels=1000
         )
+        self.average_spectra_by_mode = {self._measurement_mode: self.average_spectrum}
         self.num_spectra = len(imzml_parser.coordinates)
 
         # perform isotope correction
@@ -384,6 +386,14 @@ class SectionMsiImage:
                 if image is None:
                     return 0
                 return float(np.nanmean(image, axis=(0, 1)))
+
+    def get_average_spectrum_for_mode(self, ion_mode: IonMode | None = None) -> npt.NDArray:
+        """Return the polarity-specific average spectrum when one is available."""
+        if ion_mode is not None:
+            spectrum = self.average_spectra_by_mode.get(ion_mode)
+            if spectrum is not None:
+                return spectrum
+        return self.average_spectrum
 
     def transform(self, transformation: str) -> None:
         """
@@ -697,8 +707,8 @@ class SampleCollection:
         )
         return neutral_ids
 
-    def get_spectrum(self, sample_id: str) -> npt.NDArray:
-        return self.samples[sample_id].average_spectrum
+    def get_spectrum(self, sample_id: str, ion_mode: IonMode | None = None) -> npt.NDArray:
+        return self.samples[sample_id].get_average_spectrum_for_mode(ion_mode=ion_mode)
 
     def get_max_intensity(self, image_type: ImageType, species_id: str) -> int | None:
         max_value: int | None = 0
@@ -830,14 +840,26 @@ def _unique_label(base_label: str, existing: set[str]) -> str:
 def _merge_average_spectra(
     primary: npt.NDArray[np.floating], secondary: npt.NDArray[np.floating]
 ) -> npt.NDArray[np.floating]:
-    """Merge two average spectra arrays, keeping mz values sorted."""
+    """Merge two average spectra arrays, keeping mz values strictly sorted."""
     if primary.size == 0:
         return secondary
     if secondary.size == 0:
         return primary
     merged = np.concatenate((primary, secondary), axis=1)
     order = np.argsort(merged[0])
-    return merged[:, order]
+    merged = merged[:, order]
+
+    # Collapse duplicated m/z bins so the chart series remains monotonic in combined mode.
+    unique_mz, inverse = np.unique(merged[0], return_inverse=True)
+    if unique_mz.shape[0] == merged.shape[1]:
+        return merged
+
+    summed_intensity = np.zeros(unique_mz.shape[0], dtype=merged.dtype)
+    counts = np.zeros(unique_mz.shape[0], dtype=np.int32)
+    np.add.at(summed_intensity, inverse, merged[1])
+    np.add.at(counts, inverse, 1)
+    averaged_intensity = summed_intensity / counts
+    return np.vstack((unique_mz, averaged_intensity))
 
 
 def _combine_section_images(
@@ -853,6 +875,7 @@ def _combine_section_images(
         combined.raw.update(image.raw)
         combined.isotope.update(image.isotope)
         combined.quant.update(image.quant)
+        combined.average_spectra_by_mode.update(image.average_spectra_by_mode)
         combined.average_spectrum = _merge_average_spectra(
             combined.average_spectrum, image.average_spectrum
         )

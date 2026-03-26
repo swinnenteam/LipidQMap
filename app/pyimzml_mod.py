@@ -638,7 +638,24 @@ def get_average_spectrum_numba(
     all_x, all_y = np.split(spectra, [1], axis=0)
     all_x = all_x.flatten()
     all_y = all_y.flatten()
-    all_y[all_y < threshold] = 0
+
+    result = _bin_average_spectrum(all_x, all_y, bin_size=bin_size, threshold=threshold)
+    if result.shape[1] == 0 and threshold > 0 and np.any(all_y > 0):
+        # Fall back to the unthresholded spectrum instead of returning an empty chart.
+        result = _bin_average_spectrum(all_x, all_y, bin_size=bin_size, threshold=0)
+    return result
+
+
+def _bin_average_spectrum(
+    all_x: npt.NDArray,
+    all_y: npt.NDArray,
+    *,
+    bin_size: float,
+    threshold: int,
+) -> npt.NDArray:
+    """Bin flattened m/z and intensity arrays into an average spectrum."""
+    filtered_y = all_y.copy()
+    filtered_y[filtered_y < threshold] = 0
 
     # Get the minimum and maximum x values to define bins
     min_x: float = np.min(all_x)
@@ -654,14 +671,13 @@ def get_average_spectrum_numba(
     bin_counts = np.zeros(len(bins), dtype=np.int32)
 
     # Use np.add.at for accumulating y values and counts
-    np.add.at(bin_means, bin_indices, all_y)
+    np.add.at(bin_means, bin_indices, filtered_y)
     np.add.at(bin_counts, bin_indices, 1)
 
     # Avoid division by zero
     nonzero_bins = bin_counts > 0
     bin_means[nonzero_bins] /= bin_counts[nonzero_bins]
-    result = remove_extra_zeroes(np.vstack((bins, bin_means)))
-    return result
+    return remove_extra_zeroes(np.vstack((bins, bin_means)))
 
 
 def remove_extra_zeroes(spectra: npt.NDArray) -> npt.NDArray:

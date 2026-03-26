@@ -6,7 +6,7 @@ from PySide6.QtWidgets import QApplication, QFileDialog, QMainWindow
 
 from app import __version__
 from app.config import Config, config_paths, get_config
-from app.database import LipidDB
+from app.database import IonMode, LipidDB, LipidSpecies
 from app.dataprocess import ImageType, SampleCollection
 from app.generated.MsiMainWindow_ui import Ui_MainWindow
 from app.matplotlib_figures import BarplotCanvas, MplCanvas
@@ -370,6 +370,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 global_scale=global_scale,
             )
 
+        self._update_spectrum_view(active_sample, species)
         self.spectrum_view.update_target(target_mz=species.mz)
 
     def update_table_selection(self) -> None:
@@ -457,11 +458,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def _on_species_checkbox_changed(self, top_left, bottom_right, roles=None) -> None:
         """Handle checkbox edits by recalculating affected summed images only."""
-        if (
-            self._suspend_checkbox_updates
-            or self.database is None
-            or self.samples is None
-        ):
+        if self._suspend_checkbox_updates or self.database is None or self.samples is None:
             return
         if roles and Qt.ItemDataRole.CheckStateRole not in roles:
             return
@@ -507,7 +504,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             image_type=self.current_tab_type,
         )
 
-        self.spectrum_view.update_figure(selected_sample.average_spectrum)
+        self._update_spectrum_view(selected_sample, self.database.get(index))
 
     def copy_species_plot(self) -> None:
         self.barplot_canvas.copy_to_clipboard()
@@ -540,6 +537,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             species=all_class_species,
             image_type=self.current_tab_type,
         )
+
+    @staticmethod
+    def _spectrum_ion_mode(species: LipidSpecies) -> IonMode | None:
+        """Resolve which ion-mode spectrum should be shown for the selected species."""
+        if species.adduct == "(+)":
+            return IonMode.positive
+        if species.adduct == "(-)":
+            return IonMode.negative
+        if species.adduct.endswith("+"):
+            return IonMode.positive
+        if species.adduct.endswith("-"):
+            return IonMode.negative
+        return None
+
+    def _update_spectrum_view(self, sample, species: LipidSpecies) -> None:
+        ion_mode = self._spectrum_ion_mode(species)
+        self.spectrum_view.update_figure(sample.get_average_spectrum_for_mode(ion_mode))
 
     def reset_canvas(self) -> None:
         """

@@ -2,12 +2,19 @@ import numpy as np
 import numpy.typing as npt
 from PySide6 import QtCharts, QtGui
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QToolTip
+from PySide6.QtWidgets import QToolTip
 
 from app.config import Config
 from app.dataprocess import ppm_to_tolerance
 
 cyan = "#1de9b6"
+
+
+def _safe_axis_upper(value: float | None) -> float:
+    """Return a strictly positive finite axis maximum for chart display."""
+    if value is None or not np.isfinite(value) or value <= 0:
+        return 1.0
+    return float(value)
 
 
 class SpectrumPlot(QtCharts.QChart):
@@ -98,19 +105,25 @@ class SpectrumPlot(QtCharts.QChart):
     def update_figure(self, data: npt.NDArray, x_max: float, y_max: float) -> None:
         self.plot_data = data
         self.line_series.clear()
+        self.target_series.clear()
+        self.low_limit_series.clear()
+        self.high_limit_series.clear()
+        self.area_series_top.clear()
+        if data.size == 0 or data.shape[1] == 0:
+            self.axis_x.setRange(0, 1)
+            self.axis_y.setRange(0, 1)
+            return
         self.line_series.replaceNp(data[0, :], data[1, :])
-        self.axis_x.setRange(0, x_max)
-        self.axis_y.setRange(0, y_max)
+        self.axis_x.setRange(0, max(1.0, x_max))
+        self.axis_y.setRange(0, _safe_axis_upper(y_max))
 
     def update_target(self, target: float, width: float) -> None:
-        if self.plot_data is None:
+        if self.plot_data is None or self.plot_data.size == 0 or self.plot_data.shape[1] == 0:
             return
         x_axis_min = target - 0.2
         x_axis_max = target + 0.2
         y_axis_max = self.get_y_max(x_axis_min, x_axis_max)
-        max_y_value = np.max(self.plot_data[1, :])
-        if y_axis_max is None:
-            return
+        max_y_value = _safe_axis_upper(np.max(self.plot_data[1, :]))
 
         self.target_series.clear()
         self.low_limit_series.clear()
@@ -128,7 +141,7 @@ class SpectrumPlot(QtCharts.QChart):
         )
 
         self.axis_x.setRange(x_axis_min, x_axis_max)
-        self.axis_y.setRange(0, y_axis_max)
+        self.axis_y.setRange(0, _safe_axis_upper(y_axis_max))
 
     def autoscale_y_axis(self) -> None:
         x_min = self.axis_x.min()
@@ -141,13 +154,13 @@ class SpectrumPlot(QtCharts.QChart):
         self.axis_y.setRange(0, y_max)
 
     def get_y_max(self, x_min: float, x_max: float) -> float | None:
-        if self.plot_data is None:
+        if self.plot_data is None or self.plot_data.size == 0 or self.plot_data.shape[1] == 0:
             return None
         min_index, max_index = np.searchsorted(self.plot_data[0, :], [x_min, x_max])
         y_values = self.plot_data[1, min_index:max_index]
         if y_values.size == 0:
             return None
-        return np.max(y_values)
+        return _safe_axis_upper(np.max(y_values))
 
 
 class SpectrumPlotView(QtCharts.QChartView):
@@ -166,9 +179,16 @@ class SpectrumPlotView(QtCharts.QChartView):
 
     def update_figure(self, data: npt.NDArray) -> None:
         self.plot_data = data
-        self.x_max = data[0, -1]
-        self.x_min = data[0, 0]
-        self.y_max = np.max(data[1, :])
+        if data.size == 0 or data.shape[1] == 0:
+            self.x_min = 0.0
+            self.x_max = 1.0
+            self.y_max = 1.0
+            self.plot.update_figure(data, self.x_max, self.y_max)
+            self.update()
+            return
+        self.x_max = float(data[0, -1])
+        self.x_min = float(data[0, 0])
+        self.y_max = _safe_axis_upper(np.max(data[1, :]))
         self.plot.update_figure(data, self.x_max, self.y_max)
         self.update()
 
