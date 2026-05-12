@@ -71,6 +71,41 @@ Use the "**Select folder**" button to choose a saving destination. The save dial
 
 ![alt text](resources/images/guide_save_images.png "Image save dialog")
 
+### Exporting Python pickle data
+Processed quantitative images can also be exported from the **File** menu with "**Export Python pickle...**". This creates one pickle file per loaded sample in the selected output folder.
+
+The exported folder structure is flat:
+
+```text
+<selected-folder>/
+├── <sample_1>.pkl
+├── <sample_2>.pkl
+└── ...
+```
+
+Each `.pkl` file contains a single Python `dict[str, numpy.ndarray]` written with `pickle.dump(...)`.
+
+- The dictionary keys are LipidQMap species IDs as shown in the species table.
+- The dictionary values are 2D quantitative ion images (`numpy.ndarray`) for that sample.
+- Entries with no quantitative image are omitted from the export.
+- Only the **quantitative** image set is exported. Raw images, isotope-corrected images, spectra, coordinates, and metadata are not included in the pickle files.
+- If summed adduct images are present in LipidQMap, they are exported with their displayed species IDs as separate dictionary entries as well.
+
+Example:
+
+```python
+import pickle
+
+with open("sample_1.pkl", "rb") as fh:
+    data = pickle.load(fh)
+
+first_species_id = next(iter(data))
+
+print(type(data))                  # dict
+print(first_species_id)            # e.g. a species ID from the table
+print(data[first_species_id].shape)  # e.g. (height, width)
+```
+
 ### Changing settings
 The Settings menu, which can be opened by clicking on the "**Settings**" button on the right side of the menu bar at the top of the main window. The following settings can be configured:
 

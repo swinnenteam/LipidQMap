@@ -1,0 +1,32 @@
+{
+    "X": "Main data matrix with shape (n_obs, n_features), where the n_obs are the datapoints (MSI pixels) and the n_features are the m/z bins. This matrix is normalized with the per-row calibration and optional normalization such as TIC (if requested by the user when using FOCUS)",
+    "layers": {
+        // The layers are other versions of X, so they have the same shape
+        "raw": "Same as X but without the optional TIC, per-row calibration is always applied. If raw is missing then it means no normalization was applied, therefore use X",
+        "x_batch_free": "Batch corrected version of X computed by MIMA. Missing if MIMA was not used"
+    },
+    "obs": {
+        // obs are metadata that refers to each row of X
+        "sample_id": "Categorical variable indicating the sample of origin of this pixel, present in the merged file only",
+        "foreground": "Boolean variable indicating wheather the pixel is foreground (tissue) or background (non-tissue). The estimate is never perfect, so LipidQMap should either ignore it or have a toggle to bypass this. The data are consistent anyway, as the background pixels are processed in the same way as the foreground.",
+        "leiden": "Categorical variable indicating the leiden cluster assignment for this pixel. The clustering is performed per sample, so these labels have no global meaning, they must be recomputed for global clustering on the batch-corrected data if this is needed",
+        "pathology_annotation": "Categorical variable indicating the pathology annotation class for this pixel, if spatial annotations where provided to FOCUS, otherwise absent"
+    },
+    "var": {
+        // var are metadata that refers to each column of X
+        "mz": "The m/z value corresponding to this column",
+        "mz_mode": "Whether the m/z value is in positive or negative mode",
+        "lipid_annotation": "The lipid annotation for this m/z feature, if the annotation DB was provided by the user to FOCUS, otherwise absent"
+    },
+    "uns": {
+        // uns are unstructured metadata, they are normally saved as Python dictionaries or Numpy arrays
+        "spot_size": "The size of the MSI pixels in microns, expressed as [size_x, size_y]. For the merged dataset this is a dictionary with the sample_id as key and the numpy array as value"
+
+    },
+    "obsm": {
+        // obsm are multi-dimensional metadata that refers to each row of X, they are normally saved as Numpy arrays
+        "spatial": "The spatial coordinates (in microns) of each pixel center, expressed as a numpy array of shape (n_obs, 2) with the columns corresponding to the x and y coordinates",
+        "z_*": "The low-dimensional embeddings of each pixel learned by MIMA. The * is a placeholder for the name of the embedding, as MIMA computes multiple embeddings for each pixel. If MIMA is not used these are missing"
+    }
+
+}

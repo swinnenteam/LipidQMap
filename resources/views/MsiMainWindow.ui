@@ -257,6 +257,7 @@
      <string>&amp;File</string>
     </property>
     <addaction name="action_open_imzml_dialog"/>
+    <addaction name="action_open_anndata_dialog"/>
     <addaction name="separator"/>
     <addaction name="action_open_save_dialog"/>
     <addaction name="action_export_cardinal_HDF5"/>
@@ -318,6 +319,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="action_open_imzml_dialog"/>
+   <addaction name="action_open_anndata_dialog"/>
    <addaction name="action_open_save_dialog"/>
    <addaction name="separator"/>
    <addaction name="action_zoom_out"/>
@@ -341,6 +343,15 @@
    </property>
    <property name="text">
     <string>Open imzML files...</string>
+   </property>
+  </action>
+  <action name="action_open_anndata_dialog">
+   <property name="icon">
+    <iconset resource="../resources.qrc">
+     <normaloff>:/images/icons/open_file.png</normaloff>:/images/icons/open_file.png</iconset>
+   </property>
+   <property name="text">
+    <string>Open AnnData file...</string>
    </property>
   </action>
   <action name="action_open_save_dialog">

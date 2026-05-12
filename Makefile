@@ -50,6 +50,7 @@ deps: ## Reinstalls dependencies
 
 ui: ## Converts ui files in resources/views to python
 	./venv/bin/pyside6-uic --from-imports resources/views/MsiImportDialog.ui -o app/generated/MsiImportDialog_ui.py
+	./venv/bin/pyside6-uic --from-imports resources/views/MsiAnndataImportDialog.ui -o app/generated/MsiAnndataImportDialog_ui.py
 	./venv/bin/pyside6-uic --from-imports resources/views/MsiSaveDialog.ui -o app/generated/MsiSaveDialog_ui.py
 	./venv/bin/pyside6-uic --from-imports resources/views/MsiMainWindow.ui -o app/generated/MsiMainWindow_ui.py
 	./venv/bin/pyside6-uic --from-imports resources/views/MsiAboutDialog.ui -o app/generated/MsiAboutDialog_ui.py

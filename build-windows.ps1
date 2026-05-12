@@ -85,6 +85,8 @@ function Task-UI {
   & $PythonExe -m PySide6.scripts.pyside_tool uic --from-imports `
     (Join-Path $RepoRoot 'resources/views/MsiImportDialog.ui')          -o (Join-Path $RepoRoot 'app/generated/MsiImportDialog_ui.py')
   & $PythonExe -m PySide6.scripts.pyside_tool uic --from-imports `
+    (Join-Path $RepoRoot 'resources/views/MsiAnndataImportDialog.ui')    -o (Join-Path $RepoRoot 'app/generated/MsiAnndataImportDialog_ui.py')
+  & $PythonExe -m PySide6.scripts.pyside_tool uic --from-imports `
     (Join-Path $RepoRoot 'resources/views/MsiSaveDialog.ui')            -o (Join-Path $RepoRoot 'app/generated/MsiSaveDialog_ui.py')
   & $PythonExe -m PySide6.scripts.pyside_tool uic --from-imports `
     (Join-Path $RepoRoot 'resources/views/MsiMainWindow.ui')            -o (Join-Path $RepoRoot 'app/generated/MsiMainWindow_ui.py')

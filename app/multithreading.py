@@ -22,6 +22,7 @@ class WorkerSignals(QObject):
     result = Signal(object, object)
     progress_file = Signal(int)
     progress_overall = Signal(int)
+    error = Signal(str)
 
 
 class Worker(QRunnable):
@@ -61,7 +62,7 @@ class Worker(QRunnable):
         try:
             result_1, result_2 = self.function(*self.args, **self.kwargs)
         except Exception as exc:  # pylint: disable=bare-except
-            raise exc
+            self.signals.error.emit(str(exc))
         else:
             self.signals.result.emit(result_1, result_2)  # Return the result of the processing
         finally:

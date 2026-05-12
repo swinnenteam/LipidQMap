@@ -13,6 +13,7 @@ from app.matplotlib_figures import BarplotCanvas, MplCanvas
 from app.qt_figures import SpectrumPlotView
 from app.utils import BooleanDelegate, PandasModelEditable, open_folder
 from app.views.about_window import AboutWindow
+from app.views.anndata_import_window import AnndataImportWindow
 from app.views.calculator_window import CalculatorWindow
 from app.views.file_save_window import FileSaveWindow
 from app.views.hdf5_export_window import Hdf5ExportWindow
@@ -42,6 +43,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.ncols: int = 2
         self.nrows: int
         self.imzml_import_window = ImzmlImportWindow(config=self.config)
+        self.anndata_import_window = AnndataImportWindow(config=self.config)
         self.save_window = FileSaveWindow(config=self.config)
         self.about_window = AboutWindow(__version__)
         self.settings_window = SettingsWindow(config=self.config)
@@ -147,6 +149,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def connect_signals_slots(self) -> None:
         """Connect methods to signal slots."""
         self.action_open_imzml_dialog.triggered.connect(self.open_imzml_dialog)
+        self.action_open_anndata_dialog.triggered.connect(self.open_anndata_dialog)
         self.action_open_save_dialog.triggered.connect(self.open_save_dialog)
         self.action_export_python_pickle.triggered.connect(self.open_export_pickle_dialog)
         self.action_export_cardinal_HDF5.triggered.connect(self.open_export_cardinal_hdf5_dialog)
@@ -170,6 +173,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_select_all_species.triggered.connect(self.select_all_species)
         self.action_deselect_all_species.triggered.connect(self.deselect_all_species)
         self.imzml_import_window.finished_imzml_loading.connect(self.init_data)
+        self.anndata_import_window.finished_anndata_loading.connect(self.init_anndata_data)
         self.image_canvas_raw.image_clicked.connect(self.select_image)
         self.image_canvas_iso.image_clicked.connect(self.select_image)
         self.image_canvas_quant.image_clicked.connect(self.select_image)
@@ -183,6 +187,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.imzml_import_window.show()
         self.imzml_import_window.activateWindow()
         self.imzml_import_window.raise_()
+
+    def open_anndata_dialog(self) -> None:
+        """Launch the AnnData import dialog."""
+        self.anndata_import_window.set_ui_components_status(True)
+        self.anndata_import_window.show()
+        self.anndata_import_window.activateWindow()
+        self.anndata_import_window.raise_()
 
     def open_save_dialog(self) -> None:
         """Launch the save images dialog."""
@@ -274,8 +285,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         Initialize data after loading imzML files.
         """
-        self.samples = self.imzml_import_window.samples
-        self.database = self.imzml_import_window.database
+        self._init_loaded_data(
+            samples=self.imzml_import_window.samples,
+            database=self.imzml_import_window.database,
+        )
+
+    def init_anndata_data(self) -> None:
+        """Initialize data after loading an AnnData file."""
+        self._init_loaded_data(
+            samples=self.anndata_import_window.samples,
+            database=self.anndata_import_window.database,
+        )
+
+    def _init_loaded_data(self, samples: SampleCollection, database: LipidDB | None) -> None:
+        """Initialize common UI state after an import workflow completes."""
+        self.samples = samples
+        self.database = database
         assert self.database is not None
 
         self.species_table_data = self.database.get_table()

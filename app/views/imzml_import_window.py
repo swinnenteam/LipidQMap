@@ -121,6 +121,7 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
         worker.signals.progress_file.connect(self.handle_progress_file)
         worker.signals.progress_overall.connect(self.handle_progress_overall)
         worker.signals.result.connect(self.handle_finished)
+        worker.signals.error.connect(self.handle_error)
         self.threadpool.start(worker)
 
     @Slot()
@@ -160,6 +161,12 @@ class ImzmlImportWindow(QWidget, Ui_Dialog):
             )
         self.finished_imzml_loading.emit()
         self.close()
+
+    @Slot(str)
+    def handle_error(self, message: str) -> None:
+        """Show import errors raised by the worker thread."""
+        self.set_ui_components_status(True)
+        QMessageBox.critical(self, "imzML import failed", message)
 
     def open_imzml_files(self) -> None:
         """Open imzML files."""
