@@ -5,13 +5,9 @@ from PySide6.QtWidgets import QFileDialog, QMessageBox, QWidget
 
 from app.config import Config, config_paths
 from app.database import LipidDB
-from app.dataprocess import (
-    AnnDataMatrixChoice,
-    SampleCollection,
-    get_anndata_matrix_choices,
-    load_database_anndata_collection,
-)
 from app.generated.MsiAnndataImportDialog_ui import Ui_Dialog
+from app.importers.anndata import get_anndata_matrix_choices, load_database_anndata_collection
+from app.msi_data import AnnDataMatrixChoice, SampleCollection
 from app.multithreading import Worker
 
 

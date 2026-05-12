@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from app.database import IonMode, LipidDB
-from app.dataprocess import ImageType, SampleCollection, SectionMsiImage
+from app.msi_data import ImageType, SampleCollection, SectionMsiImage
 
 logger = logging.getLogger(__name__)
 ImageFrame = pd.DataFrame
@@ -404,7 +404,11 @@ def _apply_coordinate_transform(
 ) -> tuple[np.ndarray, np.ndarray]:
     coeff_x, coeff_y = transform
     coords = np.column_stack(
-        [x_coords.astype(np.float64, copy=False), y_coords.astype(np.float64, copy=False), np.ones_like(x_coords, dtype=np.float64)]
+        [
+            x_coords.astype(np.float64, copy=False),
+            y_coords.astype(np.float64, copy=False),
+            np.ones_like(x_coords, dtype=np.float64),
+        ]
     )
     px = coords @ coeff_x
     py = coords @ coeff_y
@@ -666,6 +670,7 @@ def _shutdown_session_async(session: Any | None) -> None:
         name="ScilsSessionShutdown",
         daemon=True,
     ).start()
+
 
 def _force_terminate_session(session: Any) -> None:
     process = getattr(session, "process", None)

@@ -7,9 +7,9 @@ from PySide6.QtCore import Slot
 from PySide6.QtWidgets import QButtonGroup, QDialog, QFileDialog, QMessageBox, QWidget
 
 from app.database import IonMode, LipidDB
-from app.dataprocess import ImageType, SampleCollection
 from app.export import CardinalExportError, export_cardinal_hdf5
 from app.generated.MsiExportHdf5Dialog_ui import Ui_MsiExportHdf5Dialog
+from app.msi_data import ImageType, SampleCollection
 
 
 class Hdf5ExportWindow(QDialog, Ui_MsiExportHdf5Dialog):
@@ -157,7 +157,9 @@ class Hdf5ExportWindow(QDialog, Ui_MsiExportHdf5Dialog):
         if self.include_summed_checkbox.isChecked():
             return base_ids
 
-        filtered = [species_id for species_id in base_ids if not self._is_summed_species(species_id)]
+        filtered = [
+            species_id for species_id in base_ids if not self._is_summed_species(species_id)
+        ]
         return filtered
 
     def _base_species_ids(self) -> list[str]:

@@ -2,8 +2,8 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget
 
 from app.config import Config
-from app.dataprocess import SampleCollection
 from app.generated.MsiSettingsDialog_ui import Ui_Dialog
+from app.msi_data import SampleCollection
 
 
 class SettingsWindow(QWidget, Ui_Dialog):

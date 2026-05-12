@@ -7,9 +7,9 @@ from PySide6.QtWidgets import QApplication, QFileDialog, QMainWindow
 from app import __version__
 from app.config import Config, config_paths, get_config
 from app.database import IonMode, LipidDB, LipidSpecies
-from app.dataprocess import ImageType, SampleCollection
 from app.generated.MsiMainWindow_ui import Ui_MainWindow
 from app.matplotlib_figures import BarplotCanvas, MplCanvas
+from app.msi_data import ImageType, SampleCollection
 from app.qt_figures import SpectrumPlotView
 from app.utils import BooleanDelegate, PandasModelEditable, open_folder
 from app.views.about_window import AboutWindow

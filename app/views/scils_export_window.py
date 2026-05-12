@@ -8,8 +8,8 @@ from PySide6.QtCore import Slot
 from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QWidget
 
 from app.database import IonMode, LipidDB
-from app.dataprocess import ImageType, SampleCollection
 from app.generated.MsiExportScilsDialog_ui import Ui_MsiExportScilsDialog
+from app.msi_data import ImageType, SampleCollection
 from app.scils_export import (
     ScilsExportError,
     ScilsExportReport,
@@ -197,7 +197,10 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
             skipped_species: list[str] = []
 
             for sample_id in sample_ids:
-                def progress_callback(current: int, total: int, *, _offset: int = progress_completed) -> None:
+
+                def progress_callback(
+                    current: int, total: int, *, _offset: int = progress_completed
+                ) -> None:
                     absolute = _offset + max(0, min(current, per_sample_steps))
                     self._update_progress(absolute, total_steps)
                     QApplication.processEvents()
@@ -337,7 +340,9 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
             base = f"LipidQMap - {sample_ids[0]} +{len(sample_ids) - 1}"
         return f"{base} ({_image_type_label(image_type)})"
 
-    def _set_busy_state(self, busy: bool, total_steps: int | None = None, keep_message: bool = False) -> None:
+    def _set_busy_state(
+        self, busy: bool, total_steps: int | None = None, keep_message: bool = False
+    ) -> None:
         controls = [
             self.button_export,
             self.button_cancel,

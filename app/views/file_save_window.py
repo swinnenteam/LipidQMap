@@ -2,9 +2,9 @@ from PySide6.QtCore import QThreadPool, Slot
 from PySide6.QtWidgets import QFileDialog, QWidget
 
 from app.config import Config
-from app.dataprocess import SampleCollection
 from app.generated.MsiSaveDialog_ui import Ui_MsiSaveDialog
 from app.matplotlib_figures import save_image_collection
+from app.msi_data import SampleCollection
 
 
 class FileSaveWindow(QWidget, Ui_MsiSaveDialog):

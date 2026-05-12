@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QToolTip
 
 from app.config import Config
-from app.dataprocess import ppm_to_tolerance
+from app.image_processing import ppm_to_tolerance
 
 cyan = "#1de9b6"
 

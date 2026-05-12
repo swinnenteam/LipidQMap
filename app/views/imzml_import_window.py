@@ -17,13 +17,9 @@ from PySide6.QtWidgets import (
 
 from app.config import Config, config_paths
 from app.database import IonMode, LipidDB
-from app.dataprocess import (
-    SampleCollection,
-    SampleFiles,
-    detect_imzml_ion_mode,
-    load_database_image_collection,
-)
 from app.generated.MsiImportDialog_ui import Ui_Dialog
+from app.importers.imzml import detect_imzml_ion_mode, load_database_image_collection
+from app.msi_data import SampleCollection, SampleFiles
 from app.multithreading import Worker
 
 

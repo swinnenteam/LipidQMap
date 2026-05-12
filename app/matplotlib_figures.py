@@ -19,7 +19,7 @@ from matplotlib_scalebar.scalebar import ScaleBar
 
 from app.config import Config
 from app.database import LipidSpecies
-from app.dataprocess import ImageType, SampleCollection, SectionMsiImage
+from app.msi_data import ImageType, SampleCollection, SectionMsiImage
 
 matplotlib.use("Qtagg")
 

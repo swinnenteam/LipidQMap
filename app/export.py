@@ -10,7 +10,7 @@ import pandas.api.types as pdt
 
 from app import __version__
 from app.database import LipidDB
-from app.dataprocess import ImageType, SampleCollection
+from app.msi_data import ImageType, SampleCollection
 
 
 class CardinalExportError(RuntimeError):
@@ -174,7 +174,7 @@ def _build_intensity_matrix(
     for species_id in species_ids:
         pixel_values: list[np.ndarray] = []
         has_image = False
-        for (coords_arr, pixel_count, (_, section)) in zip(
+        for coords_arr, pixel_count, (_, section) in zip(
             coords_cache, pixel_counts, sample_entries
         ):
             image = _extract_image(section, species_id, image_type)
