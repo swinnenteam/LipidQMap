@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Import AnnData file</string>
+   <string>Import AnnData/MuData file</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -19,7 +19,7 @@
      <item>
       <widget class="QLabel" name="label">
        <property name="text">
-        <string>Select AnnData file:</string>
+        <string>Select AnnData/MuData file:</string>
        </property>
       </widget>
      </item>

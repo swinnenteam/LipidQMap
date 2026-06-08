@@ -293,6 +293,17 @@
     <addaction name="action_open_calculator_dialog"/>
     <addaction name="action_open_settings_window"/>
    </widget>
+   <widget class="QMenu" name="menu_open_files">
+    <property name="icon">
+     <iconset resource="../resources.qrc">
+      <normaloff>:/images/icons/open_file.png</normaloff>:/images/icons/open_file.png</iconset>
+    </property>
+    <property name="title">
+     <string>Open...</string>
+    </property>
+    <addaction name="action_open_imzml_dialog"/>
+    <addaction name="action_open_anndata_dialog"/>
+   </widget>
    <addaction name="menu_file"/>
    <addaction name="menuEdit"/>
    <addaction name="menuSettings"/>
@@ -318,8 +329,21 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="action_open_imzml_dialog"/>
-   <addaction name="action_open_anndata_dialog"/>
+   <widget class="QToolButton" name="tool_button_open_files">
+    <property name="toolTip">
+     <string>Open...</string>
+    </property>
+    <property name="text">
+     <string>Open...</string>
+    </property>
+    <property name="icon">
+     <iconset resource="../resources.qrc">
+      <normaloff>:/images/icons/open_file.png</normaloff>:/images/icons/open_file.png</iconset>
+    </property>
+    <property name="autoRaise">
+     <bool>true</bool>
+    </property>
+   </widget>
    <addaction name="action_open_save_dialog"/>
    <addaction name="separator"/>
    <addaction name="action_zoom_out"/>
@@ -351,7 +375,7 @@
      <normaloff>:/images/icons/open_file.png</normaloff>:/images/icons/open_file.png</iconset>
    </property>
    <property name="text">
-    <string>Open AnnData file...</string>
+    <string>Open AnnData/MuData file...</string>
    </property>
   </action>
   <action name="action_open_save_dialog">
@@ -534,5 +558,22 @@
  <resources>
   <include location="../resources.qrc"/>
  </resources>
- <connections/>
+ <connections>
+  <connection>
+   <sender>tool_button_open_files</sender>
+   <signal>clicked()</signal>
+   <receiver>menu_open_files</receiver>
+   <slot>exec()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>0</x>
+     <y>0</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>0</x>
+     <y>0</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

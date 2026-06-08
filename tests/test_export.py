@@ -9,8 +9,8 @@ import pytest
 from molmass import Formula
 
 from app.database import LipidDB, LipidSpecies
-from app.dataprocess import ImageType, SampleCollection, SectionMsiImage
 from app.export import CardinalExportError, export_cardinal_hdf5
+from app.msi_data import ImageType, SampleCollection, SectionMsiImage
 
 
 class DummySection:

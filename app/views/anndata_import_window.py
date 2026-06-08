@@ -60,7 +60,9 @@ class AnndataImportWindow(QWidget, Ui_Dialog):
 
     def open_anndata_file(self) -> None:
         selected_path, _ = QFileDialog.getOpenFileName(
-            self, "Select AnnData file", filter="AnnData (*.h5ad)"
+            self,
+            "Select AnnData or MuData file",
+            filter="AnnData / MuData (*.h5ad *.h5mu);;AnnData (*.h5ad);;MuData (*.h5mu)",
         )
         if not selected_path:
             return

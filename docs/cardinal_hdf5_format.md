@@ -2,9 +2,9 @@ LipidQMap writes MSI exports as HDF5 containers that follow the [`Cardinal::HDF5
 
 ## Overview
 
-- File extension: `.h5` (standard HDF5)
-- Compression: GZIP level 4 with shuffle filter on large numeric arrays
-- Coordinate system: 1-based pixel indices (matches Cardinal)
+- File extension: `.h5` or `.hdf5` (standard HDF5)
+- Compression: `spectraData/intensity` uses GZIP level 4 with the shuffle filter
+- Coordinate system: 1-based pixel and coordinate indices (matches Cardinal)
 - Feature order: ascending by `mz`
 
 Top-level objects:
@@ -45,9 +45,9 @@ Metadata for every exported pixel, stored column-wise. All columns share the sam
 | Dataset        | Type        | Description                                                                    |
 |----------------|-------------|--------------------------------------------------------------------------------|
 | `pixel_index`  | int64       | 1-based identifier for each pixel (dimension scale for intensity axis 1)      |
-| `x`            | int32       | 1-based X coordinate (columns)                                                 |
-| `y`            | int32       | 1-based Y coordinate (rows)                                                    |
-| `sample_index` | int32       | 1-based index referencing `samples/<index>`                                   |
+| `x`            | int64       | 1-based X coordinate (columns)                                                 |
+| `y`            | int64       | 1-based Y coordinate (rows)                                                    |
+| `sample_index` | int64       | 1-based index referencing `samples/<index>`                                   |
 | `run`          | UTF-8 str   | Human-readable sample/run label                                                |
 | `sample_id`    | UTF-8 str   | Same as `run`; provided for compatibility with Cardinal naming conventions    |
 
@@ -79,13 +79,13 @@ Contains one subgroup per exported sample, keyed by 1-based index (`"1"`, `"2"`,
 | Attribute           | Type    | Description                                                               |
 |---------------------|---------|---------------------------------------------------------------------------|
 | `sample_id`         | string  | Original sample name (matches `pixelData.sample_id`)                      |
-| `height_px`         | int32   | Image height in pixels (raw section grid)                                 |
-| `width_px`          | int32   | Image width in pixels                                                     |
-| `n_pixels`          | int32   | Number of pixels written for the sample                                   |
-| `min_x`, `max_x`    | int32   | Bounding box of provided coordinates (only present for sparse exports)    |
-| `min_y`, `max_y`    | int32   | Bounding box of provided coordinates (only present for sparse exports)    |
-| `pixel_size_um_x`   | float64 | Optional physical pixel size along X (micrometres), when known            |
-| `pixel_size_um_y`   | float64 | Optional physical pixel size along Y (micrometres), when known            |
+| `height_px`         | integer | Image height in pixels (raw section grid)                                 |
+| `width_px`          | integer | Image width in pixels                                                     |
+| `n_pixels`          | integer | Number of pixels written for the sample                                   |
+| `min_x`, `max_x`    | integer | Bounding box of provided coordinates (only present for sparse exports)    |
+| `min_y`, `max_y`    | integer | Bounding box of provided coordinates (only present for sparse exports)    |
+| `pixel_size_um_x`   | float   | Optional physical pixel size along X (micrometres), when known            |
+| `pixel_size_um_y`   | float   | Optional physical pixel size along Y (micrometres), when known            |
 
 When LipidQMap exports a dense rectangular image (no sparse coordinates), `min_*`/`max_*` attributes are omitted and `n_pixels` equals `height_px × width_px`.
 

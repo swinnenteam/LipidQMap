@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'MsiMainWindow.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.1
+## Created by: Qt User Interface Compiler version 6.10.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -19,8 +19,8 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QFrame, QGridLayout,
     QHeaderView, QMainWindow, QMenu, QMenuBar,
     QScrollArea, QSizePolicy, QSplitter, QStatusBar,
-    QTabWidget, QTableView, QToolBar, QVBoxLayout,
-    QWidget)
+    QTabWidget, QTableView, QToolBar, QToolButton,
+    QVBoxLayout, QWidget)
 from . import resources_rc
 
 class Ui_MainWindow(object):
@@ -261,6 +261,9 @@ class Ui_MainWindow(object):
         self.menuHelp.setObjectName(u"menuHelp")
         self.menuSettings = QMenu(self.menubar)
         self.menuSettings.setObjectName(u"menuSettings")
+        self.menu_open_files = QMenu(self.menubar)
+        self.menu_open_files.setObjectName(u"menu_open_files")
+        self.menu_open_files.setIcon(icon)
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QStatusBar(MainWindow)
         self.statusbar.setObjectName(u"statusbar")
@@ -269,6 +272,11 @@ class Ui_MainWindow(object):
         self.toolBar.setObjectName(u"toolBar")
         self.toolBar.setMovable(False)
         self.toolBar.setIconSize(QSize(20, 20))
+        self.tool_button_open_files = QToolButton(self.toolBar)
+        self.tool_button_open_files.setObjectName(u"tool_button_open_files")
+        self.tool_button_open_files.setIcon(icon)
+        self.tool_button_open_files.setAutoRaise(True)
+        self.toolBar.addWidget(self.tool_button_open_files)
         MainWindow.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
 
         self.menubar.addAction(self.menu_file.menuAction())
@@ -296,8 +304,8 @@ class Ui_MainWindow(object):
         self.menuHelp.addAction(self.action_open_about_dialog)
         self.menuSettings.addAction(self.action_open_calculator_dialog)
         self.menuSettings.addAction(self.action_open_settings_window)
-        self.toolBar.addAction(self.action_open_imzml_dialog)
-        self.toolBar.addAction(self.action_open_anndata_dialog)
+        self.menu_open_files.addAction(self.action_open_imzml_dialog)
+        self.menu_open_files.addAction(self.action_open_anndata_dialog)
         self.toolBar.addAction(self.action_open_save_dialog)
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.action_zoom_out)
@@ -315,6 +323,7 @@ class Ui_MainWindow(object):
         self.toolBar.addAction(self.action_open_about_dialog)
 
         self.retranslateUi(MainWindow)
+        self.tool_button_open_files.clicked.connect(self.menu_open_files.exec)
 
         self.tab_widget.setCurrentIndex(0)
         self.tab_widget_charts.setCurrentIndex(0)
@@ -326,7 +335,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
         self.action_open_imzml_dialog.setText(QCoreApplication.translate("MainWindow", u"Open imzML files...", None))
-        self.action_open_anndata_dialog.setText(QCoreApplication.translate("MainWindow", u"Open AnnData file...", None))
+        self.action_open_anndata_dialog.setText(QCoreApplication.translate("MainWindow", u"Open AnnData/MuData file...", None))
         self.action_open_save_dialog.setText(QCoreApplication.translate("MainWindow", u"Save images...", None))
         self.action_zoom_in.setText(QCoreApplication.translate("MainWindow", u"action_zoom_in", None))
 #if QT_CONFIG(tooltip)
@@ -372,6 +381,11 @@ class Ui_MainWindow(object):
         self.menuEdit.setTitle(QCoreApplication.translate("MainWindow", u"Edit", None))
         self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", u"Help", None))
         self.menuSettings.setTitle(QCoreApplication.translate("MainWindow", u"Settings", None))
+        self.menu_open_files.setTitle(QCoreApplication.translate("MainWindow", u"Open...", None))
         self.toolBar.setWindowTitle(QCoreApplication.translate("MainWindow", u"toolBar", None))
+#if QT_CONFIG(tooltip)
+        self.tool_button_open_files.setToolTip(QCoreApplication.translate("MainWindow", u"Open...", None))
+#endif // QT_CONFIG(tooltip)
+        self.tool_button_open_files.setText(QCoreApplication.translate("MainWindow", u"Open...", None))
     # retranslateUi
 

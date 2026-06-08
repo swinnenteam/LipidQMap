@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'MsiExportScilsDialog.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.1
+## Created by: Qt User Interface Compiler version 6.10.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -77,10 +77,10 @@ class Ui_MsiExportScilsDialog(object):
         self.verticalLayout.addWidget(self.selected_only_checkbox)
 
         self.combo_box_adducts = QComboBox(MsiExportScilsDialog)
+        self.combo_box_adducts.addItem("")
+        self.combo_box_adducts.addItem("")
+        self.combo_box_adducts.addItem("")
         self.combo_box_adducts.setObjectName(u"combo_box_adducts")
-        self.combo_box_adducts.addItem(u"")
-        self.combo_box_adducts.addItem(u"")
-        self.combo_box_adducts.addItem(u"")
 
         self.verticalLayout.addWidget(self.combo_box_adducts)
 
@@ -131,6 +131,7 @@ class Ui_MsiExportScilsDialog(object):
         self.combo_box_adducts.setItemText(0, QCoreApplication.translate("MsiExportScilsDialog", u"Adducts + summed adducts", None))
         self.combo_box_adducts.setItemText(1, QCoreApplication.translate("MsiExportScilsDialog", u"Adducts", None))
         self.combo_box_adducts.setItemText(2, QCoreApplication.translate("MsiExportScilsDialog", u"Summed", None))
+
         self.button_cancel.setText(QCoreApplication.translate("MsiExportScilsDialog", u"Cancel", None))
         self.button_export.setText(QCoreApplication.translate("MsiExportScilsDialog", u"Export", None))
     # retranslateUi

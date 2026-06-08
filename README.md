@@ -4,6 +4,7 @@ LipidQMap is a program to support accurate quantitation of Mass Spectrometry Ima
 
 - User friendly graphical user interface.
 - Works on imzML data files and can open multiple imzML files simultaneously.
+- Can import MSI data from AnnData `.h5ad` files and MuData `.h5mu` files.
 - Shows ion images for an easily editable list of lipids (list is read from an excel file).
 - Can perform Type II isotopic correction, and can correct [M+H]+ adducts for isotopic overlap from [M+Na]+ adducts.
 - Performs quantitation based on user defined internal standards.
@@ -27,8 +28,8 @@ For operating systems other than Windows and MacOS, we refer to the [developer s
 
 ## Usage
 
-### Opening imzML files
-Click on the folder icon in the top left of the main program window to open the imzML import dialog.
+### Opening data files
+Click on the open-folder button in the top left of the main program window to choose between the imzML import dialog and the AnnData/MuData import dialog.
 
 ![alt text](resources/images/guide_open_file.png "LipidQMap")
 
@@ -44,9 +45,27 @@ Click on the folder icon in the top left of the main program window to open the 
 
 ![alt text](resources/images/guide_imzml_import.png "imzML files import")
 
+### Opening AnnData or MuData files
+LipidQMap can import MSI data from AnnData `.h5ad` files and MuData `.h5mu` files.
+
+For `.h5ad` files, the selected AnnData object must contain:
+
+- `var["mz"]`: one numeric m/z value per feature.
+- `var["mz_mode"]`: positive/negative ion mode labels for each feature.
+- `obsm["spatial"]`: two-dimensional pixel or spot coordinates.
+- `obs["sample_id"]` optionally, to split one file into multiple loaded samples. If absent, the file name is used as the sample name.
+- `obs["foreground"]` optionally, to mark background pixels or spots.
+- `uns["spot_size"]` optionally, to map physical coordinates to a compact image grid and store pixel size metadata.
+
+The raw import uses `layers["raw"]` when present, otherwise `X`. If `layers["x_batch_free"]` is present, the import dialog also offers a **Batch corrected** matrix option.
+
+For `.h5mu` files, LipidQMap looks inside the `mod` group for an importable MSI modality. A modality named `MSI` is preferred when present. The MSI modality must contain the same feature metadata as AnnData (`var["mz"]` and `var["mz_mode"]`) and an `X` matrix or `layers["raw"]`. Root-level MuData metadata such as `obsm["spatial"]`, `obs["sample_id"]`, `obs["foreground"]`, and `uns["spot_size"]` is used when the MSI modality does not define it directly.
+
+Only the selected matrix and matched lipid features are read for `.h5mu` files; the full matrix is not loaded into memory up front.
+
 
 ### Exploring the images
-After importing the imzML files, the ion images will be displayed in the main window. 
+After importing the data files, the ion images will be displayed in the main window. 
 
 ![alt text](resources/images/guide_loaded_data.png "LipidQMap main window")
 
@@ -54,9 +73,9 @@ The **Species table** on the right gives an overview of the lipid species in the
 
 In the top of the image view pane, the ion image view can be toggled between Raw data, Isotope corrected data, or Quantitative data (the quantitative data is also isotope corrected, if isotope correction was chosen in the file import dialog). Keyboard shortcuts to toggle between these views are R, I and Q.
 
-The menu bar at the top of the window has buttons to **zoom** in and out on the images, and to apply **rotations** or **reflections**. If multiple images are loaded, these transformations are performed on the image that has been selected by clicking on it. The "**Global scale**" button in the menu sets all imzML images (if multiple were loaded) to the same intensity scale.
+The menu bar at the top of the window has buttons to **zoom** in and out on the images, and to apply **rotations** or **reflections**. If multiple images are loaded, these transformations are performed on the image that has been selected by clicking on it. The "**Global scale**" button in the menu sets all loaded images to the same intensity scale.
 
-At the bottom center of the window, there are five small green dots that can be clicked and dragged upward to reveal the **species bar** plot and the **average mass spectrum** of the currently selected imzML file. The species bar plot displays all lipid species from one adduct form of one class. This plot updates when a species from a different class and/or adduct is selected in the species table. The mass spectrum view allows for zooming in and out by scrolling the mouse wheel while hovering over the figure or its axis with the cursor. Double-clicking on the axis will zoom out. Alternatively, clicking and dragging a selection on the mass spectrum plot will zoom in on the selected area. Selecting a different species in the species table will update the mass spectrum view to center on the newly selected species.
+At the bottom center of the window, there are five small green dots that can be clicked and dragged upward to reveal the **species bar** plot and the **average mass spectrum** of the currently selected sample. The species bar plot displays all lipid species from one adduct form of one class. This plot updates when a species from a different class and/or adduct is selected in the species table. The mass spectrum view allows for zooming in and out by scrolling the mouse wheel while hovering over the figure or its axis with the cursor. Double-clicking on the axis will zoom out. Alternatively, clicking and dragging a selection on the mass spectrum plot will zoom in on the selected area. Selecting a different species in the species table will update the mass spectrum view to center on the newly selected species.
 
 ![alt text](resources/images/guide_expanded_view.png "LipidQMap species plot")
 
@@ -71,16 +90,19 @@ Use the "**Select folder**" button to choose a saving destination. The save dial
 
 ![alt text](resources/images/guide_save_images.png "Image save dialog")
 
-### Exporting Python pickle data
-Processed quantitative images can also be exported from the **File** menu with "**Export Python pickle...**". This creates one pickle file per loaded sample in the selected output folder.
+### Exporting processed data
+Processed image data can also be exported from the **File** menu. The export file structures are documented in [docs/export_formats.md](docs/export_formats.md).
+
+#### Python pickle export
+Quantitative images can be exported with "**Export Python pickle...**". This creates one pickle file per loaded sample in the selected output folder.
 
 The exported folder structure is flat:
 
 ```text
 <selected-folder>/
-├── <sample_1>.pkl
-├── <sample_2>.pkl
-└── ...
+|-- <sample_1>.pkl
+|-- <sample_2>.pkl
+`-- ...
 ```
 
 Each `.pkl` file contains a single Python `dict[str, numpy.ndarray]` written with `pickle.dump(...)`.
@@ -106,12 +128,31 @@ print(first_species_id)            # e.g. a species ID from the table
 print(data[first_species_id].shape)  # e.g. (height, width)
 ```
 
+#### Cardinal HDF5 export
+Raw, isotope-corrected, or quantitative images can be exported with "**Export Cardinal h5...**". This creates one `.h5` or `.hdf5` file containing the selected features across all loaded samples.
+
+The HDF5 file contains the image intensities and metadata in a Cardinal-compatible layout:
+
+```text
+<selected-file>.h5
+|-- spectraData/
+|-- pixelData/
+|-- featureData/
+`-- samples/
+```
+
+- `spectraData/intensity` stores a feature-by-pixel intensity matrix.
+- `pixelData` stores pixel indices, coordinates, and sample labels.
+- `featureData` stores m/z values and lipid metadata for exported features.
+- `samples` stores one subgroup per loaded sample with image dimensions and optional pixel size metadata.
+- The root `image_type` attribute identifies whether the file contains `quant`, `isotope`, or `raw` images.
+
 ### Changing settings
 The Settings menu, which can be opened by clicking on the "**Settings**" button on the right side of the menu bar at the top of the main window. The following settings can be configured:
 
 - **Gaussian filtering**: can be toggled on or off.
 - **Winsorizing** percentiles (separate for the Raw/isotope corrected images or the quantitative images). Pixel intensities above the nth percentile, are set to the max intensity within the percentile. Set to 100 of no Winsorizing is desired.
-- **Ion image selection**: after loading an imzML file, species with at least x pixels with an raw signal intensity above y, are selected for export in the Species table. If multiple imzML files are loaded, species are selected for export if in at least one imzML file the set criteria were met.
+- **Ion image selection**: after loading data, species with at least x pixels with a raw signal intensity above y are selected for export in the Species table. If multiple samples are loaded, species are selected for export if the criteria were met in at least one sample.
 
 ![alt text](resources/images/guide_settings.png "Settings")
 

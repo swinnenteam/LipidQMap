@@ -7,21 +7,23 @@ import pytest
 
 from app.config import Config, Configuration, FilterSettings, ProcessingSettings, SelectionSettings
 from app.database import DatabaseFactory, IonMode, LipidDB
-from app.dataprocess import (
-    ImageType,
-    SampleIonMode,
-    SampleCollection,
-    SectionMsiImage,
+from app.image_processing import (
     _add_padding,
-    _merge_average_spectra,
     db_isotope_correction,
-    load_database_image_collection,
     na_isotope_correction,
     ppm_to_tolerance,
     replace_nan_with_median,
     sum_adducts,
     threshold_check,
     winsorize_image,
+)
+from app.importers.imzml import load_database_image_collection
+from app.msi_data import (
+    ImageType,
+    SampleIonMode,
+    SampleCollection,
+    SectionMsiImage,
+    _merge_average_spectra,
 )
 from app.pyimzml_mod import get_average_spectrum_numba
 from types import SimpleNamespace

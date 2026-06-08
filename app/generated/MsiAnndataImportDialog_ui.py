@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'MsiAnndataImportDialog.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.1
+## Created by: Qt User Interface Compiler version 6.10.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -150,8 +150,8 @@ class Ui_Dialog(object):
     # setupUi
 
     def retranslateUi(self, Dialog):
-        Dialog.setWindowTitle(QCoreApplication.translate("Dialog", u"Import AnnData file", None))
-        self.label.setText(QCoreApplication.translate("Dialog", u"Select AnnData file:", None))
+        Dialog.setWindowTitle(QCoreApplication.translate("Dialog", u"Import AnnData/MuData file", None))
+        self.label.setText(QCoreApplication.translate("Dialog", u"Select AnnData/MuData file:", None))
         self.open_anndata_button.setText(QCoreApplication.translate("Dialog", u"Open File", None))
         self.label_3.setText(QCoreApplication.translate("Dialog", u"Accuracy:", None))
         self.ppm_spinbox.setSuffix(QCoreApplication.translate("Dialog", u" ppm", None))

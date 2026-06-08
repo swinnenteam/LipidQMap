@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'MsiSaveDialog.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.1
+## Created by: Qt User Interface Compiler version 6.10.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -159,3 +159,4 @@ class Ui_MsiSaveDialog(object):
         self.button_cancel.setText(QCoreApplication.translate("MsiSaveDialog", u"Cancel", None))
         self.button_save.setText(QCoreApplication.translate("MsiSaveDialog", u"Save", None))
     # retranslateUi
+
