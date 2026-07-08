@@ -239,7 +239,8 @@ def _add_padding(arr, pad_width) -> npt.NDArray:
     Pads the array with NaNs to handle edge cases.
     """
     padded_shape = (arr.shape[0] + 2 * pad_width, arr.shape[1] + 2 * pad_width)
-    padded_arr = np.full(padded_shape, np.nan, dtype=arr.dtype)
+    # Padding must use a floating dtype because integer arrays cannot represent NaN.
+    padded_arr = np.full(padded_shape, np.nan, dtype=np.float64)
     padded_arr[pad_width:-pad_width, pad_width:-pad_width] = arr
     return padded_arr
 
