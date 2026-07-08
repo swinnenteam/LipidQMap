@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import cache
 from pathlib import Path
-from typing import Callable, Iterable, ItemsView, Sequence
+from typing import Callable, ItemsView, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -16,7 +16,6 @@ from app.config import Config
 from app.database import IonMode, LipidDB, LipidSpecies
 from app.image_processing import (
     _apply_transparent_mask,
-    _sum_images_for_neutral,
     db_isotope_correction,
     na_isotope_correction,
     ppm_to_tolerance,
@@ -568,36 +567,6 @@ class SectionMsiImage:
             )
         return result
 
-    def update_summed_image(
-        self,
-        database: LipidDB,
-        neutral_specie: LipidSpecies,
-        allowed_adduct_ids: set[str] | None,
-    ) -> None:
-        """
-        Recompute the summed neutral image for a single specie using the provided
-        set of allowed adduct IDs.
-        """
-        target_key = neutral_specie.id_adduct
-        self.raw[target_key] = _sum_images_for_neutral(
-            database=database,
-            neutral_specie=neutral_specie,
-            images=self.raw,
-            allowed_adduct_ids=allowed_adduct_ids,
-        )
-        self.isotope[target_key] = _sum_images_for_neutral(
-            database=database,
-            neutral_specie=neutral_specie,
-            images=self.isotope,
-            allowed_adduct_ids=allowed_adduct_ids,
-        )
-        self.quant[target_key] = _sum_images_for_neutral(
-            database=database,
-            neutral_specie=neutral_specie,
-            images=self.quant,
-            allowed_adduct_ids=allowed_adduct_ids,
-        )
-
     @property
     def shape(self) -> tuple[int, int]:
         for image in self.raw.values():
@@ -752,56 +721,6 @@ class SampleCollection:
                     aggregated[species_id] = aggregated[species_id] or check
 
         return [aggregated.get(species_id, False) for species_id in self.species_order]
-
-    def update_summed_images(
-        self,
-        database: LipidDB,
-        neutral_species_ids: Iterable[str],
-        allowed_adduct_ids: set[str] | None,
-    ) -> None:
-        """
-        Refresh the summed neutral images for the provided neutral species IDs.
-        """
-        for neutral_id in neutral_species_ids:
-            neutral_specie = database.species.get(neutral_id)
-            if neutral_specie is None:
-                continue
-            for sample in self.samples.values():
-                sample.update_summed_image(
-                    database=database,
-                    neutral_specie=neutral_specie,
-                    allowed_adduct_ids=allowed_adduct_ids,
-                )
-
-    def recompute_summed_images(
-        self,
-        database: LipidDB,
-        allowed_adduct_ids: set[str],
-        changed_adduct_ids: Iterable[str] | None = None,
-    ) -> set[str]:
-        """
-        Recompute summed images using the allowed adduct IDs. If a subset of adducts
-        changed, only their neutral counterparts are recomputed.
-        Returns the set of neutral IDs that were updated.
-        """
-        neutral_ids: set[str] = set()
-        if changed_adduct_ids is None:
-            neutral_ids = {s.id_adduct for s in database.get_neutral_species()}
-        else:
-            for adduct_id in changed_adduct_ids:
-                neutral_specie = database.get_neutral_from_adduct(adduct_id)
-                if neutral_specie is not None:
-                    neutral_ids.add(neutral_specie.id_adduct)
-
-        if not neutral_ids:
-            return set()
-
-        self.update_summed_images(
-            database=database,
-            neutral_species_ids=neutral_ids,
-            allowed_adduct_ids=allowed_adduct_ids,
-        )
-        return neutral_ids
 
     def get_spectrum(self, sample_id: str, ion_mode: IonMode | None = None) -> npt.NDArray:
         return self.samples[sample_id].get_average_spectrum_for_mode(ion_mode=ion_mode)

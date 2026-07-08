@@ -571,7 +571,9 @@ def test_na_isotope_correction_skips_classes_missing_na_adducts(
         nptest.assert_allclose(image, images[specie_id])
 
 
-def test_sum_adducts_nan_safe(database: LipidDB) -> None:
+def test_sum_adducts_uses_all_available_adducts_and_preserves_nan_pixels(
+    database: LipidDB,
+) -> None:
     neutral_specie = next(s for s in database.get_neutral_species() if s.id == "PC 33:1 d7")
     images = {
         "PC 33:1 d7 [M+H]+": np.array([[1.0, np.nan], [np.nan, np.nan]]),
@@ -579,18 +581,6 @@ def test_sum_adducts_nan_safe(database: LipidDB) -> None:
     }
     result = sum_adducts(database=database, images=images)
     expected = np.array([[1.0, 2.0], [3.0, np.nan]])
-    nptest.assert_allclose(result[neutral_specie.id_adduct], expected, equal_nan=True)
-
-
-def test_sum_adducts_respects_checked(database: LipidDB) -> None:
-    neutral_specie = next(s for s in database.get_neutral_species() if s.id == "PC 33:1 d7")
-    images = {
-        "PC 33:1 d7 [M+H]+": np.array([[1.0, np.nan], [np.nan, np.nan]]),
-        "PC 33:1 d7 [M+Na]+": np.array([[np.nan, 2.0], [3.0, np.nan]]),
-    }
-    allowed = {"PC 33:1 d7 [M+H]+"}
-    result = sum_adducts(database=database, images=images, allowed_adduct_ids=allowed)
-    expected = np.array([[1.0, np.nan], [np.nan, np.nan]])
     nptest.assert_allclose(result[neutral_specie.id_adduct], expected, equal_nan=True)
 
 
