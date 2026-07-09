@@ -23,6 +23,12 @@ def test_default_config_values(temp_config_dir):
     assert config.settings.filter_settings.raw_image_winsorizing_percentile == 99
     assert config.settings.filter_settings.quant_image_winsorizing_percentile == 99
 
+    assert config.settings.selection_settings.selection_method == "feature"
+    assert config.settings.selection_settings.minimum_pixels == 100
+    assert config.settings.selection_settings.minimum_intensity == 1000
+    assert config.settings.selection_settings.feature_noise_sigma == 4.0
+    assert config.settings.selection_settings.feature_minimum_pixels == 10
+
     assert config.settings.processing_settings.ppm == 15.0
     assert config.settings.processing_settings.db_isotope_correction is True
     assert config.settings.processing_settings.na_isotope_correction is True

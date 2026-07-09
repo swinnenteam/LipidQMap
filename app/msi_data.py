@@ -18,6 +18,7 @@ from app.image_processing import (
     _apply_transparent_mask,
     _sum_images_for_neutral,
     db_isotope_correction,
+    feature_check,
     na_isotope_correction,
     ppm_to_tolerance,
     quantitaton,
@@ -81,6 +82,15 @@ class AnnDataMatrixChoice(str, Enum):
 
     raw = "raw"
     batch_corrected = "batch_corrected"
+
+
+def _numeric_setting(settings, name: str, default: float) -> float:
+    value = getattr(settings, name, default)
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, int | float):
+        return float(value)
+    return default
 
 
 @dataclass(slots=True)
@@ -199,6 +209,7 @@ class SectionMsiImage:
         self.config = config
         self.database = database
         self.raw: dict[str, npt.NDArray]
+        self.selection_raw: dict[str, npt.NDArray | None]
         self.isotope: dict[str, npt.NDArray]
         self.quant: dict[str, npt.NDArray | None]
         self.average_spectrum: npt.NDArray
@@ -230,6 +241,7 @@ class SectionMsiImage:
         self.config = config
         self.database = database
         self.raw = {}
+        self.selection_raw = {}
         self.isotope = {}
         self.quant = {}
         self.average_spectrum = np.empty((2, 0), dtype=np.float64)
@@ -352,6 +364,10 @@ class SectionMsiImage:
             self.quant = quantitaton(database=database, images=self.raw)
         progress_file_callback.emit(75)
 
+        # Automatic image selection must use the measured raw ion images. Imputation
+        # can turn isolated hot pixels into artificial connected blobs.
+        self.selection_raw = dict(self.raw)
+
         # replace nan with median of surrounding pixels
         if self.config.settings.processing_settings.imputation:
             self.raw = {k: replace_nan_with_median(v) for (k, v) in self.raw.items()}
@@ -365,12 +381,16 @@ class SectionMsiImage:
         progress_file_callback.emit(90)
 
         if data.transparent_mask is not None:
+            self.selection_raw = _apply_transparent_mask(self.selection_raw, data.transparent_mask)
             self.raw = _apply_transparent_mask(self.raw, data.transparent_mask)  # type: ignore
             self.isotope = _apply_transparent_mask(self.isotope, data.transparent_mask)  # type: ignore
             self.quant = _apply_transparent_mask(self.quant, data.transparent_mask)
 
         # sum the different adduct forms of the same species
         neutral_suffix = "(+)" if data.ion_mode == IonMode.positive else "(-)"
+        self.selection_raw = sum_adducts(
+            database=database, images=self.selection_raw, neutral_suffix=neutral_suffix
+        )
         self.raw = sum_adducts(
             database=database, images=self.raw, neutral_suffix=neutral_suffix
         )  # type: ignore
@@ -579,6 +599,10 @@ class SectionMsiImage:
             key: func(value, param) if value is not None else value
             for (key, value) in self.raw.items()
         }
+        self.selection_raw = {
+            key: func(value, param) if value is not None else value
+            for (key, value) in self.selection_raw.items()
+        }
         self.isotope = {
             key: func(value, param) if value is not None else value
             for (key, value) in self.isotope.items()
@@ -593,7 +617,7 @@ class SectionMsiImage:
         Check if the ion images meet the criteria to be selected for export.
         """
         result = []
-        for image in self.raw.values():
+        for image in self.selection_raw.values():
             result.append(self._passes_selection_criteria(image))
         return result
 
@@ -601,6 +625,16 @@ class SectionMsiImage:
         """Return whether an image satisfies the current automatic export criteria."""
         if image is None:
             return False
+        selection_settings = self.config.settings.selection_settings
+        method = getattr(selection_settings, "selection_method", "threshold")
+        if method == "feature":
+            return feature_check(
+                image=image,
+                noise_sigma=_numeric_setting(selection_settings, "feature_noise_sigma", 5.0),
+                min_feature_pixels=int(
+                    _numeric_setting(selection_settings, "feature_minimum_pixels", 25)
+                ),
+            )
         min_intensity = self.config.settings.selection_settings.minimum_intensity
         min_pixels = self.config.settings.selection_settings.minimum_pixels
         winsor = self.config.settings.filter_settings.raw_image_winsorizing_percentile
@@ -759,7 +793,7 @@ class SampleCollection:
 
         for image in self.samples.values():
             image_checks = image.criteria_check()
-            for species_id, check in zip(image.raw.keys(), image_checks):
+            for species_id, check in zip(image.selection_raw.keys(), image_checks):
                 if species_id in neutral_ids:
                     continue
                 if species_id not in aggregated:
@@ -777,7 +811,7 @@ class SampleCollection:
                     summed_image = _sum_images_for_neutral(
                         database=database,
                         neutral_specie=neutral_specie,
-                        images=image.raw,
+                        images=image.selection_raw,
                         allowed_adduct_ids=selected_adduct_ids,
                     )
                     if image._passes_selection_criteria(summed_image):
@@ -913,6 +947,7 @@ def _combine_section_images(
         if combined.raw and image.raw and combined.shape != image.shape:
             raise ValueError("Cannot combine samples with differing spatial dimensions.")
         combined.raw.update(image.raw)
+        combined.selection_raw.update(image.selection_raw)
         combined.isotope.update(image.isotope)
         combined.quant.update(image.quant)
         combined.average_spectra_by_mode.update(image.average_spectra_by_mode)

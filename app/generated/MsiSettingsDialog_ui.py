@@ -24,7 +24,7 @@ class Ui_Dialog(object):
     def setupUi(self, Dialog):
         if not Dialog.objectName():
             Dialog.setObjectName(u"Dialog")
-        Dialog.resize(621, 361)
+        Dialog.resize(621, 430)
         self.gridLayout = QGridLayout(Dialog)
         self.gridLayout.setObjectName(u"gridLayout")
         self.horizontalLayout = QHBoxLayout()
@@ -98,6 +98,12 @@ class Ui_Dialog(object):
         self.groupBox_2.setObjectName(u"groupBox_2")
         self.gridLayout_4 = QGridLayout(self.groupBox_2)
         self.gridLayout_4.setObjectName(u"gridLayout_4")
+        self.radio_selection_threshold = QRadioButton(self.groupBox_2)
+        self.radio_selection_threshold.setObjectName(u"radio_selection_threshold")
+        self.radio_selection_threshold.setChecked(True)
+
+        self.gridLayout_4.addWidget(self.radio_selection_threshold, 0, 0, 1, 1)
+
         self.gridLayout_3 = QGridLayout()
         self.gridLayout_3.setObjectName(u"gridLayout_3")
         self.spinbox_min_pixels = QSpinBox(self.groupBox_2)
@@ -127,7 +133,51 @@ class Ui_Dialog(object):
         self.gridLayout_3.addWidget(self.spinbox_min_intensity, 0, 3, 1, 1)
 
 
-        self.gridLayout_4.addLayout(self.gridLayout_3, 0, 0, 1, 1)
+        self.gridLayout_4.addLayout(self.gridLayout_3, 1, 0, 1, 1)
+
+        self.radio_selection_feature = QRadioButton(self.groupBox_2)
+        self.radio_selection_feature.setObjectName(u"radio_selection_feature")
+
+        self.gridLayout_4.addWidget(self.radio_selection_feature, 2, 0, 1, 1)
+
+        self.gridLayout_feature_selection = QGridLayout()
+        self.gridLayout_feature_selection.setObjectName(u"gridLayout_feature_selection")
+        self.label_feature_noise = QLabel(self.groupBox_2)
+        self.label_feature_noise.setObjectName(u"label_feature_noise")
+
+        self.gridLayout_feature_selection.addWidget(self.label_feature_noise, 0, 0, 1, 1)
+
+        self.spinbox_feature_noise_sigma = QDoubleSpinBox(self.groupBox_2)
+        self.spinbox_feature_noise_sigma.setObjectName(u"spinbox_feature_noise_sigma")
+        self.spinbox_feature_noise_sigma.setDecimals(1)
+        self.spinbox_feature_noise_sigma.setMinimum(0.000000000000000)
+        self.spinbox_feature_noise_sigma.setMaximum(100.000000000000000)
+        self.spinbox_feature_noise_sigma.setSingleStep(0.500000000000000)
+        self.spinbox_feature_noise_sigma.setValue(5.000000000000000)
+
+        self.gridLayout_feature_selection.addWidget(self.spinbox_feature_noise_sigma, 0, 1, 1, 1)
+
+        self.label_feature_sigma = QLabel(self.groupBox_2)
+        self.label_feature_sigma.setObjectName(u"label_feature_sigma")
+
+        self.gridLayout_feature_selection.addWidget(self.label_feature_sigma, 0, 2, 1, 1)
+
+        self.label_feature_pixels = QLabel(self.groupBox_2)
+        self.label_feature_pixels.setObjectName(u"label_feature_pixels")
+
+        self.gridLayout_feature_selection.addWidget(self.label_feature_pixels, 1, 0, 1, 1)
+
+        self.spinbox_feature_min_pixels = QSpinBox(self.groupBox_2)
+        self.spinbox_feature_min_pixels.setObjectName(u"spinbox_feature_min_pixels")
+        self.spinbox_feature_min_pixels.setMinimum(1)
+        self.spinbox_feature_min_pixels.setMaximum(10000000)
+        self.spinbox_feature_min_pixels.setSingleStep(5)
+        self.spinbox_feature_min_pixels.setValue(25)
+
+        self.gridLayout_feature_selection.addWidget(self.spinbox_feature_min_pixels, 1, 1, 1, 1)
+
+
+        self.gridLayout_4.addLayout(self.gridLayout_feature_selection, 3, 0, 1, 1)
 
 
         self.gridLayout.addWidget(self.groupBox_2, 1, 0, 1, 1)
@@ -188,8 +238,13 @@ class Ui_Dialog(object):
         self.groupBox_2.setToolTip(QCoreApplication.translate("Dialog", u"Criteria for the selection of ion images for export.", None))
 #endif // QT_CONFIG(tooltip)
         self.groupBox_2.setTitle(QCoreApplication.translate("Dialog", u"Ion image selection", None))
+        self.radio_selection_threshold.setText(QCoreApplication.translate("Dialog", u"Intensity threshold", None))
         self.label_3.setText(QCoreApplication.translate("Dialog", u"Select ions with at least", None))
         self.label_4.setText(QCoreApplication.translate("Dialog", u"pixels above intensity", None))
+        self.radio_selection_feature.setText(QCoreApplication.translate("Dialog", u"Feature-like region", None))
+        self.label_feature_noise.setText(QCoreApplication.translate("Dialog", u"Noise threshold", None))
+        self.label_feature_sigma.setText(QCoreApplication.translate("Dialog", u"robust \u03c3 above background", None))
+        self.label_feature_pixels.setText(QCoreApplication.translate("Dialog", u"Minimum connected feature pixels", None))
         self.groupBox_scalebar.setTitle(QCoreApplication.translate("Dialog", u"Scale bar", None))
         self.check_box_scalebar_enabled.setText(QCoreApplication.translate("Dialog", u"Show scale bars", None))
         self.radio_scalebar_auto.setText(QCoreApplication.translate("Dialog", u"Auto length", None))

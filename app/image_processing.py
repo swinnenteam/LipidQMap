@@ -4,6 +4,7 @@ from collections.abc import Iterable
 import numpy as np
 import numpy.typing as npt
 from numba import njit
+from scipy import ndimage
 
 from app.database import LipidDB, LipidSpecies
 
@@ -11,6 +12,91 @@ from app.database import LipidDB, LipidSpecies
 @njit
 def threshold_check(image: npt.NDArray, min_intensity: int, min_pixels: int) -> bool:
     return (image > min_intensity).sum() > min_pixels
+
+
+def feature_check(
+    image: npt.NDArray | None,
+    noise_sigma: float = 5.0,
+    min_feature_pixels: int = 25,
+) -> bool:
+    """Return True when an ion image contains a connected signal feature."""
+    minimum_signal = 1e-6
+    if image is None:
+        return False
+
+    finite_values = image[np.isfinite(image)]
+    if finite_values.size == 0:
+        return False
+    if float(np.nanmax(finite_values)) <= minimum_signal:
+        return False
+
+    median = float(np.median(finite_values))
+    abs_deviation = np.abs(finite_values - median)
+    noise = float(np.median(abs_deviation)) * 1.4826
+    if not np.isfinite(noise) or noise <= 0:
+        q25, q75 = np.percentile(finite_values, [25, 75])
+        noise = float((q75 - q25) / 1.349) if q75 > q25 else 0.0
+
+    threshold = median + max(0.0, noise_sigma) * noise
+    mask = np.isfinite(image) & (image > threshold)
+    min_feature_pixels = max(1, int(min_feature_pixels))
+    if min_feature_pixels > 1:
+        local_support = ndimage.convolve(
+            mask.astype(np.uint8),
+            np.ones((3, 3), dtype=np.uint8),
+            mode="constant",
+            cval=0,
+        )
+        mask &= local_support >= 3
+    if int(mask.sum()) < min_feature_pixels:
+        return _broad_signal_check(finite_values=finite_values, minimum_signal=minimum_signal)
+
+    structure = np.ones((3, 3), dtype=np.int8)
+    labels, num_labels = ndimage.label(mask, structure=structure)
+    if num_labels == 0:
+        return _broad_signal_check(finite_values=finite_values, minimum_signal=minimum_signal)
+
+    component_sizes = np.bincount(labels.ravel())
+    candidate_labels = np.flatnonzero(component_sizes[1:] >= min_feature_pixels) + 1
+    if candidate_labels.size == 0:
+        return _broad_signal_check(finite_values=finite_values, minimum_signal=minimum_signal)
+
+    component_slices = ndimage.find_objects(labels)
+    for label_idx in candidate_labels:
+        component_slice = component_slices[label_idx - 1]
+        if component_slice is None:
+            continue
+        row_slice, col_slice = component_slice
+        height = row_slice.stop - row_slice.start
+        width = col_slice.stop - col_slice.start
+        if min(height, width) < 3:
+            continue
+        bbox_area = height * width
+        if component_sizes[label_idx] / bbox_area < 0.25:
+            continue
+        return True
+
+    return _broad_signal_check(finite_values=finite_values, minimum_signal=minimum_signal)
+
+
+def _broad_signal_check(
+    finite_values: npt.NDArray,
+    minimum_signal: float,
+) -> bool:
+    """Return True for broad tissue-level signal without compact high-intensity blobs."""
+    positive_fraction = float(np.count_nonzero(finite_values > minimum_signal) / finite_values.size)
+    if positive_fraction < 0.5:
+        return False
+
+    median_signal = float(np.median(finite_values))
+    if median_signal <= minimum_signal:
+        return False
+
+    q95 = float(np.percentile(finite_values, 95))
+    if q95 <= minimum_signal:
+        return False
+
+    return q95 >= median_signal * 1.2
 
 
 def _apply_transparent_mask(

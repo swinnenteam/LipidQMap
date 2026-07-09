@@ -10,6 +10,7 @@ from app.database import DatabaseFactory, IonMode, LipidDB
 from app.image_processing import (
     _add_padding,
     db_isotope_correction,
+    feature_check,
     na_isotope_correction,
     ppm_to_tolerance,
     replace_nan_with_median,
@@ -101,6 +102,9 @@ def mock_config() -> Config:
 
     # Set up the attributes on the selection settings mock
     mock_selection_settings.minimum_intensity = 1000
+    mock_selection_settings.selection_method = "threshold"
+    mock_selection_settings.feature_noise_sigma = 5.0
+    mock_selection_settings.feature_minimum_pixels = 25
     mock_selection_settings.minimum_pixels = 100
 
     # Set up the attributes on the filter settings mock
@@ -239,6 +243,54 @@ def test_threshold_check(image) -> None:
     np.array([[10.0, 12.0, 15.0], [14.0, 12.0, 12.0], [11.0, 6.0, 8.0]])
     assert threshold_check(image=image, min_intensity=10, min_pixels=5)
     assert not threshold_check(image=image, min_intensity=15, min_pixels=2)
+
+
+def test_feature_check_detects_connected_signal_region() -> None:
+    image = np.zeros((10, 10), dtype=np.float32)
+    image[3:6, 3:6] = 10.0
+
+    assert feature_check(image, noise_sigma=5.0, min_feature_pixels=9)
+
+
+def test_feature_check_rejects_scattered_hot_pixels() -> None:
+    image = np.zeros((10, 10), dtype=np.float32)
+    image[1, 1] = 10.0
+    image[1, 8] = 10.0
+    image[8, 1] = 10.0
+    image[8, 8] = 10.0
+
+    assert not feature_check(image, noise_sigma=5.0, min_feature_pixels=4)
+
+
+def test_feature_check_rejects_sparse_diagonal_hot_pixel_chain() -> None:
+    image = np.zeros((20, 20), dtype=np.float32)
+    np.fill_diagonal(image[:15, :15], 10.0)
+
+    assert not feature_check(image, noise_sigma=4.0, min_feature_pixels=15)
+
+
+def test_feature_check_rejects_thin_hot_pixel_line() -> None:
+    image = np.zeros((20, 20), dtype=np.float32)
+    image[10, 2:17] = 10.0
+
+    assert not feature_check(image, noise_sigma=4.0, min_feature_pixels=15)
+
+
+def test_feature_check_rejects_blank_image() -> None:
+    assert not feature_check(np.zeros((10, 10), dtype=np.float32))
+
+
+def test_feature_check_rejects_tiny_numerical_residue_image() -> None:
+    image = np.zeros((10, 10), dtype=np.float32)
+    image[2:7, 2:7] = 1e-9
+
+    assert not feature_check(image, noise_sigma=4.0, min_feature_pixels=15)
+
+
+def test_feature_check_accepts_broad_tissue_signal_without_outlier_blob() -> None:
+    image = np.linspace(1000.0, 1600.0, num=100, dtype=np.float32).reshape(10, 10)
+
+    assert feature_check(image, noise_sigma=4.0, min_feature_pixels=15)
 
 
 def test_sample_collection(mock_config, database) -> None:
@@ -651,7 +703,7 @@ def test_merge_average_spectra_collapses_duplicate_mz_bins() -> None:
 
 def test_criteria_check_handles_none_image() -> None:
     stub = object.__new__(SectionMsiImage)
-    stub.raw = {"a": None}
+    stub.selection_raw = {"a": None}
     stub.config = SimpleNamespace(
         settings=SimpleNamespace(
             selection_settings=SimpleNamespace(minimum_intensity=1, minimum_pixels=1),
@@ -659,6 +711,57 @@ def test_criteria_check_handles_none_image() -> None:
         )
     )
     assert stub.criteria_check() == [False]
+
+
+def test_criteria_check_uses_feature_selection_mode() -> None:
+    stub = object.__new__(SectionMsiImage)
+    connected_feature = np.zeros((10, 10), dtype=np.float32)
+    connected_feature[2:5, 2:5] = 10.0
+    scattered_noise = np.zeros((10, 10), dtype=np.float32)
+    scattered_noise[1, 1] = 10.0
+    scattered_noise[1, 8] = 10.0
+    scattered_noise[8, 1] = 10.0
+    scattered_noise[8, 8] = 10.0
+    stub.raw = {
+        "feature": connected_feature,
+        "noise": scattered_noise,
+    }
+    stub.selection_raw = dict(stub.raw)
+    stub.config = SimpleNamespace(
+        settings=SimpleNamespace(
+            selection_settings=SimpleNamespace(
+                selection_method="feature",
+                feature_noise_sigma=5.0,
+                feature_minimum_pixels=4,
+            ),
+            filter_settings=SimpleNamespace(raw_image_winsorizing_percentile=99.0),
+        )
+    )
+
+    assert stub.criteria_check() == [True, False]
+
+
+def test_criteria_check_uses_pre_imputation_selection_image() -> None:
+    stub = object.__new__(SectionMsiImage)
+    imputed_blob = np.zeros((10, 10), dtype=np.float32)
+    imputed_blob[2:5, 2:5] = 10.0
+    measured_sparse_pixel = np.zeros((10, 10), dtype=np.float32)
+    measured_sparse_pixel[3, 3] = 10.0
+    stub.raw = {"species": imputed_blob}
+    stub.selection_raw = {"species": measured_sparse_pixel}
+    stub.config = SimpleNamespace(
+        settings=SimpleNamespace(
+            selection_settings=SimpleNamespace(
+                selection_method="feature",
+                feature_noise_sigma=4.0,
+                feature_minimum_pixels=9,
+            ),
+            filter_settings=SimpleNamespace(raw_image_winsorizing_percentile=99.0),
+        )
+    )
+
+    assert feature_check(imputed_blob, noise_sigma=4.0, min_feature_pixels=9)
+    assert not stub.criteria_check()[0]
 
 
 def test_sample_collection_criteria_check_ignores_stale_summed_image_when_adducts_unselected(
@@ -678,6 +781,7 @@ def test_sample_collection_criteria_check_ignores_stale_summed_image_when_adduct
         "PC 33:1 d7 [M+H]+": np.array([[6.0]]),
         "PC 33:1 d7 [M+Na]+": np.array([[6.0]]),
     }
+    section.selection_raw = dict(section.raw)
     collection = SampleCollection(
         samples={"sample": section},
         species_order=[
@@ -707,6 +811,7 @@ def test_sample_collection_criteria_check_selects_neutral_from_selected_adducts(
         "PC 33:1 d7 [M+H]+": np.array([[11.0]]),
         "PC 33:1 d7 [M+Na]+": np.array([[6.0]]),
     }
+    section.selection_raw = dict(section.raw)
     collection = SampleCollection(
         samples={"sample": section},
         species_order=[
@@ -725,9 +830,11 @@ def test_transform_skips_none_images() -> None:
     stub.pixel_size_um = (1.0, 2.0)
     img = np.array([[1, 2], [3, 4]])
     stub.raw = {"a": img}
+    stub.selection_raw = {"a": img}
     stub.isotope = {"a": None}
     stub.quant = {"a": None}
     stub.transform("rotate_left")
     np.testing.assert_array_equal(stub.raw["a"], np.rot90(img, 1))
+    np.testing.assert_array_equal(stub.selection_raw["a"], np.rot90(img, 1))
     assert stub.isotope["a"] is None
     assert stub.quant["a"] is None
