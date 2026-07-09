@@ -295,12 +295,16 @@ class LipidDB:
         if specie is None or specie.adduct in {"", "(+)", "(-)"}:
             return None
 
+        target_adduct = "(+)" if specie.ion_mode == IonMode.positive else "(-)"
+        fallback: LipidSpecies | None = None
         for candidate in self.species.values():
             if candidate.id != specie.id:
                 continue
-            if candidate.ion_mode == IonMode.summed or candidate.adduct in {"", "(+)", "(-)"}:
+            if candidate.adduct == target_adduct:
                 return candidate
-        return None
+            if candidate.ion_mode == IonMode.summed or candidate.adduct == "":
+                fallback = candidate
+        return fallback
 
     def get_all_species(self, neutral=False) -> tuple[list[str], list[float]]:
         """

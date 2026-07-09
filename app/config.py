@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+from typing import Literal
 
 import toml
 from platformdirs import user_data_dir
@@ -109,8 +110,11 @@ class SelectionSettings(BaseModel):
     Class for validation of the configuration file
     """
 
+    selection_method: Literal["threshold", "feature"] = Field(default="feature")
     minimum_pixels: int = Field(default=100)
     minimum_intensity: int = Field(default=1000)
+    feature_noise_sigma: float = Field(default=4.0)
+    feature_minimum_pixels: int = Field(default=10)
 
 
 class SaveSettings(BaseModel):

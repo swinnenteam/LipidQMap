@@ -9,6 +9,7 @@ from app.database import (
     LipidStandard,
     adduct_formula,
 )
+from app.importers.common import _combine_mode_databases
 
 
 @pytest.fixture(name="database")
@@ -400,6 +401,36 @@ def test_get_neutral_from_adduct_positive(database: LipidDB) -> None:
     assert neutral is not None
     assert neutral.id == "PC 33:1 d7"
     assert neutral.adduct in {"", "(+)"}
+
+
+def test_get_neutral_from_adduct_respects_polarity(
+    database: LipidDB,
+    neg_database: LipidDB,
+) -> None:
+    neg_pc_species = {}
+    for specie in neg_database.species.values():
+        if specie.id != "PE 32:1":
+            continue
+        neg_copy = specie.model_copy(deep=True, update={"id": "PC 32:1", "lipid_class": "PC"})
+        for attr in ("id_adduct", "class_adduct", "ion_mode"):
+            neg_copy.__dict__.pop(attr, None)
+        neg_pc_species[neg_copy.id_adduct] = neg_copy
+    neg_pc_database = LipidDB(neg_pc_species)
+
+    combined_database = _combine_mode_databases(
+        {
+            IonMode.positive: database,
+            IonMode.negative: neg_pc_database,
+        }
+    )
+
+    positive_neutral = combined_database.get_neutral_from_adduct("PC 32:1 [M+H]+")
+    negative_neutral = combined_database.get_neutral_from_adduct("PC 32:1 [M-H]-")
+
+    assert positive_neutral is not None
+    assert positive_neutral.adduct == "(+)"
+    assert negative_neutral is not None
+    assert negative_neutral.adduct == "(-)"
 
 
 def test_get_neutral_from_adduct_none(database: LipidDB) -> None:

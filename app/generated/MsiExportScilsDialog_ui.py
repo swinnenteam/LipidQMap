@@ -47,6 +47,12 @@ class Ui_MsiExportScilsDialog(object):
 
         self.verticalLayout.addLayout(self.horizontalLayout)
 
+        self.label_scils_note = QLabel(MsiExportScilsDialog)
+        self.label_scils_note.setObjectName(u"label_scils_note")
+        self.label_scils_note.setWordWrap(True)
+
+        self.verticalLayout.addWidget(self.label_scils_note)
+
         self.group_box_image_type = QGroupBox(MsiExportScilsDialog)
         self.group_box_image_type.setObjectName(u"group_box_image_type")
         self.verticalLayout_2 = QVBoxLayout(self.group_box_image_type)
@@ -123,6 +129,7 @@ class Ui_MsiExportScilsDialog(object):
         MsiExportScilsDialog.setWindowTitle(QCoreApplication.translate("MsiExportScilsDialog", u"Export to SCiLS", None))
         self.label.setText(QCoreApplication.translate("MsiExportScilsDialog", u"SCiLS Lab SLX file:", None))
         self.button_choose_file.setText(QCoreApplication.translate("MsiExportScilsDialog", u"Select File", None))
+        self.label_scils_note.setText(QCoreApplication.translate("MsiExportScilsDialog", u"Note: SCiLS Lab must be open during export, but the target .slx file must not be open in SCiLS.", None))
         self.group_box_image_type.setTitle(QCoreApplication.translate("MsiExportScilsDialog", u"Images to export", None))
         self.quant_checkbox.setText(QCoreApplication.translate("MsiExportScilsDialog", u"Quantitative images", None))
         self.iso_checkbox.setText(QCoreApplication.translate("MsiExportScilsDialog", u"Isotope corrected images", None))

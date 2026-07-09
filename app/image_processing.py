@@ -1,8 +1,10 @@
 import math
+from collections.abc import Iterable
 
 import numpy as np
 import numpy.typing as npt
 from numba import njit
+from scipy import ndimage
 
 from app.database import LipidDB, LipidSpecies
 
@@ -10,6 +12,91 @@ from app.database import LipidDB, LipidSpecies
 @njit
 def threshold_check(image: npt.NDArray, min_intensity: int, min_pixels: int) -> bool:
     return (image > min_intensity).sum() > min_pixels
+
+
+def feature_check(
+    image: npt.NDArray | None,
+    noise_sigma: float = 5.0,
+    min_feature_pixels: int = 25,
+) -> bool:
+    """Return True when an ion image contains a connected signal feature."""
+    minimum_signal = 1e-6
+    if image is None:
+        return False
+
+    finite_values = image[np.isfinite(image)]
+    if finite_values.size == 0:
+        return False
+    if float(np.nanmax(finite_values)) <= minimum_signal:
+        return False
+
+    median = float(np.median(finite_values))
+    abs_deviation = np.abs(finite_values - median)
+    noise = float(np.median(abs_deviation)) * 1.4826
+    if not np.isfinite(noise) or noise <= 0:
+        q25, q75 = np.percentile(finite_values, [25, 75])
+        noise = float((q75 - q25) / 1.349) if q75 > q25 else 0.0
+
+    threshold = median + max(0.0, noise_sigma) * noise
+    mask = np.isfinite(image) & (image > threshold)
+    min_feature_pixels = max(1, int(min_feature_pixels))
+    if min_feature_pixels > 1:
+        local_support = ndimage.convolve(
+            mask.astype(np.uint8),
+            np.ones((3, 3), dtype=np.uint8),
+            mode="constant",
+            cval=0,
+        )
+        mask &= local_support >= 3
+    if int(mask.sum()) < min_feature_pixels:
+        return _broad_signal_check(finite_values=finite_values, minimum_signal=minimum_signal)
+
+    structure = np.ones((3, 3), dtype=np.int8)
+    labels, num_labels = ndimage.label(mask, structure=structure)
+    if num_labels == 0:
+        return _broad_signal_check(finite_values=finite_values, minimum_signal=minimum_signal)
+
+    component_sizes = np.bincount(labels.ravel())
+    candidate_labels = np.flatnonzero(component_sizes[1:] >= min_feature_pixels) + 1
+    if candidate_labels.size == 0:
+        return _broad_signal_check(finite_values=finite_values, minimum_signal=minimum_signal)
+
+    component_slices = ndimage.find_objects(labels)
+    for label_idx in candidate_labels:
+        component_slice = component_slices[label_idx - 1]
+        if component_slice is None:
+            continue
+        row_slice, col_slice = component_slice
+        height = row_slice.stop - row_slice.start
+        width = col_slice.stop - col_slice.start
+        if min(height, width) < 3:
+            continue
+        bbox_area = height * width
+        if component_sizes[label_idx] / bbox_area < 0.25:
+            continue
+        return True
+
+    return _broad_signal_check(finite_values=finite_values, minimum_signal=minimum_signal)
+
+
+def _broad_signal_check(
+    finite_values: npt.NDArray,
+    minimum_signal: float,
+) -> bool:
+    """Return True for broad tissue-level signal without compact high-intensity blobs."""
+    positive_fraction = float(np.count_nonzero(finite_values > minimum_signal) / finite_values.size)
+    if positive_fraction < 0.5:
+        return False
+
+    median_signal = float(np.median(finite_values))
+    if median_signal <= minimum_signal:
+        return False
+
+    q95 = float(np.percentile(finite_values, 95))
+    if q95 <= minimum_signal:
+        return False
+
+    return q95 >= median_signal * 1.2
 
 
 def _apply_transparent_mask(
@@ -167,13 +254,17 @@ def _sum_images_for_neutral(
     database: LipidDB,
     neutral_specie: LipidSpecies,
     images: dict[str, npt.NDArray | None],
+    allowed_adduct_ids: Iterable[str] | None = None,
 ) -> npt.NDArray | None:
     """
     Return the summed image for a neutral specie using the provided adduct images.
     """
+    allowed_adduct_ids_set = set(allowed_adduct_ids) if allowed_adduct_ids is not None else None
     adduct_forms = database.get_adduct_species_for_neutral(neutral_specie)
     adduct_images: list[npt.NDArray] = []
     for specie in adduct_forms:
+        if allowed_adduct_ids_set is not None and specie.id_adduct not in allowed_adduct_ids_set:
+            continue
         candidate = images.get(specie.id_adduct)
         if candidate is not None:
             adduct_images.append(candidate)
@@ -197,6 +288,7 @@ def _sum_images_for_neutral(
 def sum_adducts(
     database: LipidDB,
     images: dict[str, npt.NDArray | None],
+    allowed_adduct_ids: Iterable[str] | None = None,
     neutral_suffix: str | None = None,
 ) -> dict[str, npt.NDArray | None]:
     """
@@ -205,6 +297,9 @@ def sum_adducts(
     Args:
         database: Lipid database providing species relationships.
         images: Mapping from species ID (with adduct) to image data.
+        allowed_adduct_ids: Optional species IDs that are allowed to contribute
+            to neutral summed images. When omitted, every available adduct image
+            contributes.
         neutral_suffix: Optional suffix used to rename neutral species keys. When
             provided, neutral entries are emitted as ``<id> <neutral_suffix>``.
     """
@@ -221,6 +316,7 @@ def sum_adducts(
                 database=database,
                 neutral_specie=neutral_specie,
                 images=images,
+                allowed_adduct_ids=allowed_adduct_ids,
             )
 
             key = neutral_specie.id_adduct

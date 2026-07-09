@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import cache
 from pathlib import Path
-from typing import Callable, ItemsView, Sequence
+from typing import Callable, Iterable, ItemsView, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -16,7 +16,9 @@ from app.config import Config
 from app.database import IonMode, LipidDB, LipidSpecies
 from app.image_processing import (
     _apply_transparent_mask,
+    _sum_images_for_neutral,
     db_isotope_correction,
+    feature_check,
     na_isotope_correction,
     ppm_to_tolerance,
     quantitaton,
@@ -80,6 +82,15 @@ class AnnDataMatrixChoice(str, Enum):
 
     raw = "raw"
     batch_corrected = "batch_corrected"
+
+
+def _numeric_setting(settings, name: str, default: float) -> float:
+    value = getattr(settings, name, default)
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, int | float):
+        return float(value)
+    return default
 
 
 @dataclass(slots=True)
@@ -198,6 +209,7 @@ class SectionMsiImage:
         self.config = config
         self.database = database
         self.raw: dict[str, npt.NDArray]
+        self.selection_raw: dict[str, npt.NDArray | None]
         self.isotope: dict[str, npt.NDArray]
         self.quant: dict[str, npt.NDArray | None]
         self.average_spectrum: npt.NDArray
@@ -229,6 +241,7 @@ class SectionMsiImage:
         self.config = config
         self.database = database
         self.raw = {}
+        self.selection_raw = {}
         self.isotope = {}
         self.quant = {}
         self.average_spectrum = np.empty((2, 0), dtype=np.float64)
@@ -351,6 +364,10 @@ class SectionMsiImage:
             self.quant = quantitaton(database=database, images=self.raw)
         progress_file_callback.emit(75)
 
+        # Automatic image selection must use the measured raw ion images. Imputation
+        # can turn isolated hot pixels into artificial connected blobs.
+        self.selection_raw = dict(self.raw)
+
         # replace nan with median of surrounding pixels
         if self.config.settings.processing_settings.imputation:
             self.raw = {k: replace_nan_with_median(v) for (k, v) in self.raw.items()}
@@ -364,12 +381,16 @@ class SectionMsiImage:
         progress_file_callback.emit(90)
 
         if data.transparent_mask is not None:
+            self.selection_raw = _apply_transparent_mask(self.selection_raw, data.transparent_mask)
             self.raw = _apply_transparent_mask(self.raw, data.transparent_mask)  # type: ignore
             self.isotope = _apply_transparent_mask(self.isotope, data.transparent_mask)  # type: ignore
             self.quant = _apply_transparent_mask(self.quant, data.transparent_mask)
 
         # sum the different adduct forms of the same species
         neutral_suffix = "(+)" if data.ion_mode == IonMode.positive else "(-)"
+        self.selection_raw = sum_adducts(
+            database=database, images=self.selection_raw, neutral_suffix=neutral_suffix
+        )
         self.raw = sum_adducts(
             database=database, images=self.raw, neutral_suffix=neutral_suffix
         )  # type: ignore
@@ -458,6 +479,43 @@ class SectionMsiImage:
             case ImageType.quant:
                 return winsorize_image(self.quant.get(species_id), n2)
 
+    def update_summed_image(
+        self,
+        database: LipidDB,
+        neutral_specie: LipidSpecies,
+        selected_adduct_ids: Iterable[str],
+    ) -> None:
+        """Recalculate one neutral summed image from the currently selected adducts."""
+        key = self._neutral_image_key(neutral_specie)
+        self.raw[key] = _sum_images_for_neutral(
+            database=database,
+            neutral_specie=neutral_specie,
+            images=self.raw,
+            allowed_adduct_ids=selected_adduct_ids,
+        )
+        self.isotope[key] = _sum_images_for_neutral(
+            database=database,
+            neutral_specie=neutral_specie,
+            images=self.isotope,
+            allowed_adduct_ids=selected_adduct_ids,
+        )
+        self.quant[key] = _sum_images_for_neutral(
+            database=database,
+            neutral_specie=neutral_specie,
+            images=self.quant,
+            allowed_adduct_ids=selected_adduct_ids,
+        )
+        self.get_mean.cache_clear()
+
+    def _neutral_image_key(self, neutral_specie: LipidSpecies) -> str:
+        if neutral_specie.adduct in {"(+)", "(-)"}:
+            return neutral_specie.id_adduct
+        if self.ion_mode == SampleIonMode.positive:
+            return f"{neutral_specie.id} (+)"
+        if self.ion_mode == SampleIonMode.negative:
+            return f"{neutral_specie.id} (-)"
+        return neutral_specie.id_adduct
+
     @cache
     def get_mean(self, image_type: ImageType, species_id: str) -> int:
         """
@@ -541,6 +599,10 @@ class SectionMsiImage:
             key: func(value, param) if value is not None else value
             for (key, value) in self.raw.items()
         }
+        self.selection_raw = {
+            key: func(value, param) if value is not None else value
+            for (key, value) in self.selection_raw.items()
+        }
         self.isotope = {
             key: func(value, param) if value is not None else value
             for (key, value) in self.isotope.items()
@@ -554,18 +616,32 @@ class SectionMsiImage:
         """
         Check if the ion images meet the criteria to be selected for export.
         """
+        result = []
+        for image in self.selection_raw.values():
+            result.append(self._passes_selection_criteria(image))
+        return result
+
+    def _passes_selection_criteria(self, image: npt.NDArray | None) -> bool:
+        """Return whether an image satisfies the current automatic export criteria."""
+        if image is None:
+            return False
+        selection_settings = self.config.settings.selection_settings
+        method = getattr(selection_settings, "selection_method", "threshold")
+        if method == "feature":
+            return feature_check(
+                image=image,
+                noise_sigma=_numeric_setting(selection_settings, "feature_noise_sigma", 5.0),
+                min_feature_pixels=int(
+                    _numeric_setting(selection_settings, "feature_minimum_pixels", 25)
+                ),
+            )
         min_intensity = self.config.settings.selection_settings.minimum_intensity
         min_pixels = self.config.settings.selection_settings.minimum_pixels
         winsor = self.config.settings.filter_settings.raw_image_winsorizing_percentile
-        result = []
-        for id, image in self.raw.items():
-            if image is None:
-                result.append(False)
-                continue
-            result.append(
-                threshold_check(winsorize_image(image, winsor), min_intensity, min_pixels)
-            )
-        return result
+        winsorized_image = winsorize_image(image, winsor)
+        if winsorized_image is None:
+            return False
+        return threshold_check(winsorized_image, min_intensity, min_pixels)
 
     @property
     def shape(self) -> tuple[int, int]:
@@ -706,21 +782,60 @@ class SampleCollection:
             return None
         return min(manual_length, max_length)
 
-    def criteria_check(self) -> list[bool]:
+    def criteria_check(self, database: LipidDB | None = None) -> list[bool]:
         if not self.samples:
             return []
 
         aggregated: dict[str, bool] = {species_id: False for species_id in self.species_order}
+        neutral_ids: set[str] = set()
+        if database is not None:
+            neutral_ids = {specie.id_adduct for specie in database.get_neutral_species()}
 
         for image in self.samples.values():
             image_checks = image.criteria_check()
-            for species_id, check in zip(image.raw.keys(), image_checks):
+            for species_id, check in zip(image.selection_raw.keys(), image_checks):
+                if species_id in neutral_ids:
+                    continue
                 if species_id not in aggregated:
                     aggregated[species_id] = check
                 else:
                     aggregated[species_id] = aggregated[species_id] or check
 
+        if database is not None:
+            selected_adduct_ids = {
+                species_id for species_id, selected in aggregated.items() if selected
+            }
+            for neutral_specie in database.get_neutral_species():
+                neutral_check = False
+                for image in self.samples.values():
+                    summed_image = _sum_images_for_neutral(
+                        database=database,
+                        neutral_specie=neutral_specie,
+                        images=image.selection_raw,
+                        allowed_adduct_ids=selected_adduct_ids,
+                    )
+                    if image._passes_selection_criteria(summed_image):
+                        neutral_check = True
+                        break
+                aggregated[neutral_specie.id_adduct] = neutral_check
+
         return [aggregated.get(species_id, False) for species_id in self.species_order]
+
+    def update_summed_images(
+        self,
+        database: LipidDB,
+        neutral_species: Iterable[LipidSpecies],
+        selected_adduct_ids: Iterable[str],
+    ) -> None:
+        """Recalculate selected neutral summed images for every loaded sample."""
+        selected_adduct_ids_set = set(selected_adduct_ids)
+        for sample in self.samples.values():
+            for neutral_specie in neutral_species:
+                sample.update_summed_image(
+                    database=database,
+                    neutral_specie=neutral_specie,
+                    selected_adduct_ids=selected_adduct_ids_set,
+                )
 
     def get_spectrum(self, sample_id: str, ion_mode: IonMode | None = None) -> npt.NDArray:
         return self.samples[sample_id].get_average_spectrum_for_mode(ion_mode=ion_mode)
@@ -832,6 +947,7 @@ def _combine_section_images(
         if combined.raw and image.raw and combined.shape != image.shape:
             raise ValueError("Cannot combine samples with differing spatial dimensions.")
         combined.raw.update(image.raw)
+        combined.selection_raw.update(image.selection_raw)
         combined.isotope.update(image.isotope)
         combined.quant.update(image.quant)
         combined.average_spectra_by_mode.update(image.average_spectra_by_mode)

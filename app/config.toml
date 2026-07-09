@@ -19,8 +19,11 @@ calibration_min_intensity = 10000
 imputation = true
 
 [selection_settings]
+selection_method = "feature"
 minimum_pixels = 300
 minimum_intensity = 500
+feature_noise_sigma = 4.0
+feature_minimum_pixels = 10
 
 [database_settings]
 last_used_database = "MSI_database_V1.0"
