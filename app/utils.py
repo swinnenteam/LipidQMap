@@ -80,8 +80,18 @@ class PandasModelEditable(QAbstractTableModel):
         return None
 
     def setData(self, index, value, role: int = Qt.ItemDataRole.EditRole):
-        if role == Qt.ItemDataRole.CheckStateRole and index.column() in self.checkableColumns:
-            self._data.iloc[index.row(), index.column()] = value == Qt.CheckState.Checked
+        if index.column() in self.checkableColumns:
+            if role == Qt.ItemDataRole.CheckStateRole:
+                new_value = value == Qt.CheckState.Checked
+            elif role == Qt.ItemDataRole.EditRole and isinstance(value, bool):
+                new_value = value
+            else:
+                return False
+
+            if bool(self._data.iloc[index.row(), index.column()]) == new_value:
+                return True
+
+            self._data.iloc[index.row(), index.column()] = new_value
             self.dataChanged.emit(index, index)
             return True
         if value is not None and role == Qt.ItemDataRole.EditRole:

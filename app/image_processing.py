@@ -1,4 +1,5 @@
 import math
+from collections.abc import Iterable
 
 import numpy as np
 import numpy.typing as npt
@@ -167,13 +168,17 @@ def _sum_images_for_neutral(
     database: LipidDB,
     neutral_specie: LipidSpecies,
     images: dict[str, npt.NDArray | None],
+    allowed_adduct_ids: Iterable[str] | None = None,
 ) -> npt.NDArray | None:
     """
     Return the summed image for a neutral specie using the provided adduct images.
     """
+    allowed_adduct_ids_set = set(allowed_adduct_ids) if allowed_adduct_ids is not None else None
     adduct_forms = database.get_adduct_species_for_neutral(neutral_specie)
     adduct_images: list[npt.NDArray] = []
     for specie in adduct_forms:
+        if allowed_adduct_ids_set is not None and specie.id_adduct not in allowed_adduct_ids_set:
+            continue
         candidate = images.get(specie.id_adduct)
         if candidate is not None:
             adduct_images.append(candidate)
@@ -197,6 +202,7 @@ def _sum_images_for_neutral(
 def sum_adducts(
     database: LipidDB,
     images: dict[str, npt.NDArray | None],
+    allowed_adduct_ids: Iterable[str] | None = None,
     neutral_suffix: str | None = None,
 ) -> dict[str, npt.NDArray | None]:
     """
@@ -205,6 +211,9 @@ def sum_adducts(
     Args:
         database: Lipid database providing species relationships.
         images: Mapping from species ID (with adduct) to image data.
+        allowed_adduct_ids: Optional species IDs that are allowed to contribute
+            to neutral summed images. When omitted, every available adduct image
+            contributes.
         neutral_suffix: Optional suffix used to rename neutral species keys. When
             provided, neutral entries are emitted as ``<id> <neutral_suffix>``.
     """
@@ -221,6 +230,7 @@ def sum_adducts(
                 database=database,
                 neutral_specie=neutral_specie,
                 images=images,
+                allowed_adduct_ids=allowed_adduct_ids,
             )
 
             key = neutral_specie.id_adduct

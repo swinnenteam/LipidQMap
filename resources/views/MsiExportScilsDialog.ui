@@ -33,8 +33,18 @@
        </property>
       </widget>
      </item>
-    </layout>
-   </item>
+   </layout>
+  </item>
+  <item>
+   <widget class="QLabel" name="label_scils_note">
+    <property name="text">
+     <string>Note: SCiLS Lab must be open during export, but the target .slx file must not be open in SCiLS.</string>
+    </property>
+    <property name="wordWrap">
+     <bool>true</bool>
+    </property>
+   </widget>
+  </item>
    <item>
     <widget class="QGroupBox" name="group_box_image_type">
      <property name="title">

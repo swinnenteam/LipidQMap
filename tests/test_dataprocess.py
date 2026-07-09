@@ -571,7 +571,7 @@ def test_na_isotope_correction_skips_classes_missing_na_adducts(
         nptest.assert_allclose(image, images[specie_id])
 
 
-def test_sum_adducts_uses_all_available_adducts_and_preserves_nan_pixels(
+def test_sum_adducts_respects_selected_adducts_and_preserves_nan_pixels(
     database: LipidDB,
 ) -> None:
     neutral_specie = next(s for s in database.get_neutral_species() if s.id == "PC 33:1 d7")
@@ -579,9 +579,53 @@ def test_sum_adducts_uses_all_available_adducts_and_preserves_nan_pixels(
         "PC 33:1 d7 [M+H]+": np.array([[1.0, np.nan], [np.nan, np.nan]]),
         "PC 33:1 d7 [M+Na]+": np.array([[np.nan, 2.0], [3.0, np.nan]]),
     }
-    result = sum_adducts(database=database, images=images)
+    result = sum_adducts(
+        database=database,
+        images=images,
+        allowed_adduct_ids={"PC 33:1 d7 [M+H]+", "PC 33:1 d7 [M+Na]+"},
+    )
     expected = np.array([[1.0, 2.0], [3.0, np.nan]])
     nptest.assert_allclose(result[neutral_specie.id_adduct], expected, equal_nan=True)
+
+
+def test_sum_adducts_returns_none_when_no_selected_adduct_has_image(database: LipidDB) -> None:
+    neutral_specie = next(s for s in database.get_neutral_species() if s.id == "PC 33:1 d7")
+    images = {
+        "PC 33:1 d7 [M+H]+": np.array([[1.0]]),
+        "PC 33:1 d7 [M+Na]+": np.array([[2.0]]),
+    }
+
+    result = sum_adducts(
+        database=database,
+        images=images,
+        allowed_adduct_ids={"PC 32:0 [M+H]+"},
+    )
+
+    assert result[neutral_specie.id_adduct] is None
+
+
+def test_section_update_summed_image_uses_selected_adducts(database: LipidDB) -> None:
+    neutral_specie = database.get_neutral_from_adduct("PC 33:1 d7 [M+H]+")
+    assert neutral_specie is not None
+    section = object.__new__(SectionMsiImage)
+    section.ion_mode = SampleIonMode.positive
+    section.raw = {
+        "PC 33:1 d7 (+)": np.array([[999.0]]),
+        "PC 33:1 d7 [M+H]+": np.array([[1.0]]),
+        "PC 33:1 d7 [M+Na]+": np.array([[2.0]]),
+    }
+    section.isotope = dict(section.raw)
+    section.quant = dict(section.raw)
+
+    section.update_summed_image(
+        database=database,
+        neutral_specie=neutral_specie,
+        selected_adduct_ids={"PC 33:1 d7 [M+Na]+"},
+    )
+
+    nptest.assert_array_equal(section.raw["PC 33:1 d7 (+)"], np.array([[2.0]]))
+    nptest.assert_array_equal(section.isotope["PC 33:1 d7 (+)"], np.array([[2.0]]))
+    nptest.assert_array_equal(section.quant["PC 33:1 d7 (+)"], np.array([[2.0]]))
 
 
 def test_get_average_spectrum_numba_falls_back_when_threshold_would_empty_spectrum() -> None:
@@ -615,6 +659,64 @@ def test_criteria_check_handles_none_image() -> None:
         )
     )
     assert stub.criteria_check() == [False]
+
+
+def test_sample_collection_criteria_check_ignores_stale_summed_image_when_adducts_unselected(
+    database: LipidDB,
+) -> None:
+    neutral_specie = next(s for s in database.get_neutral_species() if s.id == "PC 33:1 d7")
+    config = SimpleNamespace(
+        settings=SimpleNamespace(
+            selection_settings=SimpleNamespace(minimum_intensity=10, minimum_pixels=0),
+            filter_settings=SimpleNamespace(raw_image_winsorizing_percentile=99.0),
+        )
+    )
+    section = object.__new__(SectionMsiImage)
+    section.config = config
+    section.raw = {
+        neutral_specie.id_adduct: np.array([[12.0]]),
+        "PC 33:1 d7 [M+H]+": np.array([[6.0]]),
+        "PC 33:1 d7 [M+Na]+": np.array([[6.0]]),
+    }
+    collection = SampleCollection(
+        samples={"sample": section},
+        species_order=[
+            neutral_specie.id_adduct,
+            "PC 33:1 d7 [M+H]+",
+            "PC 33:1 d7 [M+Na]+",
+        ],
+    )
+
+    assert collection.criteria_check(database=database) == [False, False, False]
+
+
+def test_sample_collection_criteria_check_selects_neutral_from_selected_adducts(
+    database: LipidDB,
+) -> None:
+    neutral_specie = next(s for s in database.get_neutral_species() if s.id == "PC 33:1 d7")
+    config = SimpleNamespace(
+        settings=SimpleNamespace(
+            selection_settings=SimpleNamespace(minimum_intensity=10, minimum_pixels=0),
+            filter_settings=SimpleNamespace(raw_image_winsorizing_percentile=99.0),
+        )
+    )
+    section = object.__new__(SectionMsiImage)
+    section.config = config
+    section.raw = {
+        neutral_specie.id_adduct: np.array([[0.0]]),
+        "PC 33:1 d7 [M+H]+": np.array([[11.0]]),
+        "PC 33:1 d7 [M+Na]+": np.array([[6.0]]),
+    }
+    collection = SampleCollection(
+        samples={"sample": section},
+        species_order=[
+            neutral_specie.id_adduct,
+            "PC 33:1 d7 [M+H]+",
+            "PC 33:1 d7 [M+Na]+",
+        ],
+    )
+
+    assert collection.criteria_check(database=database) == [True, True, False]
 
 
 def test_transform_skips_none_images() -> None:
