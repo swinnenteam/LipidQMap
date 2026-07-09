@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>567</width>
-    <height>476</height>
+    <width>797</width>
+    <height>520</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -81,29 +81,58 @@
    </item>
    <item>
     <layout class="QGridLayout" name="gridLayout_3">
-     <item row="3" column="4">
-      <widget class="QLabel" name="label_15">
-       <property name="text">
-        <string>Select/unselect species for export</string>
+     <item row="2" column="2">
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
        </property>
-      </widget>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
      </item>
-     <item row="4" column="0">
-      <widget class="QLabel" name="label_7">
+     <item row="5" column="0">
+      <widget class="QLabel" name="label_copy_selection_key">
        <property name="font">
         <font>
          <bold>true</bold>
         </font>
        </property>
        <property name="text">
-        <string>G</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+        <string>Ctrl/Cmd+C</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="3">
+     <item row="6" column="0">
+      <widget class="QLabel" name="label_paste_selection_key">
+       <property name="font">
+        <font>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Ctrl/Cmd+V</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QLabel" name="label_copy_selection_description">
+       <property name="text">
+        <string>Copy species Export selection as Excel-compatible table</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="1">
+      <widget class="QLabel" name="label_paste_selection_description">
+       <property name="text">
+        <string>Paste species Export selection; row count and species IDs are checked</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
       <widget class="QLabel" name="label_8">
        <property name="font">
         <font>
@@ -118,51 +147,22 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="4">
+     <item row="1" column="1">
       <widget class="QLabel" name="label_14">
        <property name="text">
         <string>Select species</string>
        </property>
       </widget>
      </item>
-     <item row="3" column="1">
-      <widget class="QLabel" name="label_12">
-       <property name="text">
-        <string>Toggle Quantitative view</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="label_6">
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_2">
        <property name="font">
         <font>
          <bold>true</bold>
         </font>
        </property>
        <property name="text">
-        <string>Q</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLabel" name="label_10">
-       <property name="text">
-        <string>Toggle Raw data view</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_4">
-       <property name="font">
-        <font>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="text">
-        <string>R</string>
+        <string>Left/Right</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
@@ -170,13 +170,13 @@
       </widget>
      </item>
      <item row="2" column="1">
-      <widget class="QLabel" name="label_11">
+      <widget class="QLabel" name="label_16">
        <property name="text">
-        <string>Toggle Isotope Corrected view</string>
+        <string>Go to next checked species</string>
        </property>
       </widget>
      </item>
-     <item row="3" column="3">
+     <item row="3" column="0">
       <widget class="QLabel" name="label_9">
        <property name="font">
         <font>
@@ -191,19 +191,72 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="3">
-      <widget class="QLabel" name="label_2">
+     <item row="3" column="1">
+      <widget class="QLabel" name="label_15">
+       <property name="text">
+        <string>Select/unselect species for export</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="3">
+      <widget class="QLabel" name="label_7">
        <property name="font">
         <font>
          <bold>true</bold>
         </font>
        </property>
        <property name="text">
-        <string>Left/Right</string>
+        <string>G</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
        </property>
       </widget>
      </item>
-     <item row="2" column="0">
+     <item row="1" column="4">
+      <widget class="QLabel" name="label_13">
+       <property name="text">
+        <string>Toggle global scale across all images</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="3">
+      <widget class="QLabel" name="label_4">
+       <property name="font">
+        <font>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>R</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="4">
+      <widget class="QLabel" name="label_10">
+       <property name="text">
+        <string>Toggle Raw data view</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="4">
+      <widget class="QLabel" name="label_11">
+       <property name="text">
+        <string>Toggle Isotope Corrected view</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="4">
+      <widget class="QLabel" name="label_12">
+       <property name="text">
+        <string>Toggle Quantitative view</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="3">
       <widget class="QLabel" name="label_5">
        <property name="font">
         <font>
@@ -218,30 +271,18 @@
        </property>
       </widget>
      </item>
-     <item row="4" column="1">
-      <widget class="QLabel" name="label_13">
+     <item row="5" column="3">
+      <widget class="QLabel" name="label_6">
+       <property name="font">
+        <font>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="text">
-        <string>Toggle global scale across all images</string>
+        <string>Q</string>
        </property>
-      </widget>
-     </item>
-     <item row="2" column="2">
-      <spacer name="horizontalSpacer_2">
-       <property name="orientation">
-        <enum>Qt::Orientation::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item row="2" column="4">
-      <widget class="QLabel" name="label_16">
-       <property name="text">
-        <string>Go to next checked species</string>
+       <property name="alignment">
+        <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
        </property>
       </widget>
      </item>

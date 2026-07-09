@@ -2,7 +2,8 @@ import sys
 from typing import cast
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QFileDialog, QMainWindow
+from PySide6.QtGui import QKeySequence
+from PySide6.QtWidgets import QApplication, QFileDialog, QMainWindow, QMessageBox
 
 from app import __version__
 from app.config import Config, config_paths, get_config
@@ -11,7 +12,13 @@ from app.generated.MsiMainWindow_ui import Ui_MainWindow
 from app.matplotlib_figures import BarplotCanvas, MplCanvas
 from app.msi_data import ImageType, SampleCollection
 from app.qt_figures import SpectrumPlotView
-from app.utils import BooleanDelegate, PandasModelEditable, open_folder
+from app.utils import (
+    BooleanDelegate,
+    PandasModelEditable,
+    format_species_selection_clipboard,
+    open_folder,
+    parse_species_selection_clipboard,
+)
 from app.views.about_window import AboutWindow
 from app.views.anndata_import_window import AnndataImportWindow
 from app.views.calculator_window import CalculatorWindow
@@ -88,6 +95,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         Parameters:
         event (QKeyEvent): The key event to handle.
         """
+        if event.matches(QKeySequence.StandardKey.Copy):
+            self.copy_species_selection_to_clipboard()
+            event.accept()
+            return
+
+        if event.matches(QKeySequence.StandardKey.Paste):
+            self.paste_species_selection_from_clipboard()
+            event.accept()
+            return
+
         if event.key() == Qt.Key.Key_Down:
             # random = np.vstack((np.arange(100, 1700, 0.01), np.random.randint(0, 10000, 160000)))
             # self.spectrum_view.update_figure(random)
@@ -146,6 +163,41 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         if event.key() == Qt.Key.Key_G:
             self.action_global.trigger()
+
+    def copy_species_selection_to_clipboard(self) -> None:
+        """Copy current species Export checkbox states as TSV."""
+        model_obj = self.species_table.model()
+        if model_obj is None:
+            return
+        model = cast(PandasModelEditable, model_obj)
+        species_ids = model.get_all_ids()
+        checked_values = [model.get_is_checked(row) for row in range(model.rowCount())]
+        QApplication.clipboard().setText(
+            format_species_selection_clipboard(species_ids, checked_values)
+        )
+
+    def paste_species_selection_from_clipboard(self) -> None:
+        """Paste species Export checkbox states from validated TSV."""
+        model_obj = self.species_table.model()
+        if model_obj is None:
+            return
+        model = cast(PandasModelEditable, model_obj)
+        try:
+            checked_values = parse_species_selection_clipboard(
+                QApplication.clipboard().text(),
+                expected_ids=model.get_all_ids(),
+            )
+        except ValueError as exc:
+            QMessageBox.warning(self, "Paste species selection", str(exc))
+            return
+
+        self._suspend_checkbox_updates = True
+        try:
+            for row, checked in enumerate(checked_values):
+                model.setData(model.index(row, 2), checked)
+        finally:
+            self._suspend_checkbox_updates = False
+        self._flush_summed_image_updates()
 
     def connect_signals_slots(self) -> None:
         """Connect methods to signal slots."""
