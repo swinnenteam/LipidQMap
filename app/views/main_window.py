@@ -3,7 +3,7 @@ from typing import cast
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence
-from PySide6.QtWidgets import QApplication, QFileDialog, QMainWindow, QMessageBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
 
 from app import __version__
 from app.config import Config, config_paths, get_config
@@ -25,6 +25,7 @@ from app.views.calculator_window import CalculatorWindow
 from app.views.file_save_window import FileSaveWindow
 from app.views.hdf5_export_window import Hdf5ExportWindow
 from app.views.imzml_import_window import ImzmlImportWindow
+from app.views.pickle_export_window import PickleExportWindow
 from app.views.scils_export_window import ScilsExportWindow
 from app.views.settings_window import SettingsWindow
 
@@ -55,6 +56,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.about_window = AboutWindow(__version__)
         self.settings_window = SettingsWindow(config=self.config)
         self.calculator_window = CalculatorWindow(config=self.config)
+        self.pickle_export_window = PickleExportWindow(parent=self)
         self.hdf5_export_window = Hdf5ExportWindow(parent=self)
         self._scils_supported = sys.platform.startswith("win")
         self.scils_export_window: ScilsExportWindow | None = (
@@ -264,9 +266,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def open_export_pickle_dialog(self) -> None:
         """Launch the export pickle dialog."""
-        folder = QFileDialog.getExistingDirectory(self, "Select Folder")
-        if folder and self.samples is not None:
-            self.samples.save_to_pickle(folder)
+        if self.samples is None or self.database is None:
+            return
+        model_obj = self.species_table.model()
+        if model_obj is None:
+            return
+
+        model = cast(PandasModelEditable, model_obj)
+        checked_species = model.get_checked_list()
+        all_species = model.get_all_ids()
+        if not self.pickle_export_window.set_context(
+            samples=self.samples,
+            database=self.database,
+            species_ids=checked_species,
+            all_species_ids=all_species,
+        ):
+            return
+
+        self.pickle_export_window.show()
+        self.pickle_export_window.activateWindow()
+        self.pickle_export_window.raise_()
 
     def open_export_cardinal_hdf5_dialog(self) -> None:
         """Launch the Cardinal HDF5 export dialog."""

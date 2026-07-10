@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pickle
 from pathlib import Path
 from typing import cast
 
@@ -268,3 +269,109 @@ def test_export_cardinal_hdf5_requires_species(
             database=database,
             species_ids=[],
         )
+
+
+def test_save_to_pickle_exports_requested_image_type_and_species(tmp_path: Path) -> None:
+    raw_images = {
+        "A [M+H]+": np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32),
+        "A (+)": np.array([[10.0, 20.0], [30.0, 40.0]], dtype=np.float32),
+        "B [M+H]+": np.array([[5.0, 6.0], [7.0, 8.0]], dtype=np.float32),
+    }
+    isotope_images = {
+        "A [M+H]+": raw_images["A [M+H]+"] + 100.0,
+        "A (+)": raw_images["A (+)"] + 100.0,
+        "B [M+H]+": raw_images["B [M+H]+"] + 100.0,
+    }
+    quant_images = {
+        "A [M+H]+": raw_images["A [M+H]+"] + 200.0,
+        "A (+)": raw_images["A (+)"] + 200.0,
+        "B [M+H]+": None,
+    }
+    section = DummySection(
+        raw_images,
+        raw_images=raw_images,
+        isotope_images=isotope_images,
+        quant_images=quant_images,
+    )
+    samples = cast(dict[str, SectionMsiImage], {"sample": cast(SectionMsiImage, section)})
+    sample_collection = SampleCollection(samples, species_order=list(raw_images.keys()))
+
+    written_path = sample_collection.save_to_pickle(
+        tmp_path / "export.pkl",
+        species_ids=["A (+)", "B [M+H]+", "missing"],
+        image_type=ImageType.isotope,
+    )
+
+    assert written_path == tmp_path / "export.pkl"
+    with open(written_path, "rb") as file:
+        exported = pickle.load(file)
+
+    assert list(exported.keys()) == ["A (+)", "B [M+H]+"]
+    np.testing.assert_array_equal(exported["A (+)"], isotope_images["A (+)"])
+    np.testing.assert_array_equal(exported["B [M+H]+"], isotope_images["B [M+H]+"])
+
+
+def test_save_to_pickle_skips_none_images_for_requested_type(tmp_path: Path) -> None:
+    images = {
+        "A [M+H]+": np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32),
+        "B [M+H]+": np.array([[5.0, 6.0], [7.0, 8.0]], dtype=np.float32),
+    }
+    quant_images = {
+        "A [M+H]+": images["A [M+H]+"],
+        "B [M+H]+": None,
+    }
+    section = DummySection(images, quant_images=quant_images)
+    samples = cast(dict[str, SectionMsiImage], {"sample": cast(SectionMsiImage, section)})
+    sample_collection = SampleCollection(samples, species_order=list(images.keys()))
+
+    written_path = sample_collection.save_to_pickle(
+        tmp_path / "export",
+        species_ids=["A [M+H]+", "B [M+H]+"],
+        image_type=ImageType.quant,
+    )
+
+    assert written_path == tmp_path / "export.pkl"
+    with open(written_path, "rb") as file:
+        exported = pickle.load(file)
+
+    assert list(exported.keys()) == ["A [M+H]+"]
+
+
+def test_save_to_pickle_writes_multiple_samples_to_one_file(tmp_path: Path) -> None:
+    images = {
+        "A [M+H]+": np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32),
+        "B [M+H]+": np.array([[5.0, 6.0], [7.0, 8.0]], dtype=np.float32),
+    }
+    section_1 = DummySection(images)
+    section_2 = DummySection(
+        {
+            "A [M+H]+": images["A [M+H]+"] + 100.0,
+            "B [M+H]+": images["B [M+H]+"] + 100.0,
+        }
+    )
+    samples = cast(
+        dict[str, SectionMsiImage],
+        {
+            "sample_1": cast(SectionMsiImage, section_1),
+            "sample_2": cast(SectionMsiImage, section_2),
+        },
+    )
+    sample_collection = SampleCollection(samples, species_order=list(images.keys()))
+
+    written_path = sample_collection.save_to_pickle(
+        tmp_path / "export.pkl",
+        species_ids=["A [M+H]+"],
+        image_type=ImageType.raw,
+    )
+
+    with open(written_path, "rb") as file:
+        exported = pickle.load(file)
+
+    assert list(exported.keys()) == ["sample_1", "sample_2"]
+    assert list(exported["sample_1"].keys()) == ["A [M+H]+"]
+    assert list(exported["sample_2"].keys()) == ["A [M+H]+"]
+    np.testing.assert_array_equal(exported["sample_1"]["A [M+H]+"], images["A [M+H]+"])
+    np.testing.assert_array_equal(
+        exported["sample_2"]["A [M+H]+"],
+        images["A [M+H]+"] + 100.0,
+    )

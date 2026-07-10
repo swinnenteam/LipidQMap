@@ -849,33 +849,72 @@ class SampleCollection:
         max_value = None if max_value == 0 else max_value
         return max_value
 
-    def save_to_pickle(self, path) -> None:
+    def save_to_pickle(
+        self,
+        path: str | os.PathLike,
+        *,
+        species_ids: Sequence[str] | None = None,
+        image_type: ImageType = ImageType.quant,
+    ) -> Path:
         """
-        Saves a pickle file for each sample in self.samples.
+        Saves a pickle file with the requested images.
 
-        For each key in self.samples, this function creates a pickle file named <key>.pkl in the provided
-        directory. Only the 'quant' dictionary from each SectionImage is saved, and any key/value pair in
-        that dictionary where the value is None is omitted.
+        For one loaded sample, the pickle payload is the image dictionary directly. For multiple loaded
+        samples, the payload is a dictionary mapping sample ID to that sample's image dictionary. Any
+        key/value pair where the value is None is omitted.
 
         Args:
-            path (str): The directory where the pickle files should be saved.
+            path: The pickle file path. A ``.pkl`` suffix is appended automatically when missing.
+            species_ids: Optional ordered list of species IDs to export. If omitted, every image of the
+                requested type is considered.
+            image_type: Type of image dictionary to export.
         """
-        # Ensure the directory exists
-        os.makedirs(path, exist_ok=True)
+        filepath = self._ensure_pickle_suffix(Path(path))
+        filepath.parent.mkdir(parents=True, exist_ok=True)
 
+        sample_payloads: dict[str, dict[str, npt.NDArray | None]] = {}
         for key, section_image in self.samples.items():
-            # Filter out any entries with None values from the quant dictionary
-            quant_filtered = {k: v for k, v in section_image.quant.items() if v is not None}
+            image_dict = self._image_dict_for_type(section_image, image_type)
+            ids_to_export = list(species_ids) if species_ids is not None else list(image_dict.keys())
+            image_filtered = {
+                species_id: image_dict.get(species_id)
+                for species_id in ids_to_export
+                if image_dict.get(species_id) is not None
+            }
+            sample_payloads[key] = image_filtered
 
-            # Define the filename using the key (add .pkl extension)
-            filename = f"{key}.pkl"
-            filepath = os.path.join(path, filename)
+        payload: dict[str, npt.NDArray | None] | dict[str, dict[str, npt.NDArray | None]]
+        if len(sample_payloads) == 1:
+            payload = next(iter(sample_payloads.values()))
+        else:
+            payload = sample_payloads
 
-            try:
-                with open(filepath, "wb") as file:
-                    pickle.dump(quant_filtered, file)
-            except Exception as e:
-                raise Exception("Error", f"An error occurred while saving the file:\n{e}")
+        try:
+            with open(filepath, "wb") as file:
+                pickle.dump(payload, file)
+        except Exception as e:
+            raise Exception("Error", f"An error occurred while saving the file:\n{e}")
+
+        return filepath
+
+    @staticmethod
+    def _ensure_pickle_suffix(path: Path) -> Path:
+        if path.suffix.lower() != ".pkl":
+            return path.with_suffix(".pkl")
+        return path
+
+    @staticmethod
+    def _image_dict_for_type(
+        section_image: SectionMsiImage,
+        image_type: ImageType,
+    ) -> dict[str, npt.NDArray | None]:
+        match image_type:
+            case ImageType.raw:
+                return section_image.raw
+            case ImageType.isotope:
+                return section_image.isotope
+            case ImageType.quant:
+                return section_image.quant
 
     def __iter__(self):
         return iter(self.samples)
