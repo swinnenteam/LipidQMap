@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import threading
 from contextlib import suppress
 from dataclasses import dataclass
@@ -73,7 +74,7 @@ def export_score_spot_images(
             raise ScilsExportError(str(exc)) from exc
 
         dataset = session.dataset_proxy
-        region_spots = dataset.get_region_spots("Regions")
+        region_spots = _region_spots_for_sample(dataset, section, sample_id)
         frame = _select_spot_frame(region_spots, section, preferred_sample_label=sample_id)
         coord_transform = _fit_coordinate_transform(frame, section)
         spot_ids = _spot_ids_from_frame(frame)
@@ -145,6 +146,50 @@ def _get_section(samples: SampleCollection, sample_id: str) -> SectionMsiImage:
         return samples.samples[sample_id]
     except KeyError as exc:
         raise ScilsExportError(f"Sample '{sample_id}' is not available.") from exc
+
+
+def _region_spots_for_sample(
+    dataset: Any,
+    section: SectionMsiImage,
+    sample_id: str,
+) -> Any:
+    """Prefer a named SCiLS measurement region over the all-spots root."""
+    try:
+        region_tree = dataset.get_region_tree()
+        regions = region_tree.get_all_regions()
+    except (AttributeError, RuntimeError, ValueError) as exc:
+        logger.debug("Could not inspect the SCiLS region tree: %s", exc)
+    else:
+        sample_key = _measurement_name_key(sample_id)
+        matches = [
+            region
+            for region in regions
+            if getattr(region, "id", None) != "Regions"
+            and _measurement_name_key(getattr(region, "name", "")) == sample_key
+        ]
+        if matches:
+            expected_count = len(section.coordinates)
+            region = min(
+                matches,
+                key=lambda item: abs(
+                    len(getattr(item, "spots", {}).get("spot_id", ())) - expected_count
+                ),
+            )
+            logger.debug(
+                "Matched sample '%s' to SCiLS region '%s' (%s spots)",
+                sample_id,
+                getattr(region, "name", "<unnamed>"),
+                len(region.spots.get("spot_id", ())),
+            )
+            return region.spots
+
+    return dataset.get_region_spots("Regions")
+
+
+def _measurement_name_key(label: Any) -> tuple[str, ...]:
+    leaf = str(label).replace("\\", "/").rsplit("/", 1)[-1]
+    tokens = re.findall(r"[a-z]+|\d+", leaf.casefold())
+    return tuple(str(int(token)) if token.isdigit() else token for token in tokens)
 
 
 def _load_local_session():
@@ -377,23 +422,86 @@ def _fit_coordinate_transform(
         pixel_coords = np.asarray(section.coordinates[:, :2], dtype=np.float64)
     except Exception:
         return None
-    if scils_coords.shape[0] != pixel_coords.shape[0] or scils_coords.shape[0] < 3:
+    if scils_coords.shape[0] < 2 or pixel_coords.shape[0] < 2:
         return None
 
-    design = np.column_stack(
-        [
-            scils_coords[:, 0],
-            scils_coords[:, 1],
-            np.ones(scils_coords.shape[0], dtype=np.float64),
-        ]
+    x_transform = _axis_endpoint_transform(scils_coords[:, 0], pixel_coords[:, 0])
+    y_transform = _axis_endpoint_transform(scils_coords[:, 1], pixel_coords[:, 1])
+    if x_transform is None or y_transform is None:
+        return None
+
+    target_set = set(map(tuple, np.rint(pixel_coords).astype(np.int64).tolist()))
+    preferred_x_sign = _stage_axis_transform_sign(section, axis=0)
+    preferred_y_sign = _stage_axis_transform_sign(section, axis=1)
+    best: tuple[np.ndarray, np.ndarray] | None = None
+    best_score = (-1, -1)
+    for x_scale, x_offset in x_transform:
+        for y_scale, y_offset in y_transform:
+            px = np.rint(scils_coords[:, 0] * x_scale + x_offset).astype(np.int64)
+            py = np.rint(scils_coords[:, 1] * y_scale + y_offset).astype(np.int64)
+            overlap = sum((int(x), int(y)) in target_set for x, y in zip(px, py))
+            direction_matches = int(
+                preferred_x_sign is not None and np.sign(x_scale) == preferred_x_sign
+            ) + int(preferred_y_sign is not None and np.sign(y_scale) == preferred_y_sign)
+            score = (overlap, direction_matches)
+            if score > best_score:
+                best_score = score
+                best = (
+                    np.array([x_scale, 0.0, x_offset], dtype=np.float64),
+                    np.array([0.0, y_scale, y_offset], dtype=np.float64),
+                )
+
+    if best is not None:
+        logger.debug(
+            "Fitted SCiLS coordinate transform by geometry (%s/%s coordinates overlap)",
+            best_score[0],
+            scils_coords.shape[0],
+        )
+    return best
+
+
+def _stage_axis_transform_sign(section: SectionMsiImage, axis: int) -> float | None:
+    stage_coords = getattr(section, "stage_coordinates", None)
+    if stage_coords is None:
+        return None
+    stage = np.asarray(stage_coords, dtype=np.float64)
+    pixels = np.asarray(section.coordinates, dtype=np.float64)
+    if (
+        stage.ndim != 2
+        or pixels.ndim != 2
+        or stage.shape[0] != pixels.shape[0]
+        or stage.shape[1] <= axis
+        or pixels.shape[1] <= axis
+    ):
+        return None
+    valid = np.isfinite(stage[:, axis]) & np.isfinite(pixels[:, axis])
+    if np.count_nonzero(valid) < 2:
+        return None
+    covariance = np.cov(stage[valid, axis], pixels[valid, axis])[0, 1]
+    if not np.isfinite(covariance) or covariance == 0:
+        return None
+    return float(np.sign(covariance))
+
+
+def _axis_endpoint_transform(
+    source: np.ndarray,
+    target: np.ndarray,
+) -> tuple[tuple[float, float], tuple[float, float]] | None:
+    source_min = float(np.min(source))
+    source_max = float(np.max(source))
+    target_min = float(np.min(target))
+    target_max = float(np.max(target))
+    source_span = source_max - source_min
+    target_span = target_max - target_min
+    if source_span == 0 or target_span == 0:
+        return None
+
+    forward_scale = target_span / source_span
+    reverse_scale = -forward_scale
+    return (
+        (forward_scale, target_min - source_min * forward_scale),
+        (reverse_scale, target_max - source_min * reverse_scale),
     )
-    try:
-        coeff_x, *_ = np.linalg.lstsq(design, pixel_coords[:, 0], rcond=None)
-        coeff_y, *_ = np.linalg.lstsq(design, pixel_coords[:, 1], rcond=None)
-    except np.linalg.LinAlgError:
-        return None
-
-    return coeff_x, coeff_y
 
 
 def _apply_coordinate_transform(
