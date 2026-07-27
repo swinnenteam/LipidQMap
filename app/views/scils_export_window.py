@@ -13,7 +13,6 @@ from app.msi_data import ImageType, SampleCollection
 from app.scils_export import (
     ScilsExportError,
     ScilsExportReport,
-    ScilsExportUnavailableError,
     _image_type_label,
     export_score_spot_images,
     write_aggregated_features,
@@ -188,9 +187,41 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         )
         self._set_busy_state(True, total_steps)
 
+        try:
+            self._export_selected(
+                dataset_path=dataset_path,
+                sample_ids=sample_ids,
+                species_to_export=species_to_export,
+                selected_types=selected_types,
+                per_sample_steps=per_sample_steps,
+                total_steps=total_steps,
+            )
+        except ScilsExportError as error:
+            QMessageBox.critical(
+                self,
+                "Export to SCiLS",
+                f"{error}\n\nThe export can be retried after the SCiLS connection or license "
+                "becomes available again.",
+            )
+        finally:
+            self._set_busy_state(False)
+
+    def _export_selected(
+        self,
+        *,
+        dataset_path: Path,
+        sample_ids: list[str],
+        species_to_export: list[str],
+        selected_types: list[ImageType],
+        per_sample_steps: int,
+        total_steps: int,
+    ) -> None:
+        """Run the selected export, allowing the dialog wrapper to recover on failure."""
+        if self.samples is None:
+            raise ScilsExportError("No samples are loaded for export.")
+
         reports: list[tuple[ImageType, ScilsExportReport]] = []
         progress_completed = 0
-        had_error = False
 
         for image_type in selected_types:
             aggregate: dict[str, list[tuple[list[int], list[float]]]] = {}
@@ -205,32 +236,19 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
                     self._update_progress(absolute, total_steps)
                     QApplication.processEvents()
 
-                try:
-                    report = export_score_spot_images(
-                        dataset_path=dataset_path,
-                        samples=self.samples,
-                        sample_id=sample_id,
-                        species_ids=species_to_export,
-                        image_type=image_type,
-                        database=self.database,
-                        progress_callback=progress_callback,
-                        feature_aggregate=aggregate,
-                    )
-                except ScilsExportUnavailableError as error:
-                    QMessageBox.critical(self, "Export to SCiLS", str(error))
-                    had_error = True
-                    break
-                except ScilsExportError as error:
-                    QMessageBox.critical(self, "Export to SCiLS", str(error))
-                    had_error = True
-                    break
-                else:
-                    skipped_species.extend(report.skipped_species)
-                    progress_completed += per_sample_steps
-                    self._update_progress(progress_completed, total_steps)
-
-            if had_error:
-                break
+                report = export_score_spot_images(
+                    dataset_path=dataset_path,
+                    samples=self.samples,
+                    sample_id=sample_id,
+                    species_ids=species_to_export,
+                    image_type=image_type,
+                    database=self.database,
+                    progress_callback=progress_callback,
+                    feature_aggregate=aggregate,
+                )
+                skipped_species.extend(report.skipped_species)
+                progress_completed += per_sample_steps
+                self._update_progress(progress_completed, total_steps)
 
             report = write_aggregated_features(
                 dataset_path=dataset_path,
@@ -242,12 +260,10 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
             reports.append((image_type, report))
             progress_completed += 1
             self._update_progress(progress_completed, total_steps)
-        else:
-            if reports:
-                self._show_summary(reports, dataset_path)
-                self.close()
 
-        self._set_busy_state(False)
+        if reports:
+            self._show_summary(reports, dataset_path)
+            self.close()
 
     def _species_ids_for_export(self) -> list[str]:
         base_ids = self._base_species_ids()
