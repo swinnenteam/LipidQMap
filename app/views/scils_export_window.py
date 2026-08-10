@@ -67,6 +67,7 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         self.scils_progressbar.setRange(0, 1)
         self.scils_progressbar.setValue(0)
         self.scils_progressbar.setVisible(True)
+        self._update_status("Ready to export.", process_events=False)
         self.connect_signals_slots()
 
     def connect_signals_slots(self) -> None:
@@ -101,7 +102,9 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         self.database = database
         self.species_ids = list(species_ids)
         self.all_species_ids = (
-            list(all_species_ids) if all_species_ids is not None else list(self.species_ids)
+            list(all_species_ids)
+            if all_species_ids is not None
+            else list(self.species_ids)
         )
 
         self.quant_checkbox.setChecked(True)
@@ -110,6 +113,7 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         self.selected_only_checkbox.setChecked(True)
         self._reset_adduct_selection()
         self.lineEdit.clear()
+        self._update_status("Ready to export.", process_events=False)
 
         if not self.all_species_ids:
             QMessageBox.information(
@@ -180,13 +184,10 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
             return
 
         per_sample_steps = len(species_to_export)
-        total_steps = (
-            per_sample_steps * len(sample_ids) * len(selected_types) + len(selected_types)
-            if per_sample_steps and selected_types
-            else len(selected_types)
-        )
+        total_steps = per_sample_steps * (len(sample_ids) + 1) * len(selected_types)
         self._set_busy_state(True, total_steps)
 
+        failed = False
         try:
             self._export_selected(
                 dataset_path=dataset_path,
@@ -197,6 +198,8 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
                 total_steps=total_steps,
             )
         except ScilsExportError as error:
+            failed = True
+            self._update_status("Export failed. Resolve the problem and try again.")
             QMessageBox.critical(
                 self,
                 "Export to SCiLS",
@@ -204,7 +207,7 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
                 "becomes available again.",
             )
         finally:
-            self._set_busy_state(False)
+            self._set_busy_state(False, keep_message=failed)
 
     def _export_selected(
         self,
@@ -244,11 +247,21 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
                     image_type=image_type,
                     database=self.database,
                     progress_callback=progress_callback,
+                    status_callback=self._update_status,
                     feature_aggregate=aggregate,
                 )
                 skipped_species.extend(report.skipped_species)
                 progress_completed += per_sample_steps
                 self._update_progress(progress_completed, total_steps)
+
+            def write_progress_callback(
+                current: int, total: int, *, _offset: int = progress_completed
+            ) -> None:
+                write_total = max(total, 1)
+                write_current = max(0, min(current, write_total))
+                scaled = round(write_current * per_sample_steps / write_total)
+                self._update_progress(_offset + scaled, total_steps)
+                QApplication.processEvents()
 
             report = write_aggregated_features(
                 dataset_path=dataset_path,
@@ -256,12 +269,15 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
                 image_type=image_type,
                 aggregate=aggregate,
                 skipped_species=skipped_species,
+                progress_callback=write_progress_callback,
+                status_callback=self._update_status,
             )
             reports.append((image_type, report))
-            progress_completed += 1
+            progress_completed += per_sample_steps
             self._update_progress(progress_completed, total_steps)
 
         if reports:
+            self._update_status("Export complete.")
             self._show_summary(reports, dataset_path)
             self.close()
 
@@ -294,13 +310,19 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         if self.database is not None:
             specie = self.database.species.get(species_id)
         if specie is not None:
-            return specie.ion_mode == IonMode.summed and specie.adduct in {"(+)", "(-)", ""}
+            return specie.ion_mode == IonMode.summed and specie.adduct in {
+                "(+)",
+                "(-)",
+                "",
+            }
         return species_id.endswith(" (+)") or species_id.endswith(" (-)")
 
     def _select_dataset(self) -> Path | None:
         text = self.lineEdit.text().strip()
         if not text:
-            QMessageBox.warning(self, "Export to SCiLS", "Please select a SCiLS .slx file.")
+            QMessageBox.warning(
+                self, "Export to SCiLS", "Please select a SCiLS .slx file."
+            )
             return None
         path = Path(text)
         if not path.exists():
@@ -379,8 +401,11 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
             self.scils_progressbar.setRange(0, total_steps)
             self.scils_progressbar.setValue(0)
             self.scils_progressbar.setVisible(True)
-        elif not keep_message:
+            self._update_status("Starting SCiLS export...")
+        else:
             self._reset_progress()
+            if not keep_message:
+                self._update_status("Ready to export.")
 
     def _reset_progress(self) -> None:
         self.scils_progressbar.setRange(0, 1)
@@ -393,3 +418,9 @@ class ScilsExportWindow(QDialog, Ui_MsiExportScilsDialog):
         if self.scils_progressbar.maximum() != total:
             self.scils_progressbar.setRange(0, total)
         self.scils_progressbar.setValue(min(current, total))
+
+    def _update_status(self, message: str, *, process_events: bool = True) -> None:
+        """Show the current export phase and repaint before a blocking API call."""
+        self.label_scils_status.setText(message)
+        if process_events:
+            QApplication.processEvents()

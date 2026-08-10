@@ -222,6 +222,37 @@ def test_prepare_value_sampler_applies_coordinate_transform() -> None:
     )
 
 
+def test_prepare_value_sampler_prefers_transform_over_coincidental_spot_ids() -> None:
+    frame = pd.DataFrame(
+        {
+            "spot_id": [0, 1],
+            "x": [1, 2],
+            "y": [1, 1],
+        }
+    )
+    section = SimpleNamespace(
+        coordinates=np.array([[2, 1, 0], [1, 1, 0]], dtype=np.int32),
+        shape=(1, 2),
+        _spot_index_lookup={0: 0, 1: 1},
+    )
+    identity_transform = (
+        np.array([1.0, 0.0, 0.0]),
+        np.array([0.0, 1.0, 0.0]),
+    )
+
+    sampler = _prepare_value_sampler(
+        frame,
+        section,
+        coord_transform=identity_transform,
+    )
+    image = np.array([[10.0, 20.0]], dtype=np.float32)
+
+    np.testing.assert_array_equal(
+        sampler(image),
+        np.array([10.0, 20.0], dtype=np.float32),
+    )
+
+
 def test_region_spots_for_sample_matches_normalized_measurement_name() -> None:
     expected_spots = {
         "spot_id": (10, 11),

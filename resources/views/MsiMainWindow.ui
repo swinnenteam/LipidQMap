@@ -343,6 +343,9 @@
     <property name="autoRaise">
      <bool>true</bool>
     </property>
+    <property name="popupMode">
+     <enum>QToolButton::InstantPopup</enum>
+    </property>
    </widget>
    <addaction name="action_open_save_dialog"/>
    <addaction name="separator"/>
@@ -558,22 +561,5 @@
  <resources>
   <include location="../resources.qrc"/>
  </resources>
- <connections>
-  <connection>
-   <sender>tool_button_open_files</sender>
-   <signal>clicked()</signal>
-   <receiver>menu_open_files</receiver>
-   <slot>exec()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>0</x>
-     <y>0</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>0</x>
-     <y>0</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

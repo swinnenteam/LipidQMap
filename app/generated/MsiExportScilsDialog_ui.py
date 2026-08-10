@@ -24,7 +24,7 @@ class Ui_MsiExportScilsDialog(object):
     def setupUi(self, MsiExportScilsDialog):
         if not MsiExportScilsDialog.objectName():
             MsiExportScilsDialog.setObjectName(u"MsiExportScilsDialog")
-        MsiExportScilsDialog.resize(366, 313)
+        MsiExportScilsDialog.resize(366, 337)
         self.verticalLayout = QVBoxLayout(MsiExportScilsDialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.label = QLabel(MsiExportScilsDialog)
@@ -100,6 +100,12 @@ class Ui_MsiExportScilsDialog(object):
 
         self.verticalLayout.addWidget(self.scils_progressbar)
 
+        self.label_scils_status = QLabel(MsiExportScilsDialog)
+        self.label_scils_status.setObjectName(u"label_scils_status")
+        self.label_scils_status.setWordWrap(True)
+
+        self.verticalLayout.addWidget(self.label_scils_status)
+
         self.layout_buttons = QHBoxLayout()
         self.layout_buttons.setObjectName(u"layout_buttons")
         self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
@@ -139,6 +145,7 @@ class Ui_MsiExportScilsDialog(object):
         self.combo_box_adducts.setItemText(1, QCoreApplication.translate("MsiExportScilsDialog", u"Adducts", None))
         self.combo_box_adducts.setItemText(2, QCoreApplication.translate("MsiExportScilsDialog", u"Summed", None))
 
+        self.label_scils_status.setText(QCoreApplication.translate("MsiExportScilsDialog", u"Ready to export.", None))
         self.button_cancel.setText(QCoreApplication.translate("MsiExportScilsDialog", u"Cancel", None))
         self.button_export.setText(QCoreApplication.translate("MsiExportScilsDialog", u"Export", None))
     # retranslateUi

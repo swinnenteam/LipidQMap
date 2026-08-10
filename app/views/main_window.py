@@ -67,6 +67,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._queued_summed_update_ids: set[str] = set()
 
         self.setupUi(self)
+        self.tool_button_open_files.setMenu(self.menu_open_files)
         self.image_canvas_raw = MplCanvas(
             parent=self, canvas_type=ImageType.raw, config=self.config
         )

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>366</width>
-    <height>313</height>
+    <height>337</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -124,6 +124,16 @@
     <widget class="QProgressBar" name="scils_progressbar">
      <property name="value">
       <number>0</number>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_scils_status">
+     <property name="text">
+      <string>Ready to export.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
      </property>
     </widget>
    </item>

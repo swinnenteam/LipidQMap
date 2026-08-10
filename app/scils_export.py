@@ -45,9 +45,13 @@ def export_score_spot_images(
     image_type: ImageType,
     database: LipidDB | None = None,
     progress_callback: Callable[[int, int], None] | None = None,
+    status_callback: Callable[[str], None] | None = None,
     feature_aggregate: dict[str, list[tuple[list[int], list[float]]]] | None = None,
 ) -> ScilsExportReport:
     """Write processed ion images to a SCiLS dataset as score spot images."""
+
+    if status_callback:
+        status_callback(f"Connecting to SCiLS for sample '{sample_id}'...")
 
     section = _get_section(samples, sample_id)
     LocalSession = _load_local_session()
@@ -73,12 +77,18 @@ def export_score_spot_images(
         except RuntimeError as exc:  # dataset locked / server launch failure
             raise ScilsExportError(str(exc)) from exc
 
+        if status_callback:
+            status_callback(f"Inspecting SCiLS coordinates for sample '{sample_id}'...")
         dataset = session.dataset_proxy
         region_spots = _region_spots_for_sample(dataset, section, sample_id)
-        frame = _select_spot_frame(region_spots, section, preferred_sample_label=sample_id)
+        frame = _select_spot_frame(
+            region_spots, section, preferred_sample_label=sample_id
+        )
         coord_transform = _fit_coordinate_transform(frame, section)
         spot_ids = _spot_ids_from_frame(frame)
-        value_sampler = _prepare_value_sampler(frame, section, coord_transform=coord_transform)
+        value_sampler = _prepare_value_sampler(
+            frame, section, coord_transform=coord_transform
+        )
         feature_table = dataset.feature_table
         feature_list_name = f"LipidQMap - {sample_id} ({_image_type_label(image_type)})"
         feature_list_id: int | None = None
@@ -90,6 +100,12 @@ def export_score_spot_images(
         scils_spot_ids = spot_ids.astype(np.int64, copy=False).tolist()
 
         for index, species_id in enumerate(species_ids, start=1):
+            species_name = _species_display_name(database, species_id)
+            if status_callback:
+                status_callback(
+                    f"Preparing {_image_type_label(image_type).lower()} feature "
+                    f"{index} of {total_species}: {species_name}"
+                )
             image = section.get(image_type, species_id)
             if image is None:
                 skipped.append(species_id)
@@ -103,8 +119,6 @@ def export_score_spot_images(
                 raise
             except Exception as exc:  # pragma: no cover - defensive
                 raise ScilsExportError(str(exc)) from exc
-
-            species_name = _species_display_name(database, species_id)
 
             if feature_aggregate is None:
                 try:
@@ -301,7 +315,9 @@ def _candidate_frames(
     df: ImageFrame, preferred_sample_label: str | None
 ) -> list[tuple[Any, ImageFrame]]:
     grouping_columns = [
-        col for col in ("sample_id", "sample", "run", "measurement", "raster") if col in df.columns
+        col
+        for col in ("sample_id", "sample", "run", "measurement", "raster")
+        if col in df.columns
     ]
     if not grouping_columns:
         logger.debug(
@@ -442,7 +458,9 @@ def _fit_coordinate_transform(
             overlap = sum((int(x), int(y)) in target_set for x, y in zip(px, py))
             direction_matches = int(
                 preferred_x_sign is not None and np.sign(x_scale) == preferred_x_sign
-            ) + int(preferred_y_sign is not None and np.sign(y_scale) == preferred_y_sign)
+            ) + int(
+                preferred_y_sign is not None and np.sign(y_scale) == preferred_y_sign
+            )
             score = (overlap, direction_matches)
             if score > best_score:
                 best_score = score
@@ -536,6 +554,8 @@ def write_aggregated_features(
     image_type: ImageType,
     aggregate: dict[str, list[tuple[list[int], list[float]]]],
     skipped_species: list[str] | None = None,
+    progress_callback: Callable[[int, int], None] | None = None,
+    status_callback: Callable[[str], None] | None = None,
 ) -> ScilsExportReport:
     if not aggregate:
         return ScilsExportReport(
@@ -545,31 +565,46 @@ def write_aggregated_features(
             feature_list_id=-1,
         )
 
+    if status_callback:
+        status_callback(
+            f"Connecting to SCiLS to write {_image_type_label(image_type).lower()} features..."
+        )
+
     LocalSession = _load_local_session()
     session: Any | None = None
     exported = 0
 
     try:
         session = LocalSession(filename=str(dataset_path))
+        if status_callback:
+            status_callback(f"Creating SCiLS feature list '{feature_list_label}'...")
         feature_table = session.dataset_proxy.feature_table
         feature_list_id = feature_table.create_empty_feature_list(
             feature_list_label,
             allow_duplicate_name=True,
         )
-        for species_name, batches in aggregate.items():
-            spot_ids, values = _merge_feature_batches(batches)
-            if not spot_ids:
-                continue
-            try:
-                feature_table.write_external_feature(
-                    feature_list_id,
-                    spot_ids,
-                    values,
-                    species_name,
+        total_features = len(aggregate)
+        for index, (species_name, batches) in enumerate(aggregate.items(), start=1):
+            if status_callback:
+                status_callback(
+                    f"Writing feature {index} of {total_features} to SCiLS: {species_name}"
                 )
-            except Exception as exc:  # pragma: no cover - relies on SCiLS runtime
-                raise ScilsExportError(str(exc)) from exc
-            exported += 1
+            spot_ids, values = _merge_feature_batches(batches)
+            if spot_ids:
+                try:
+                    feature_table.write_external_feature(
+                        feature_list_id,
+                        spot_ids,
+                        values,
+                        species_name,
+                    )
+                except Exception as exc:  # pragma: no cover - relies on SCiLS runtime
+                    raise ScilsExportError(str(exc)) from exc
+                exported += 1
+            if progress_callback:
+                progress_callback(index, total_features)
+        if status_callback:
+            status_callback("Finalizing the SCiLS export...")
     finally:
         _shutdown_session_async(session)
 
@@ -611,7 +646,9 @@ def _sorted_spot_ids_from_frame(frame: ImageFrame) -> np.ndarray:
     return spot_ids
 
 
-def _first_missing_spot_id(scils_spot_ids: np.ndarray, lookup: dict[int, int]) -> int | None:
+def _first_missing_spot_id(
+    scils_spot_ids: np.ndarray, lookup: dict[int, int]
+) -> int | None:
     for spot_id in scils_spot_ids:
         if lookup.get(int(spot_id)) is None:
             return int(spot_id)
@@ -624,6 +661,27 @@ def _prepare_value_sampler(
     *,
     coord_transform: tuple[np.ndarray, np.ndarray] | None = None,
 ):
+    if not {"x", "y"}.issubset(frame.columns):
+        raise ScilsExportError("SCiLS dataset is missing required coordinate columns.")
+
+    x_coords = frame["x"].to_numpy(dtype=np.float64, copy=False)
+    y_coords = frame["y"].to_numpy(dtype=np.float64, copy=False)
+    if coord_transform is not None:
+        # SCiLS spot IDs and imzML spectrum IDs are independent namespaces. Their
+        # numeric values can overlap even when they refer to different pixels, so
+        # a verified physical-coordinate transform must take precedence.
+        x_coords, y_coords = _apply_coordinate_transform(
+            x_coords,
+            y_coords,
+            coord_transform,
+            section.shape,
+        )
+
+        def sampler(image: np.ndarray) -> np.ndarray:
+            return _sample_by_coords(image, x_coords, y_coords)
+
+        return sampler
+
     spot_lookup = getattr(section, "_spot_index_lookup", None)
     if spot_lookup and "spot_id" in frame.columns:
         scils_spot_ids = frame["spot_id"].to_numpy(copy=False)
@@ -644,21 +702,8 @@ def _prepare_value_sampler(
             missing,
         )
 
-    if not {"x", "y"}.issubset(frame.columns):
-        raise ScilsExportError("SCiLS dataset is missing required coordinate columns.")
-
-    x_coords = frame["x"].to_numpy(dtype=np.float64, copy=False)
-    y_coords = frame["y"].to_numpy(dtype=np.float64, copy=False)
-    if coord_transform is not None:
-        x_coords, y_coords = _apply_coordinate_transform(
-            x_coords,
-            y_coords,
-            coord_transform,
-            section.shape,
-        )
-    else:
-        x_coords = x_coords.astype(np.int32, copy=False)
-        y_coords = y_coords.astype(np.int32, copy=False)
+    x_coords = x_coords.astype(np.int32, copy=False)
+    y_coords = y_coords.astype(np.int32, copy=False)
 
     def sampler(image: np.ndarray) -> np.ndarray:
         return _sample_by_coords(image, x_coords, y_coords)
@@ -666,7 +711,9 @@ def _prepare_value_sampler(
     return sampler
 
 
-def _sample_by_coords(image: np.ndarray, x_coords: np.ndarray, y_coords: np.ndarray) -> np.ndarray:
+def _sample_by_coords(
+    image: np.ndarray, x_coords: np.ndarray, y_coords: np.ndarray
+) -> np.ndarray:
     if image is None or image.ndim != 2:
         raise ScilsExportError("Only 2D ion images can be exported to SCiLS.")
     try:
@@ -682,7 +729,9 @@ def _sample_by_coords(image: np.ndarray, x_coords: np.ndarray, y_coords: np.ndar
             int(np.min(y_coords)),
             int(np.max(y_coords)),
         )
-        raise ScilsExportError("Image dimensions do not match SCiLS dataset coordinates.") from exc
+        raise ScilsExportError(
+            "Image dimensions do not match SCiLS dataset coordinates."
+        ) from exc
     return np.ascontiguousarray(np.asarray(values, dtype=np.float32))
 
 
@@ -699,7 +748,9 @@ def _sample_by_spot_ids(
     for idx, spot_id in enumerate(scils_spot_ids):
         sample_idx = lookup.get(int(spot_id))
         if sample_idx is None:
-            raise ScilsExportError(f"Spot ID '{spot_id}' is not present in the loaded imzML data.")
+            raise ScilsExportError(
+                f"Spot ID '{spot_id}' is not present in the loaded imzML data."
+            )
         x, y = coords[sample_idx, 0], coords[sample_idx, 1]
         values[idx] = _sample_pixel(image, x, y)
     return np.ascontiguousarray(values)
@@ -717,7 +768,9 @@ def _sample_pixel(image: np.ndarray, x: int, y: int) -> float:
             x,
             y,
         )
-        raise ScilsExportError("Image dimensions do not match SCiLS dataset coordinates.") from exc
+        raise ScilsExportError(
+            "Image dimensions do not match SCiLS dataset coordinates."
+        ) from exc
 
 
 def _sanitize_values(values: np.ndarray) -> np.ndarray:

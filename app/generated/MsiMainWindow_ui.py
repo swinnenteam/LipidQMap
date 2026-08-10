@@ -276,6 +276,7 @@ class Ui_MainWindow(object):
         self.tool_button_open_files.setObjectName(u"tool_button_open_files")
         self.tool_button_open_files.setIcon(icon)
         self.tool_button_open_files.setAutoRaise(True)
+        self.tool_button_open_files.setPopupMode(QToolButton.InstantPopup)
         self.toolBar.addWidget(self.tool_button_open_files)
         MainWindow.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
 
@@ -323,7 +324,6 @@ class Ui_MainWindow(object):
         self.toolBar.addAction(self.action_open_about_dialog)
 
         self.retranslateUi(MainWindow)
-        self.tool_button_open_files.clicked.connect(self.menu_open_files.exec)
 
         self.tab_widget.setCurrentIndex(0)
         self.tab_widget_charts.setCurrentIndex(0)
