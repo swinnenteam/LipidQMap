@@ -61,7 +61,20 @@
           <widget class="QListWidget" name="standards_list_view"/>
          </item>
          <item>
-          <widget class="QLineEdit" name="quantity_line_edit"/>
+          <widget class="LocaleDoubleSpinBox" name="quantity_spinbox">
+           <property name="keyboardTracking">
+            <bool>false</bool>
+           </property>
+           <property name="decimals">
+            <number>4</number>
+           </property>
+           <property name="maximum">
+            <double>1000000000.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.000100000000000</double>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>
@@ -104,7 +117,7 @@
               </widget>
              </item>
              <item row="3" column="1">
-              <widget class="QDoubleSpinBox" name="spinbox_final_mix_volume">
+              <widget class="LocaleDoubleSpinBox" name="spinbox_final_mix_volume">
                <property name="decimals">
                 <number>3</number>
                </property>
@@ -135,7 +148,7 @@
               </widget>
              </item>
              <item row="4" column="1">
-              <widget class="QDoubleSpinBox" name="spinbox_molecular_weight">
+              <widget class="LocaleDoubleSpinBox" name="spinbox_molecular_weight">
                <property name="decimals">
                 <number>3</number>
                </property>
@@ -145,7 +158,7 @@
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QDoubleSpinBox" name="spinbox_stock_conc">
+              <widget class="LocaleDoubleSpinBox" name="spinbox_stock_conc">
                <property name="minimumSize">
                 <size>
                  <width>80</width>
@@ -175,7 +188,7 @@
               </widget>
              </item>
              <item row="1" column="1">
-              <widget class="QDoubleSpinBox" name="spinbox_working_dilution_factor">
+              <widget class="LocaleDoubleSpinBox" name="spinbox_working_dilution_factor">
                <property name="maximum">
                 <double>100000.000000000000000</double>
                </property>
@@ -196,7 +209,7 @@
               </widget>
              </item>
              <item row="2" column="1">
-              <widget class="QDoubleSpinBox" name="spinbox_volume_working_stock">
+              <widget class="LocaleDoubleSpinBox" name="spinbox_volume_working_stock">
                <property name="decimals">
                 <number>0</number>
                </property>
@@ -361,7 +374,7 @@
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QDoubleSpinBox" name="spinbox_total_used_volume">
+              <widget class="LocaleDoubleSpinBox" name="spinbox_total_used_volume">
                <property name="minimumSize">
                 <size>
                  <width>80</width>
@@ -377,7 +390,7 @@
               </widget>
              </item>
              <item row="1" column="1">
-              <widget class="QDoubleSpinBox" name="spinbox_syringe_flow">
+              <widget class="LocaleDoubleSpinBox" name="spinbox_syringe_flow">
                <property name="decimals">
                 <number>3</number>
                </property>
@@ -387,7 +400,7 @@
               </widget>
              </item>
              <item row="2" column="1">
-              <widget class="QDoubleSpinBox" name="spinbox_drying_time">
+              <widget class="LocaleDoubleSpinBox" name="spinbox_drying_time">
                <property name="decimals">
                 <number>3</number>
                </property>
@@ -418,7 +431,7 @@
               </widget>
              </item>
              <item row="4" column="1">
-              <widget class="QDoubleSpinBox" name="spinbox_initial_equilibration">
+              <widget class="LocaleDoubleSpinBox" name="spinbox_initial_equilibration">
                <property name="decimals">
                 <number>3</number>
                </property>
@@ -564,6 +577,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>LocaleDoubleSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>app.widgets</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

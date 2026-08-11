@@ -15,11 +15,12 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QDoubleSpinBox,
-    QFrame, QGridLayout, QGroupBox, QHBoxLayout,
-    QLabel, QLineEdit, QListWidget, QListWidgetItem,
-    QPushButton, QSizePolicy, QSpacerItem, QSpinBox,
-    QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QFrame,
+    QGridLayout, QGroupBox, QHBoxLayout, QLabel,
+    QListWidget, QListWidgetItem, QPushButton, QSizePolicy,
+    QSpacerItem, QSpinBox, QVBoxLayout, QWidget)
+
+from app.widgets import LocaleDoubleSpinBox
 
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
@@ -68,10 +69,14 @@ class Ui_Dialog(object):
 
         self.verticalLayout_2.addWidget(self.standards_list_view)
 
-        self.quantity_line_edit = QLineEdit(self.groupBox)
-        self.quantity_line_edit.setObjectName(u"quantity_line_edit")
+        self.quantity_spinbox = LocaleDoubleSpinBox(self.groupBox)
+        self.quantity_spinbox.setObjectName(u"quantity_spinbox")
+        self.quantity_spinbox.setKeyboardTracking(False)
+        self.quantity_spinbox.setDecimals(4)
+        self.quantity_spinbox.setMaximum(1000000000.000000000000000)
+        self.quantity_spinbox.setSingleStep(0.000100000000000)
 
-        self.verticalLayout_2.addWidget(self.quantity_line_edit)
+        self.verticalLayout_2.addWidget(self.quantity_spinbox)
 
 
         self.horizontalLayout_3.addWidget(self.groupBox)
@@ -103,7 +108,7 @@ class Ui_Dialog(object):
 
         self.gridLayout_3.addWidget(self.label_25, 0, 0, 1, 1)
 
-        self.spinbox_final_mix_volume = QDoubleSpinBox(self.groupBox_2)
+        self.spinbox_final_mix_volume = LocaleDoubleSpinBox(self.groupBox_2)
         self.spinbox_final_mix_volume.setObjectName(u"spinbox_final_mix_volume")
         self.spinbox_final_mix_volume.setDecimals(3)
         self.spinbox_final_mix_volume.setMaximum(1000.000000000000000)
@@ -125,14 +130,14 @@ class Ui_Dialog(object):
 
         self.gridLayout_3.addWidget(self.label_31, 3, 0, 1, 1)
 
-        self.spinbox_molecular_weight = QDoubleSpinBox(self.groupBox_2)
+        self.spinbox_molecular_weight = LocaleDoubleSpinBox(self.groupBox_2)
         self.spinbox_molecular_weight.setObjectName(u"spinbox_molecular_weight")
         self.spinbox_molecular_weight.setDecimals(3)
         self.spinbox_molecular_weight.setMaximum(50000.000000000000000)
 
         self.gridLayout_3.addWidget(self.spinbox_molecular_weight, 4, 1, 1, 1)
 
-        self.spinbox_stock_conc = QDoubleSpinBox(self.groupBox_2)
+        self.spinbox_stock_conc = LocaleDoubleSpinBox(self.groupBox_2)
         self.spinbox_stock_conc.setObjectName(u"spinbox_stock_conc")
         self.spinbox_stock_conc.setMinimumSize(QSize(80, 0))
         self.spinbox_stock_conc.setDecimals(3)
@@ -150,7 +155,7 @@ class Ui_Dialog(object):
 
         self.gridLayout_3.addWidget(self.label_34, 4, 2, 1, 1)
 
-        self.spinbox_working_dilution_factor = QDoubleSpinBox(self.groupBox_2)
+        self.spinbox_working_dilution_factor = LocaleDoubleSpinBox(self.groupBox_2)
         self.spinbox_working_dilution_factor.setObjectName(u"spinbox_working_dilution_factor")
         self.spinbox_working_dilution_factor.setMaximum(100000.000000000000000)
 
@@ -166,7 +171,7 @@ class Ui_Dialog(object):
 
         self.gridLayout_3.addWidget(self.label_30, 2, 2, 1, 1)
 
-        self.spinbox_volume_working_stock = QDoubleSpinBox(self.groupBox_2)
+        self.spinbox_volume_working_stock = LocaleDoubleSpinBox(self.groupBox_2)
         self.spinbox_volume_working_stock.setObjectName(u"spinbox_volume_working_stock")
         self.spinbox_volume_working_stock.setDecimals(0)
         self.spinbox_volume_working_stock.setMaximum(10000.000000000000000)
@@ -295,7 +300,7 @@ class Ui_Dialog(object):
 
         self.gridLayout_2.addWidget(self.label_17, 1, 2, 1, 1)
 
-        self.spinbox_total_used_volume = QDoubleSpinBox(self.groupBox_2)
+        self.spinbox_total_used_volume = LocaleDoubleSpinBox(self.groupBox_2)
         self.spinbox_total_used_volume.setObjectName(u"spinbox_total_used_volume")
         self.spinbox_total_used_volume.setMinimumSize(QSize(80, 0))
         self.spinbox_total_used_volume.setDecimals(3)
@@ -303,14 +308,14 @@ class Ui_Dialog(object):
 
         self.gridLayout_2.addWidget(self.spinbox_total_used_volume, 0, 1, 1, 1)
 
-        self.spinbox_syringe_flow = QDoubleSpinBox(self.groupBox_2)
+        self.spinbox_syringe_flow = LocaleDoubleSpinBox(self.groupBox_2)
         self.spinbox_syringe_flow.setObjectName(u"spinbox_syringe_flow")
         self.spinbox_syringe_flow.setDecimals(3)
         self.spinbox_syringe_flow.setMaximum(10000.000000000000000)
 
         self.gridLayout_2.addWidget(self.spinbox_syringe_flow, 1, 1, 1, 1)
 
-        self.spinbox_drying_time = QDoubleSpinBox(self.groupBox_2)
+        self.spinbox_drying_time = LocaleDoubleSpinBox(self.groupBox_2)
         self.spinbox_drying_time.setObjectName(u"spinbox_drying_time")
         self.spinbox_drying_time.setDecimals(3)
         self.spinbox_drying_time.setMaximum(1000.000000000000000)
@@ -332,7 +337,7 @@ class Ui_Dialog(object):
 
         self.gridLayout_2.addWidget(self.label_22, 4, 0, 1, 1)
 
-        self.spinbox_initial_equilibration = QDoubleSpinBox(self.groupBox_2)
+        self.spinbox_initial_equilibration = LocaleDoubleSpinBox(self.groupBox_2)
         self.spinbox_initial_equilibration.setObjectName(u"spinbox_initial_equilibration")
         self.spinbox_initial_equilibration.setDecimals(3)
         self.spinbox_initial_equilibration.setMaximum(1000.000000000000000)

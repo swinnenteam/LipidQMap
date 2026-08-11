@@ -1,8 +1,14 @@
+import shutil
+
+import openpyxl
 import pandas as pd
 import pytest
 from molmass import Formula
 
 from app.database import (
+    AMOUNT_COL,
+    ID,
+    DatabaseEditor,
     DatabaseFactory,
     IonMode,
     LipidDB,
@@ -40,6 +46,31 @@ def test_load_database_negative() -> None:
         "tests/database/test_database.xlsx", ion_mode=IonMode.negative
     ).create_database()
     assert database.verify_ion_mode(ion_mode=IonMode.negative)
+
+
+def test_database_editor_numeric_amount_round_trip(tmp_path) -> None:
+    database_path = tmp_path / "database.xlsx"
+    shutil.copy2("tests/database/test_database.xlsx", database_path)
+
+    editor = DatabaseEditor(database_path)
+    standard_id = editor.get_standard_ids()[0]
+    editor.set_IS_amount(standard_id, 0.1234)
+    editor.save()
+
+    assert DatabaseEditor(database_path).get_IS_amount(standard_id) == pytest.approx(0.1234)
+
+    workbook = openpyxl.load_workbook(database_path, data_only=False)
+    worksheet = workbook.active
+    headers = [cell.value for cell in worksheet[1]]
+    id_column = headers.index(ID) + 1
+    amount_column = headers.index(AMOUNT_COL) + 1
+    row = next(
+        row
+        for row in range(2, worksheet.max_row + 1)
+        if worksheet.cell(row, id_column).value == standard_id
+    )
+    assert worksheet.cell(row, amount_column).value == pytest.approx(0.1234)
+    assert worksheet.cell(row, amount_column).data_type == "n"
 
 
 def test_load_database_column_missing() -> None:

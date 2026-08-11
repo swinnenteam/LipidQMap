@@ -2,12 +2,11 @@ import os
 from typing import Optional
 
 from PySide6.QtCore import QLocale, QSignalBlocker, Signal
-from PySide6.QtGui import QDoubleValidator
-from PySide6.QtWidgets import QMessageBox, QWidget
+from PySide6.QtWidgets import QDoubleSpinBox, QMessageBox, QWidget
 
 from app.config import Config, config_paths
 from app.database import DatabaseEditor
-from app.generated.MsiStandardCalculatorDialog_ui import Ui_Dialog
+from app.generated.MsiStandardCalculator_ui import Ui_Dialog
 from app.sprayer import SprayRun
 from app.views.imzml_import_window import fetch_db_list
 
@@ -26,18 +25,14 @@ class CalculatorWindow(QWidget, Ui_Dialog):
         self.db_writer: Optional[DatabaseEditor] = None
         self._last_valid_db_index: Optional[int] = None
         self.sprayrun: SprayRun
+        self._configure_numeric_locale()
         self.setup_combo_box()
         self.database_combo_box.currentIndexChanged.connect(self.database_selection_changed)
         self.standards_list_view.currentRowChanged.connect(self.standards_selection_changed)
         self.database_selection_changed()
-        self.quantity_line_edit.textChanged.connect(self.quantity_changed)
+        self.quantity_spinbox.valueChanged.connect(self.quantity_changed)
         self.cancel_button.clicked.connect(self.close_window)
         self.save_button.clicked.connect(self.save_and_close)
-        # Ensure quantity_line_edit accepts only float numbers
-        float_validator = QDoubleValidator()
-        float_validator.setDecimals(4)  # Limit to 4 decimal places
-        float_validator.setBottom(0.0)  # Set minimum value to 0
-        self.quantity_line_edit.setValidator(float_validator)
 
         self.label_area_template = "1. Area: {} mm²"
         self.label_volume_template = "2. Volume sprayed: {} mL"
@@ -78,6 +73,19 @@ class CalculatorWindow(QWidget, Ui_Dialog):
         self.connect_signals_slots()
 
         self.update_data_model()
+
+    def _configure_numeric_locale(self) -> None:
+        """Use the system decimal separator and reject ambiguous grouping separators."""
+        self.numeric_locale = QLocale()
+        self.numeric_locale.setNumberOptions(
+            self.numeric_locale.numberOptions() | QLocale.NumberOption.RejectGroupSeparator
+        )
+        for spinbox in self.findChildren(QDoubleSpinBox):
+            spinbox.setLocale(self.numeric_locale)
+
+    def _format_number(self, value: float, decimals: int) -> str:
+        """Format a calculated value using the same locale as the numeric inputs."""
+        return self.numeric_locale.toString(float(value), "f", decimals)
 
     def connect_signals_slots(self) -> None:
         """
@@ -146,29 +154,20 @@ class CalculatorWindow(QWidget, Ui_Dialog):
         if not item:
             return
         is_amount = self.db_writer.get_IS_amount(item.text())
-        blocker = QSignalBlocker(self.quantity_line_edit)
+        blocker = QSignalBlocker(self.quantity_spinbox)
         try:
-            self.quantity_line_edit.setText(f"{is_amount:.4f}")
+            self.quantity_spinbox.setValue(is_amount)
         finally:
             del blocker
 
-    def quantity_changed(self, text: str) -> None:
-        """Triggered when the text in quantity_line_edit changes."""
+    def quantity_changed(self, value: float) -> None:
+        """Stage a validated numeric standard amount for the selected standard."""
         current_row = self.standards_list_view.currentRow()
         if current_row >= 0:
             selected_item = self.standards_list_view.item(current_row)
             if selected_item:
                 if self.db_writer is None:
                     return
-                locale = QLocale()
-                value, ok = locale.toDouble(text)
-                if not ok:
-                    sanitized = text.replace(locale.groupSeparator(), "")
-                    sanitized = sanitized.replace(locale.decimalPoint(), ".")
-                    try:
-                        value = float(sanitized)
-                    except ValueError:
-                        return
                 self.db_writer.set_IS_amount(id=selected_item.text(), new_IS_amount=value)
 
     def update_data_model(self) -> None:
@@ -190,19 +189,27 @@ class CalculatorWindow(QWidget, Ui_Dialog):
             final_mix_volume_mL=self.spinbox_final_mix_volume.value(),
             molecular_weight_ug_per_umol=self.spinbox_molecular_weight.value(),
         )
-        self.label_area.setText(self.label_area_template.format(f"{self.sprayrun.area_mm2:.0f}"))
+        self.label_area.setText(
+            self.label_area_template.format(self._format_number(self.sprayrun.area_mm2, 0))
+        )
         self.label_volume.setText(
-            self.label_volume_template.format(f"{self.sprayrun.delivered_volume_mL:.3f}")
+            self.label_volume_template.format(
+                self._format_number(self.sprayrun.delivered_volume_mL, 3)
+            )
         )
         self.label_mix_conc.setText(
-            self.label_mix_conc_template.format(f"{self.sprayrun.spray_mix_conc:.1f}")
+            self.label_mix_conc_template.format(
+                self._format_number(self.sprayrun.spray_mix_conc, 1)
+            )
         )
         self.label_surface_conc_result.setText(
-            self.label_surface_conc_result_template.format(f"{self.sprayrun.pmol_per_mm2:.3f}")
+            self.label_surface_conc_result_template.format(
+                self._format_number(self.sprayrun.pmol_per_mm2, 3)
+            )
         )
 
     def apply_calculations(self) -> None:
-        self.quantity_line_edit.setText(f"{self.sprayrun.pmol_per_mm2:.3f}")
+        self.quantity_spinbox.setValue(self.sprayrun.pmol_per_mm2)
 
     def save_and_close(self) -> None:
         if self.db_writer is None:
