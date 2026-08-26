@@ -18,8 +18,10 @@ LipidQMap is a program to support accurate quantitation of Mass Spectrometry Ima
 LipidQMap is available for Windows 10 (and up) and Mac (Apple silicon, M1 and up).
 Download LipidQMap from the [releases](https://github.com/swinnenteam/LipidQMap/releases) page or get the latest version from the links below:
 
-- [LipidQMap V0.1.0 - **Windows 10/11**](https://github.com/swinnenteam/LipidQMap/releases/download/v0.1.0/LipidQMap-0.1.0-windows.zip)
-- [LipidQMap V0.1.0 - **Mac**](https://github.com/swinnenteam/LipidQMap/releases/download/v0.1.0/LipidQMap-0.1.0-macOS.dmg)
+- [LipidQMap V0.2.0 - **Windows 10/11**](https://github.com/swinnenteam/LipidQMap/releases/download/v0.2.0/LipidQMap-0.2.0-windows.zip)
+- [LipidQMap V0.2.0 - **Mac**](https://github.com/swinnenteam/LipidQMap/releases/download/v0.2.0/LipidQMap-0.2.0-macOS.dmg)
+
+See the [changelog](docs/changelog.md) for released and upcoming changes.
 
 For Windows: Simply unzip the downloaded file to any location, then double-click the LipidQMap executable inside the extracted folder.
 For Mac: Open the .dmg file and drag the LipidQMap icon into your Applications folder.
@@ -167,7 +169,7 @@ LipidQMap's Excel database(s) of lipid species are located inside the `_internal
 - **Na+ Isotope**: The ID of the species with 2 carbons less and 3 double bonds more than the current one, only required if the sodium isotope correction algorithm is used.
 - **Is standard**: Is this species a standard or not, TRUE or FALSE.
 - **Standard amount (pmol / mm2)**: If this species is a standard, how much pmol per mm2 was sprayed.
-- **IS**: ID of the standard species that should be used for the quantitation.
+- **Lipid standard**: ID of the standard species that should be used for quantitation. The legacy column name **IS** is also supported for backwards compatibility.
 
 ## Support
 

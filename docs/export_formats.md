@@ -161,6 +161,6 @@ The export creates external feature lists in the selected SCiLS dataset. Feature
 Important details:
 
 - SCiLS export is only available on Windows with the SCiLS Lab API installed.
-- The selected `.slx` dataset must already exist.
+- The selected `.slx` dataset must already exist, but can not be opened in SciLS Lab at the same time as saving data to this file from LipidQMap.
 - Exported feature lists are labeled with the LipidQMap sample/image type.
 - Species without the requested processed image are skipped.

@@ -48,7 +48,8 @@ def user_db_dir() -> Path:
 
 
 SEED_DB_WHITELIST = [
-    "MSI_database_V1.0.xlsx",
+    "MSI_database_basic_V1.2.xlsx",
+    "MSI_database_extensive_V1.2.xlsx",
 ]
 
 SEED_DB_PACKAGED_DIR = ("seed",)  # inside Resources/seed when bundled
@@ -92,7 +93,7 @@ class DatabaseSettings(BaseModel):
     Class for validation of the configuration file
     """
 
-    last_used_database: str = Field(default="")
+    last_used_database: str = Field(default="MSI_database_basic_V1.2")
 
 
 class FilterSettings(BaseModel):

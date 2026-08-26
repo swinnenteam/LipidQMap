@@ -8,6 +8,8 @@ from molmass import Formula
 from app.database import (
     AMOUNT_COL,
     ID,
+    IS,
+    LIPID_STANDARD,
     DatabaseEditor,
     DatabaseFactory,
     IonMode,
@@ -39,6 +41,21 @@ def test_load_database_positive() -> None:
         "tests/database/test_database.xlsx", ion_mode=IonMode.positive
     ).create_database()
     assert database.verify_ion_mode(ion_mode=IonMode.positive)
+
+
+def test_load_database_lipid_standard_column(tmp_path) -> None:
+    database_path = tmp_path / "database.xlsx"
+    shutil.copy2("tests/database/test_database.xlsx", database_path)
+
+    workbook = openpyxl.load_workbook(database_path)
+    worksheet = workbook.active
+    headers = [cell.value for cell in worksheet[1]]
+    worksheet.cell(1, headers.index(IS) + 1).value = LIPID_STANDARD
+    workbook.save(database_path)
+
+    database = DatabaseFactory(database_path, ion_mode=IonMode.positive).create_database()
+    assert database.verify_ion_mode(ion_mode=IonMode.positive)
+    assert database.species["PC 32:0 [M+H]+"].standard is not None
 
 
 def test_load_database_negative() -> None:
@@ -74,7 +91,7 @@ def test_database_editor_numeric_amount_round_trip(tmp_path) -> None:
 
 
 def test_load_database_column_missing() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Column names are case-sensitive"):
         DatabaseFactory(
             "tests/database/test_database_column_missing.xlsx", ion_mode=IonMode.negative
         )

@@ -440,7 +440,10 @@ ADDUCTS = "Adducts"
 M2_ISOTOPE = "M-2 Isotope"
 M4_ISOTOPE = "M-4 Isotope"
 NA_ISOTOPE = "Na+ Isotope"
+# ``IS`` is retained as the internal/legacy column name. New database files use
+# the clearer user-facing label and are normalized to ``IS`` when loaded.
 IS = "IS"
+LIPID_STANDARD = "Lipid standard"
 AMOUNT_COL = "Standard amount (pmol / mm2)"
 STD_COL = "Is standard"
 
@@ -464,8 +467,20 @@ class DatabaseFactory:
     def __init__(self, path: str, ion_mode: IonMode) -> None:
         self.df = pd.read_excel(path)
         self.ion_mode = ion_mode
+        self.normalize_column_aliases()
         self.check_columns()
         self.setup_dataframe()
+
+    def normalize_column_aliases(self) -> None:
+        """Normalize supported user-facing column names to their internal names."""
+        if LIPID_STANDARD not in self.df.columns:
+            return
+        if IS in self.df.columns:
+            raise ValueError(
+                f"The database contains both '{LIPID_STANDARD}' and the legacy '{IS}' column. "
+                f"Please keep only '{LIPID_STANDARD}'."
+            )
+        self.df.rename(columns={LIPID_STANDARD: IS}, inplace=True)
 
     def check_columns(self) -> None:
         """
@@ -490,10 +505,14 @@ class DatabaseFactory:
 
         missing_required = required_cols - df_cols
         if missing_required:
-            missing_list = ", ".join(sorted(list(missing_required)))
+            user_facing_missing = {
+                LIPID_STANDARD if column == IS else column for column in missing_required
+            }
+            missing_list = ", ".join(sorted(user_facing_missing))
             raise ValueError(
                 f"The database is missing required columns: '{missing_list}'. "
-                "Please ensure you have a valid database and restart."
+                "Column names are case-sensitive. Please ensure you have a valid "
+                "database and restart."
             )
 
         missing_optional = optional_cols - df_cols
@@ -623,14 +642,14 @@ class DatabaseFactory:
                     available_adducts = id_to_adducts.get(standard_id)
                     if not available_adducts:
                         raise ValueError(
-                            f"Value '{standard_id}' found in column 'IS' on row {i+2} is not a species defined "
+                            f"Value '{standard_id}' found in column '{LIPID_STANDARD}' on row {i+2} is not a species defined "
                             "in column 'ID'. Check for typos in the IDs."
                         )
                     base_standard = id_to_standard.get(standard_id)
                     if base_standard is None:
                         raise ValueError(
-                            f"On row {i+2} of column 'IS' the species '{standard_id}' has not been properly defined "
-                            f"in the database as a standard. Check that '{standard_id}' has a value for 'IS amount "
+                            f"On row {i+2} of column '{LIPID_STANDARD}' the species '{standard_id}' has not been properly defined "
+                            f"in the database as a standard. Check that '{standard_id}' has a value for 'Standard amount "
                             "(pmol / mm2)'."
                         )
                     standard = create_adduct_specie(base_standard, adduct)
@@ -639,8 +658,8 @@ class DatabaseFactory:
             if standard is not None and not isinstance(standard, LipidStandard):
                 raise (
                     ValueError(
-                        f"On row {i+2} of column 'IS' the species '{standard}' has not been properly defined \
-                        in the database as a standard. Check that '{standard}' has a value for 'IS amount \
+                        f"On row {i+2} of column '{LIPID_STANDARD}' the species '{standard}' has not been properly defined \
+                        in the database as a standard. Check that '{standard}' has a value for 'Standard amount \
                         (pmol / mm2)'."
                     )
                 )

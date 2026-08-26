@@ -5,7 +5,8 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('app/database/MSI_database_V1.0.xlsx', 'Resources/seed'),
+        ('app/database/MSI_database_basic_V1.2.xlsx', 'Resources/seed'),
+        ('app/database/MSI_database_extensive_V1.2.xlsx', 'Resources/seed'),
         ('app/style.css', 'Resources'),
     ],
     hiddenimports=[

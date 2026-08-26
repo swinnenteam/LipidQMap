@@ -26,7 +26,7 @@ feature_noise_sigma = 4.0
 feature_minimum_pixels = 10
 
 [database_settings]
-last_used_database = "MSI_database_V1.0"
+last_used_database = "MSI_database_basic_V1.2"
 
 [save_settings]
 save_raw_images = true

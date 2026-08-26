@@ -5,6 +5,7 @@ import pytest
 import toml
 from pydantic import ValidationError
 
+import app.config as config_module
 from app.config import Config, Configuration
 
 
@@ -38,7 +39,10 @@ def test_default_config_values(temp_config_dir):
     assert config.settings.processing_settings.calibration_ppm == 30.0
     assert config.settings.processing_settings.calibration_min_intensity == 10000
 
-    assert config.settings.database_settings.last_used_database == ""
+    assert (
+        config.settings.database_settings.last_used_database
+        == "MSI_database_basic_V1.2"
+    )
 
     assert config.settings.save_settings.save_raw_images is True
     assert config.settings.save_settings.save_iso_images is False
@@ -113,3 +117,27 @@ def test_default_config_creation(temp_config_dir):
     with open(config_path, "r", encoding="utf8") as file:
         config_data = toml.load(file)
         assert Configuration.model_validate(config_data) is not None
+
+
+def test_ensure_user_database_dir_copies_v12_defaults_only(tmp_path, monkeypatch):
+    source_dir = tmp_path / "source"
+    destination_dir = tmp_path / "user" / "database"
+    source_dir.mkdir()
+    destination_dir.mkdir(parents=True)
+
+    expected_names = {
+        "MSI_database_basic_V1.2.xlsx",
+        "MSI_database_extensive_V1.2.xlsx",
+    }
+    for name in expected_names:
+        (source_dir / name).write_bytes(name.encode())
+    (source_dir / "MSI_database_V1.0.xlsx").write_bytes(b"legacy")
+
+    monkeypatch.setattr(config_module, "SEED_DB_DEV_DIR", source_dir)
+    monkeypatch.setattr(config_module, "user_db_dir", lambda: destination_dir)
+    monkeypatch.setattr(config_module, "_is_frozen", lambda: False)
+
+    result = config_module.ensure_user_database_dir()
+
+    assert result == destination_dir
+    assert {path.name for path in destination_dir.iterdir()} == expected_names
